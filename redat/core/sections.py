@@ -213,6 +213,21 @@ def _fetch_zensus(ctx: Ctx) -> dict:
 
 # --------------------------------------------------------------------------- parcel tier
 
+def _fetch_flurstueck(ctx: Ctx) -> dict:
+    from redat.sources import alkis, baulasten_essen
+
+    f = alkis.get_flurstueck(ctx.lat, ctx.lon)
+    if f is None:
+        raise Empty("Kein Flurstück an diesem Punkt (außerhalb NRW?)")
+    f["baulasten"], f["baulasten_error"] = None, None
+    try:
+        f["baulasten"] = baulasten_essen.get_baulasten(ctx.lat, ctx.lon, f["flurstueck"].get("kennzeichen"))
+    except Exception as exc:  # noqa: BLE001 — the Essen server being down must not blank the parcel
+        logger.warning("baulasten: %s", exc)
+        f["baulasten_error"] = str(exc)
+    return f
+
+
 def _fetch_boris(ctx: Ctx) -> Optional[dict]:
     from redat.sources.boris import get_boris_nrw
 
@@ -320,6 +335,8 @@ def _fetch_planning_bochum(ctx: Ctx) -> dict:
 
 # Insertion order == card order (spec §4: table order, noise after flood).
 SECTIONS: dict[str, Section] = {s.key: s for s in [
+    Section("flurstueck", "Flurstück & Gebäude (ALKIS)", "📐", 30,
+            "Geobasis NRW, ALKIS vereinfacht (dl-de/zero-2-0) · Stadt Essen, Baulasteninformation (unverbindlich, wöchentlich)", _fetch_flurstueck),
     Section("boris", "Bodenrichtwert (BORIS)", "🏷️", 25, "BORIS NRW (Gutachterausschüsse)", _fetch_boris),
     Section("boris_trend", "Bodenrichtwert-Trend", "📈", 30, "BORIS NRW, historische Stichtage", _fetch_boris_trend),
     Section("flood", "Hochwasserrisiko", "🌊", 15, "Land NRW, Hochwassergefahrenkarten (HQhäufig / HQ100 / HQextrem)", _fetch_flood),

@@ -10,7 +10,7 @@ CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
 
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
-        "boris", "boris_trend", "flood", "starkregen", "noise", "bergbau", "gfnp", "schutzgebiete", "planning_essen",
+        "flurstueck", "boris", "boris_trend", "flood", "starkregen", "noise", "bergbau", "gfnp", "schutzgebiete", "planning_essen",
         "planning_bochum", "denkmal", "amenities", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
@@ -427,3 +427,43 @@ def test_infrastruktur_passes_through_and_is_area(monkeypatch):
     monkeypatch.setattr(infrastruktur, "get_infrastruktur", lambda lat, lon: payload)
     assert S._fetch_infrastruktur(CTX) == payload
     assert tiers.SERVICE_TIER["infrastruktur"] == "area"
+
+
+FLURSTUECK_RAW = {
+    "flurstueck": {"id": "DENW22AL800005He", "kennzeichen": "05314403900040", "gemarkung": "Rüttenscheid", "gemarkung_nr": "053144",
+                   "flur": 39, "nummer": "40", "flaeche_m2": 538.0, "lage": "Herthastr. 4", "gemeinde": "Essen", "stand": "2026-02-17",
+                   "nutzung": [{"art": "Wohnbaufläche", "m2": 538}], "distance_m": 0.0},
+    "gebaeude": [{"funktion": "Wohngebäude", "lage": "Herthastr. 4", "grundflaeche_m2": 118.4, "on_parcel": True}],
+    "grundflaeche_m2": 118.4, "ueberbauung_pct": 22.0, "nutzung_am_punkt": "Wohnbaufläche",
+}
+BAULASTEN_RAW = {"status": "vorhanden", "radius_m": 50, "nearby": [],
+                 "on_parcel": [{"rechtsgrund": "BauOrdnungsrecht", "art": "Zufahrt", "blatt": "9 / 604 / 1", "kennzeichen": "05314403900040", "status": "vorhanden"}]}
+
+
+def test_flurstueck_merges_baulasten(monkeypatch):
+    from redat.sources import alkis, baulasten_essen
+    monkeypatch.setattr(alkis, "get_flurstueck", lambda lat, lon: dict(FLURSTUECK_RAW))
+    seen = {}
+    monkeypatch.setattr(baulasten_essen, "get_baulasten", lambda lat, lon, kz: seen.setdefault("kz", kz) and BAULASTEN_RAW)
+    d = S._fetch_flurstueck(CTX)
+    assert seen["kz"] == "05314403900040" and d["baulasten"] == BAULASTEN_RAW and d["baulasten_error"] is None
+    assert d["flurstueck"]["flaeche_m2"] == 538.0
+
+
+def test_flurstueck_baulasten_failure_is_isolated(monkeypatch):
+    from redat.sources import alkis, baulasten_essen
+    monkeypatch.setattr(alkis, "get_flurstueck", lambda lat, lon: dict(FLURSTUECK_RAW))
+
+    def boom(lat, lon, kz):
+        raise RuntimeError("essen down")
+    monkeypatch.setattr(baulasten_essen, "get_baulasten", boom)
+    d = S._fetch_flurstueck(CTX)
+    assert d["baulasten"] is None and d["baulasten_error"] == "essen down"
+
+
+def test_flurstueck_none_is_empty(monkeypatch):
+    from redat.sources import alkis
+    monkeypatch.setattr(alkis, "get_flurstueck", lambda lat, lon: None)
+    with pytest.raises(Empty) as ei:
+        S._fetch_flurstueck(CTX)
+    assert "Kein Flurstück" in ei.value.message

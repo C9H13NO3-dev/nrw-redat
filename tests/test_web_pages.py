@@ -27,7 +27,8 @@ def test_index_renders_manifest(client):
     assert r.status_code == 200 and "Standort-Analyse" in r.text
     cfg = _config(r.text)
     assert cfg["run"] is None and cfg["auto_run"] is False and [s["key"] for s in cfg["sections"]] == list(A.SECTIONS)
-    assert 'id="card-noise"' in r.text and "Quellen" in r.text
+    assert 'id="card-noise"' in r.text and "Quellen" in r.text \
+        and 'id="card-flurstueck"' in r.text and "Als Grundstücksgröße übernehmen" in r.text
 
 
 def test_index_prefill_and_auto(client):

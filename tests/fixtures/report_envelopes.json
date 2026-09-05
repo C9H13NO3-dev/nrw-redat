@@ -1,4 +1,73 @@
 {
+ "flurstueck": {
+  "key": "flurstueck",
+  "tier": "parcel",
+  "status": "ok",
+  "message": null,
+  "took_ms": 812,
+  "source": "Geobasis NRW, ALKIS vereinfacht (dl-de/zero-2-0) · Stadt Essen, Baulasteninformation (unverbindlich, wöchentlich)",
+  "data": {
+   "flurstueck": {
+    "id": "DENW22AL800005He",
+    "kennzeichen": "05314403900040",
+    "gemarkung": "Rüttenscheid",
+    "gemarkung_nr": "053144",
+    "flur": 39,
+    "nummer": "40",
+    "flaeche_m2": 538.0,
+    "lage": "Herthastr. 4",
+    "gemeinde": "Essen",
+    "stand": "2026-02-17",
+    "nutzung": [
+     {
+      "art": "Wohnbaufläche",
+      "m2": 538
+     }
+    ],
+    "distance_m": 0.0
+   },
+   "gebaeude": [
+    {
+     "funktion": "Wohngebäude",
+     "lage": "Herthastr. 4",
+     "grundflaeche_m2": 118.4,
+     "on_parcel": true
+    },
+    {
+     "funktion": "Garage",
+     "lage": null,
+     "grundflaeche_m2": 24.0,
+     "on_parcel": false
+    }
+   ],
+   "grundflaeche_m2": 118.4,
+   "ueberbauung_pct": 22.0,
+   "nutzung_am_punkt": "Wohnbaufläche",
+   "baulasten": {
+    "status": "vorhanden",
+    "radius_m": 50,
+    "on_parcel": [
+     {
+      "rechtsgrund": "BauOrdnungsrecht",
+      "art": "Zufahrt",
+      "blatt": "9 / 604 / 1",
+      "kennzeichen": "05314403900040",
+      "status": "vorhanden"
+     }
+    ],
+    "nearby": [
+     {
+      "rechtsgrund": "BauOrdnungsrecht",
+      "art": "Abstandfläche",
+      "blatt": "9 / 1126 / 1",
+      "kennzeichen": "05314403800349",
+      "status": "vorhanden"
+     }
+    ]
+   },
+   "baulasten_error": null
+  }
+ },
  "boris": {
   "key": "boris",
   "tier": "parcel",

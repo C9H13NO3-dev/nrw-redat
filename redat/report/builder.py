@@ -81,6 +81,21 @@ def _rated(d: dict) -> tuple[Optional[str], str]:
     return d.get("rating") or None, d.get("rating_color") or "gray"
 
 
+def _s_flurstueck(d):
+    fl = d.get("flurstueck") or {}
+    if fl.get("flaeche_m2") is None:
+        return None, "gray", None
+    fig = f"{fmt_int(fl['flaeche_m2'])} m²"
+    if d.get("grundflaeche_m2"):
+        fig += f" · {fmt_int(d['grundflaeche_m2'])} m² überbaut"
+        if d.get("ueberbauung_pct") is not None:
+            fig += f" ({fmt_num(d['ueberbauung_pct'], 0)} %)"
+    bl = d.get("baulasten") or {}
+    rating, color = {"vorhanden": ("Baulast eingetragen", "orange"), "moeglich": ("Baulast möglich", "yellow"),
+                     "keine": ("Keine Baulast (Essen)", "green")}.get(bl.get("status"), (None, "gray"))
+    return rating, color, fig
+
+
 def _s_boris(d):
     brw = d.get("bodenrichtwert")
     if brw is None:
@@ -252,6 +267,7 @@ def _s_commute(d):
 
 
 SUMMARY: dict[str, Callable[[dict], tuple[Optional[str], str, Optional[str]]]] = {
+    "flurstueck": _s_flurstueck,
     "boris": _s_boris, "boris_trend": _s_boris_trend, "flood": _s_flood, "starkregen": _s_starkregen,
     "noise": _s_noise, "bergbau": _s_bergbau, "gfnp": _s_gfnp, "schutzgebiete": _s_schutzgebiete,
     "planning_essen": _s_planning, "planning_bochum": _s_planning, "denkmal": _s_denkmal,

@@ -1,0 +1,55 @@
+{% set fl = d.get("flurstueck") or {} %}
+{% set bl = d.get("baulasten") %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Amtliche Fläche</div>
+    <div class="value">{{ (fl.flaeche_m2|fmt_int ~ " m²") if fl.get("flaeche_m2") is not none else "—" }}</div>
+    <div class="sub">{% if fl.get("gemarkung") %}Gemarkung {{ fl.gemarkung }}, Flur {{ fl.get("flur") or "—" }}, Flurstück {{ fl.get("nummer") or "—" }}{% endif %}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Überbaut</div>
+    <div class="value">{{ (d.grundflaeche_m2|fmt_int ~ " m²") if d.get("grundflaeche_m2") is not none else "—" }}</div>
+    {% if d.get("ueberbauung_pct") is not none %}<div class="sub">{{ d.ueberbauung_pct|fmt_num(0) }} % der Grundstücksfläche</div>{% endif %}
+  </div>
+  <div class="kpi">
+    <div class="label">Tatsächliche Nutzung</div>
+    <div class="value" style="font-size: 11pt">{{ d.get("nutzung_am_punkt") or ((fl.get("nutzung") or [{}])[0].get("art")) or "—" }}</div>
+    {% if fl.get("lage") %}<div class="sub">{{ fl.lage }}</div>{% endif %}
+  </div>
+</div>
+{% set geb = d.get("gebaeude") or [] %}
+{% if geb %}
+<table class="mt">
+  <thead><tr><th>Gebäude</th><th>Lage</th><th class="num">Grundfläche</th></tr></thead>
+  <tbody>
+  {% for g in geb %}
+    <tr>
+      <td>{{ g.get("funktion") or "Gebäude" }}</td>
+      <td>{{ "auf dem Flurstück" if g.get("on_parcel") else "angrenzend" }}</td>
+      <td class="num">{{ (g.grundflaeche_m2|fmt_int ~ " m²") if g.get("grundflaeche_m2") is not none else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% if bl %}
+{% set labels = {"vorhanden": ("Baulast eingetragen", "orange"), "moeglich": ("Baulast möglich", "yellow"), "keine": ("Keine Baulast auf dem Flurstück", "green")} %}
+{% set lab = labels.get(bl.get("status")) %}
+<h3>Baulasten (Stadt Essen)</h3>
+{% if lab %}<p><span class="chip {{ rating_class(lab[1]) }}">{{ lab[0] }}</span></p>{% endif %}
+{% if bl.get("on_parcel") %}
+<table>
+  <thead><tr><th>Art</th><th>Rechtsgrund</th><th>Blatt</th></tr></thead>
+  <tbody>
+  {% for b in bl.on_parcel %}<tr><td>{{ b.get("art") or "Baulast" }}</td><td>{{ b.get("rechtsgrund") or "—" }}</td><td>{{ b.get("blatt") or "—" }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% if bl.get("nearby") %}<p class="footnote">{{ bl.nearby|length }} weitere Baulast(en) auf Nachbarflurstücken im Umkreis von {{ bl.get("radius_m") or 50 }} m.</p>{% endif %}
+<p class="footnote">Unverbindliche Online-Auskunft der Stadt Essen; rechtsverbindlich ist nur die schriftliche Auskunft aus dem Baulastenverzeichnis.</p>
+{% elif d.get("baulasten_error") %}
+<p class="footnote">Baulasten (Essen) waren nicht abrufbar.</p>
+{% else %}
+<p class="footnote">Baulastenauskunft online nur für Essen verfügbar.</p>
+{% endif %}
+<p class="footnote">Amtliches Liegenschaftskataster (ALKIS){% if fl.get("stand") %}, Stand {{ fl.stand|fmt_date }}{% endif %}; ohne Eigentümerangaben.</p>

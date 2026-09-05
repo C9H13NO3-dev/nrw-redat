@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Optional
 
 SERVICE_TIER: dict[str, str] = {
+    "flurstueck": "parcel",
     "boris": "parcel", "boris_trend": "parcel", "flood": "parcel", "starkregen": "parcel", "gfnp": "parcel",
     "planning_essen": "parcel", "planning_bochum": "parcel", "energie": "parcel", "denkmal": "parcel",
     "amenities": "area", "air_quality": "area", "btw": "area", "commute": "area", "noise": "area", "bergbau": "area",

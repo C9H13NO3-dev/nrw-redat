@@ -15,6 +15,8 @@ class SourceMeta:
 
 
 SOURCES: tuple[SourceMeta, ...] = (
+    SourceMeta(("flurstueck",), "ALKIS Flurstücke & Gebäude · Baulasteninformation Essen", "Geobasis NRW · Stadt Essen", "dl-de/zero-2-0 · Stadt Essen (unverbindlich)",
+               "https://www.wfs.nrw.de/geobasis/wfs_nw_alkis_vereinfacht (WFS 2.0, GML) · geo.essen.de Baulasteninformation (ArcGIS REST)", "parcel", "live (ALKIS fortlaufend, Baulasten wöchentlich)"),
     SourceMeta(("boris", "boris_trend"), "BORIS NRW Bodenrichtwerte", "Gutachterausschüsse NRW / Geobasis NRW", "dl-de/zero-2-0",
                "lokale Shapefiles unter source/boris (Stichtage 2011–2025)", "parcel", "jährlich (1.1.), Datei-Import"),
     SourceMeta(("flood",), "Hochwassergefahrenkarten NRW (HWRM-RL)", "Land NRW, LANUV", "dl-de/by-2-0",

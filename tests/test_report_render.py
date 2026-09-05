@@ -37,6 +37,7 @@ def test_partial_tolerates_empty_data(key):
 
 def test_fixture_content_is_present():
     checks = {
+        "flurstueck": ["538 m²", "Rüttenscheid", "Zufahrt"],
         "boris": ["670 €/m²", "Stichtag 01.01.2025"],
         "flood": ["HQ100", "180 m"],
         "starkregen": ["30–50 cm", "Extremereignis"],

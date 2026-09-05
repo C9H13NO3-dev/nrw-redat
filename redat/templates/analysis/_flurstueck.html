@@ -1,0 +1,58 @@
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+    <div>
+        <div class="text-gray-500">Amtliche Fläche</div>
+        <div class="text-2xl font-bold text-gray-900"><span x-text="$store.app.formatNumber(d.flurstueck.flaeche_m2)"></span> m²</div>
+        <div class="text-xs text-gray-500">Gemarkung <span x-text="d.flurstueck.gemarkung"></span>, Flur <span x-text="d.flurstueck.flur"></span>, Flurstück <span x-text="d.flurstueck.nummer"></span></div>
+    </div>
+    <div>
+        <div class="text-gray-500">Überbaut</div>
+        <div class="text-2xl font-bold text-gray-900"><span x-text="$store.app.formatNumber(d.grundflaeche_m2)"></span> m²</div>
+        <div class="text-xs text-gray-500" x-show="d.ueberbauung_pct != null" x-text="d.ueberbauung_pct + ' % der Grundstücksfläche'"></div>
+    </div>
+    <div>
+        <div class="text-gray-500">Tatsächliche Nutzung</div>
+        <div class="font-medium text-gray-900" x-text="d.nutzung_am_punkt || (d.flurstueck.nutzung[0] && d.flurstueck.nutzung[0].art) || '—'"></div>
+        <div class="text-xs text-gray-500" x-show="d.flurstueck.lage" x-text="d.flurstueck.lage"></div>
+    </div>
+</div>
+<button type="button" x-show="!plotSize && d.flurstueck.flaeche_m2"
+        @click="plotSize = Math.round(d.flurstueck.flaeche_m2); load('boris')"
+        class="mt-3 text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50">Als Grundstücksgröße übernehmen (Bodenrichtwert × Fläche)</button>
+
+<template x-if="d.gebaeude.length">
+    <ul class="mt-4 space-y-1 text-sm">
+        <template x-for="(g, i) in d.gebaeude" :key="i">
+            <li class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded text-xs" :class="g.on_parcel ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'" x-text="g.on_parcel ? 'auf dem Flurstück' : 'angrenzend'"></span>
+                <span class="text-gray-900" x-text="g.funktion"></span>
+                <span class="text-gray-500" x-text="$store.app.formatNumber(g.grundflaeche_m2) + ' m² Grundfläche'"></span>
+            </li>
+        </template>
+    </ul>
+</template>
+
+<template x-if="d.baulasten">
+    <div class="mt-4 text-sm">
+        <div class="flex items-center gap-2">
+            <span class="font-semibold text-gray-900">Baulasten (Essen)</span>
+            <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+                  :class="$store.app.getAirQualityColor({vorhanden: 'orange', moeglich: 'yellow', keine: 'green'}[d.baulasten.status])"
+                  x-text="{vorhanden: 'eingetragen', moeglich: 'möglicherweise eingetragen', keine: 'keine auf dem Flurstück'}[d.baulasten.status]"></span>
+        </div>
+        <ul class="mt-1 space-y-0.5" x-show="d.baulasten.on_parcel.length">
+            <template x-for="(b, i) in d.baulasten.on_parcel" :key="'p' + i">
+                <li class="text-gray-800"><span x-text="b.art || 'Baulast'"></span> <span class="text-gray-500" x-text="'(' + (b.rechtsgrund || '—') + (b.blatt ? ', Blatt ' + b.blatt : '') + ')'"></span></li>
+            </template>
+        </ul>
+        <p class="mt-1 text-xs text-gray-500" x-show="d.baulasten.nearby.length"
+           x-text="d.baulasten.nearby.length + ' weitere Baulast(en) auf Nachbarflurstücken im Umkreis von ' + d.baulasten.radius_m + ' m — ' + d.baulasten.nearby.map(b => b.art || 'Baulast').join(', ')"></p>
+        <p class="mt-1 text-xs text-gray-500">Unverbindliche Online-Auskunft der Stadt Essen (wöchentlich aktualisiert). Rechtsverbindlich ist nur die schriftliche Auskunft aus dem Baulastenverzeichnis.</p>
+    </div>
+</template>
+<p class="mt-4 text-xs text-gray-500" x-show="!d.baulasten && !d.baulasten_error">Baulastenauskunft online nur für Essen verfügbar — in anderen Städten schriftlich bei der Bauaufsicht anfragen.</p>
+<p class="mt-4 text-xs text-red-700" x-show="d.baulasten_error">Baulasten (Essen) derzeit nicht abrufbar.</p>
+
+<p class="mt-3 text-xs text-gray-500">
+    Amtliches Liegenschaftskataster (ALKIS), Stand <span x-text="d.flurstueck.stand || '—'"></span>. Ohne Eigentümer — das Grundbuch bleibt Sache des Notars.
+    <span x-show="d.flurstueck.distance_m > 0" x-text="'Die Adresse wurde ' + d.flurstueck.distance_m + ' m neben dem Flurstück geocodiert.'"></span>
+</p>
