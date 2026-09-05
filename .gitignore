@@ -3,6 +3,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
-data/
+/data/
 node_modules/
 .superpowers/
