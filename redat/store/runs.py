@@ -3,9 +3,10 @@ import base64
 import json
 import secrets
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS runs (
@@ -29,10 +30,18 @@ class RunStore:
     def __init__(self, db_path: Path):
         self.db_path = Path(db_path)
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         con = sqlite3.connect(self.db_path, timeout=10)
         con.row_factory = sqlite3.Row
-        return con
+        try:
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     def init(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

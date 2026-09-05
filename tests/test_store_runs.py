@@ -1,5 +1,6 @@
 import re
 import sqlite3
+import pytest
 from redat.store.runs import RunStore
 
 PAYLOAD = {
@@ -43,3 +44,29 @@ def test_save_requires_coordinates(tmp_path):
     import pytest
     with pytest.raises(ValueError):
         _store(tmp_path).save({**PAYLOAD, "latitude": None})
+
+
+def test_connections_are_closed_after_use(tmp_path, monkeypatch):
+    """Verify that connections are closed after each call to prevent fd leaks."""
+    s = _store(tmp_path)
+    tracked_connections = []
+
+    original_connect = sqlite3.connect
+    def tracked_connect(*args, **kwargs):
+        con = original_connect(*args, **kwargs)
+        tracked_connections.append(con)
+        return con
+
+    monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+
+    # Test save() closes its connection
+    rid = s.save(PAYLOAD)
+
+    # Test get() closes its connection
+    got = s.get(rid)
+    assert got is not None
+
+    # Verify all tracked connections are closed by trying to execute on them
+    for con in tracked_connections:
+        with pytest.raises(sqlite3.ProgrammingError):
+            con.execute("SELECT 1")
