@@ -1,0 +1,19 @@
+{% set b = d.get("bodenluft") or {} %}
+{% set p = d.get("potenzial") or {} %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Radon (BfS-Prognose, Raster)</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+  <div class="kpi">
+    <div class="label">Radon in der Bodenluft (90. Perzentil)</div>
+    <div class="value">{{ (b.kbq_m3|fmt_num(0) ~ " kBq/m³") if b.get("kbq_m3") is not none else "—" }}</div>
+    <div class="sub">{% if b.get("klasse") %}Klasse {{ b.klasse }}{% endif %}{% if b.get("geologie") %} · {{ b.geologie }}{% endif %}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Geogenes Radonpotenzial</div>
+    <div class="value">{{ p.wert|fmt_num(0) if p.get("wert") is not none else "—" }}</div>
+    <div class="sub">{% if p.get("klasse") %}Klasse {{ p.klasse }}{% endif %}</div>
+  </div>
+</div>
+<p class="footnote">Bundesamt für Strahlenschutz: Bodenluft unter 20 gering, 20–40 mittel, 40–100 erhöht, über 100 kBq/m³ hoch; Potenzial unter 10 gering, 10–35 mittel, über 35 hoch. Regionale Prognose, kein Messwert am Gebäude; Referenzwert Raumluft 300 Bq/m³.</p>

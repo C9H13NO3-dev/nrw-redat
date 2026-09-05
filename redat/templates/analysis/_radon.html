@@ -1,0 +1,23 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm text-gray-500">BfS-Prognose für die Umgebung (1-km- bzw. 10-km-Raster), kein Messwert am Haus</div>
+</div>
+<div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+    <div x-show="d.bodenluft">
+        <div class="text-gray-500">Radon in der Bodenluft (90. Perzentil, 1 m Tiefe)</div>
+        <div class="text-2xl font-bold text-gray-900"><span x-text="d.bodenluft && Math.round(d.bodenluft.kbq_m3)"></span> <span class="text-base font-normal">kBq/m³</span>
+            <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-bold" :class="$store.app.getAirQualityColor(d.bodenluft && d.bodenluft.klasse_color)" x-text="d.bodenluft && d.bodenluft.klasse"></span></div>
+        <div class="text-xs text-gray-500" x-show="d.bodenluft && d.bodenluft.geologie" x-text="'Geologische Einheit: ' + (d.bodenluft && d.bodenluft.geologie)"></div>
+    </div>
+    <div x-show="d.potenzial">
+        <div class="text-gray-500">Geogenes Radonpotenzial</div>
+        <div class="text-2xl font-bold text-gray-900"><span x-text="d.potenzial && Math.round(d.potenzial.wert)"></span>
+            <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-bold" :class="$store.app.getAirQualityColor(d.potenzial && d.potenzial.klasse_color)" x-text="d.potenzial && d.potenzial.klasse"></span></div>
+        <div class="text-xs text-gray-500">Radongehalt × Gasdurchlässigkeit des Untergrunds (unter 10 gering, 10–35 mittel, über 35 hoch)</div>
+    </div>
+</div>
+<p class="mt-3 text-xs text-gray-500">
+    Klassen Bodenluft: unter 20 gering, 20–40 mittel, 40–100 erhöht, über 100 kBq/m³ hoch. Das Karbon des Ruhrgebiets liegt oft in der erhöhten Klasse.
+    NRW hat keine Radonvorsorgegebiete ausgewiesen; bei Wohnnutzung im Keller/Erdgeschoss eine Radonmessung (Referenzwert 300 Bq/m³ Raumluft) einplanen.
+    <span x-show="d.errors && Object.keys(d.errors).length" x-text="' · nicht abrufbar: ' + Object.keys(d.errors || {}).join(', ')"></span>
+</p>

@@ -425,6 +425,31 @@
   "status": "ok",
   "took_ms": 174
  },
+ "radon": {
+  "key": "radon",
+  "tier": "area",
+  "status": "ok",
+  "message": null,
+  "took_ms": 480,
+  "source": "Bundesamt für Strahlenschutz — Radon in der Bodenluft (1 km-Prognose) und Radonpotenzial (dl-de/by-2-0)",
+  "data": {
+   "bodenluft": {
+    "kbq_m3": 57.0,
+    "klasse": "erhöht",
+    "klasse_color": "orange",
+    "geologie": "Karbon",
+    "zelle": "AC138"
+   },
+   "potenzial": {
+    "wert": 36.5,
+    "klasse": "hoch",
+    "klasse_color": "orange"
+   },
+   "errors": {},
+   "rating": "Erhöhtes Radonpotenzial",
+   "rating_color": "orange"
+  }
+ },
  "gfnp": {
   "key": "gfnp",
   "tier": "parcel",

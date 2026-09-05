@@ -29,6 +29,8 @@ SOURCES: tuple[SourceMeta, ...] = (
                "https://www.wms.nrw.de/umwelt/laerm", "area", "live WMS, 5-Jahres-Runde"),
     SourceMeta(("bergbau",), "NRW von unten (Bürgerversion)", "Geologischer Dienst NRW / BezReg Arnsberg", "dl-de/by-2-0",
                "ArcGIS REST, Layer 22 (500 m-Planquadrat)", "area", "live"),
+    SourceMeta(("radon",), "Radon in der Bodenluft · Radonpotenzial", "Bundesamt für Strahlenschutz (BfS)", "dl-de/by-2-0",
+               "https://www.imis.bfs.de/ogc/opendata/ows (WFS 2.0, GeoJSON)", "area", "live, Karten 2023 (statisch)"),
     SourceMeta(("gfnp",), "Gemeinsamer Flächennutzungsplan", "Stadt Essen (geo.essen.de)", "dl-de/by-2-0",
                "ArcGIS REST identify", "parcel", "live"),
     SourceMeta(("schutzgebiete",), "LINFOS Schutzgebiete + Wasserschutzgebiete", "LANUV NRW", "dl-de/by-2-0",

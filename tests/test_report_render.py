@@ -44,6 +44,7 @@ def test_fixture_content_is_present():
         "starkregen": ["30–50 cm", "Extremereignis"],
         "noise": ["Straße", "70 dB(A)"],
         "bergbau": ["Verlassene Tagesöffnungen", "500 m-Planquadrat"],
+        "radon": ["57", "Karbon", "erhöht"],
         "gfnp": ["Flächen für die örtlichen Hauptverkehrszüge"],
         "schutzgebiete": ["LSG-Weinberg", "180 m"],
         "planning_bochum": ["Gestaltungssatzung Werden"],
