@@ -1,6 +1,12 @@
 """Hermetic defaults for every test: a fake Geoapify key, a tmp data dir, no API key."""
 import pytest
 
+import os, tempfile
+# Module-level defaults so `import redat.app` at collection time (module-level `app = create_app()`)
+# succeeds in a bare `pytest`; the autouse fixture still overrides per test.
+os.environ.setdefault("GEOAPIFY_API_KEY", "test-key")
+os.environ.setdefault("REDAT_DATA_DIR", tempfile.mkdtemp(prefix="redat-tests-"))
+
 
 @pytest.fixture(autouse=True)
 def _redat_env(monkeypatch, tmp_path):
