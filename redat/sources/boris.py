@@ -1,7 +1,12 @@
 """
 BORIS NRW Local Lookup Service
-Uses downloaded Shapefile data for fast Bodenrichtwert queries.
-Supports historical data from 2011-2025.
+Point-in-polygon Bodenrichtwert queries against local geodata, 2011-2025.
+
+Preferred source is `<source_dir>/boris/brw.gpkg` - one R-tree-indexed GeoPackage layer per year
+(`brw_{year}`), built once by scripts/build_boris_gpkg.py from the yearly NRW shapefiles. Any year
+without a layer falls back to `BRW_{year}/BRW_{year}_Polygon.shp`. Every lookup is a single
+bbox-limited read: a few ms against the GeoPackage, ~2 s cold against an un-indexed shapefile (GDAL has
+to scan the whole 200-400 MB file). Nothing ever loads a whole year into memory.
 """
 import logging
 from pathlib import Path
@@ -9,6 +14,7 @@ from typing import Optional, NamedTuple
 from dataclasses import dataclass
 
 import geopandas as gpd
+import pyogrio
 from pyproj import Transformer
 from shapely.geometry import Point
 
@@ -37,9 +43,12 @@ transformer = Transformer.from_crs("EPSG:4326", "EPSG:25832", always_xy=True)
 # Available years
 AVAILABLE_YEARS = list(range(2011, 2026))  # 2011-2025
 
-# Cache only for most recent year to keep memory bounded
-_boris_cache: dict[int, gpd.GeoDataFrame] = {}
-_MAX_CACHED_YEARS = 1
+GPKG_NAME = "brw.gpkg"  # <source_dir>/boris/brw.gpkg, layers brw_2011 ... brw_2025
+
+
+class Source(NamedTuple):
+    path: Path
+    layer: Optional[str]  # GeoPackage layer name, or None for a bare shapefile
 
 
 class BorisResult(NamedTuple):
@@ -106,27 +115,60 @@ def _find_shapefile(year: int) -> Optional[Path]:
     return None
 
 
-def _load_boris_data(year: int) -> Optional[gpd.GeoDataFrame]:
-    """Load BORIS Shapefile for a specific year.
+def _gpkg_layers(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    try:
+        return {name for name, _geom in pyogrio.list_layers(path).tolist()}
+    except Exception as e:  # noqa: BLE001 - unreadable file: behave as if absent, shapefiles still work
+        logger.warning("BORIS GeoPackage %s unreadable, falling back to shapefiles: %s", path, e)
+        return set()
 
-    We intentionally keep caching bounded to avoid loading 15 full NRW shapefiles into RAM.
+
+def _find_source(year: int) -> Optional[Source]:
+    """GeoPackage layer for the year if present, else the year's shapefile, else None."""
+    gpkg = data_dir() / GPKG_NAME
+    layer = f"brw_{year}"
+    if layer in _gpkg_layers(gpkg):
+        return Source(gpkg, layer)
+    shp = _find_shapefile(year)
+    return Source(shp, None) if shp else None
+
+
+def _redecode(v: str) -> str:
+    """Undo a Latin-1 read of bytes that were really UTF-8; leave genuine Latin-1 text alone."""
+    try:
+        return v.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return v
+
+
+def repair_mixed_encoding(df):
+    """Fix text columns of a frame that was read with encoding="ISO-8859-1" from a file whose rows mix
+    UTF-8 and ISO-8859-1 (the 2022-2024 NRW BRW shapefiles: .cpg says UTF-8, ~400 Moers rows are not).
+
+    Latin-1 maps every byte to exactly one code point, so the read is lossless; per value we then
+    re-decode as UTF-8 where that succeeds and keep the Latin-1 reading where it does not. Only
+    non-ASCII cells are touched. Modifies and returns df.
     """
-    if year in _boris_cache:
-        return _boris_cache[year]
+    for col in df.columns:
+        if col == "geometry" or df[col].dtype != object:
+            continue
+        mask = df[col].notna() & df[col].astype(str).str.contains(r"[^\x00-\x7f]", regex=True)
+        if mask.any():
+            df.loc[mask, col] = df.loc[mask, col].map(lambda v: _redecode(str(v)))
+    return df
 
-    shapefile = _find_shapefile(year)
-    if not shapefile:
-        logger.warning(f"No BORIS data found for year {year}")
-        return None
 
-    logger.info(f"Loading BORIS {year} data from {shapefile}...")
-    gdf = gpd.read_file(shapefile)
-    logger.info(f"Loaded {len(gdf)} BORIS zones for {year}")
-
-    # Keep cache small (most recent lookup only)
-    _boris_cache.clear()
-    _boris_cache[year] = gdf
-    return gdf
+def _read_bbox(source: Source, bbox: tuple[float, float, float, float]) -> gpd.GeoDataFrame:
+    kw = {"layer": source.layer} if source.layer else {}
+    try:
+        return gpd.read_file(source.path, bbox=bbox, **kw)
+    except UnicodeDecodeError:
+        # Shapefile with mixed-encoding rows (see repair_mixed_encoding); GeoPackages built by
+        # scripts/build_boris_gpkg.py are clean UTF-8 and never take this path.
+        logger.warning("BORIS %s: mixed-encoding rows, re-reading as ISO-8859-1 with per-value repair", source.path.name)
+        return repair_mixed_encoding(gpd.read_file(source.path, bbox=bbox, encoding="ISO-8859-1", **kw))
 
 
 def lookup_bodenrichtwert(lat: float, lon: float, year: int = 2025) -> Optional[BorisResult]:
@@ -152,59 +194,34 @@ def lookup_bodenrichtwert(lat: float, lon: float, year: int = 2025) -> Optional[
         x, y = transformer.transform(lon, lat)
         point = Point(x, y)
 
-        shapefile = _find_shapefile(year)
-        if not shapefile:
+        source = _find_source(year)
+        if not source:
             return None
 
-        # For speed, load only a small bbox around the point (in EPSG:25832 meters)
-        # 1000m buffer to robustly catch the correct BRW polygon across years.
+        # ONE bbox-limited read. A zone that covers the point - or sits within the 10 m snap
+        # tolerance below - necessarily intersects this bbox, so a wider read or a full-file load
+        # could never find anything this read missed. (The old 5 km re-read + full shapefile load
+        # fallbacks cost 6-12 s and ~1 GB per year and found nothing extra - they took boris_trend
+        # past its 30 s timeout and OOM-killed a 2 GB container.)
         buf = 1000
-        bbox = (x - buf, y - buf, x + buf, y + buf)
+        gdf = _read_bbox(source, (x - buf, y - buf, x + buf, y + buf))
+        if gdf.empty:
+            return None
 
-        def _match(gdf):
-            # covers() includes boundary points; more robust than contains()
-            try:
-                return gdf[gdf.geometry.covers(point)]
-            except Exception:
-                return gdf[gdf.geometry.contains(point)]
-
+        # covers() includes boundary points; more robust than contains()
         try:
-            gdf = gpd.read_file(shapefile, bbox=bbox)
-        except TypeError:
-            gdf = None
+            matches = gdf[gdf.geometry.covers(point)]
+        except Exception:
+            matches = gdf[gdf.geometry.contains(point)]
 
-        matches = _match(gdf) if gdf is not None else gpd.GeoDataFrame()
-
-        # Fallback 1: expand bbox if no match
         if matches.empty:
-            buf2 = 5000
-            bbox2 = (x - buf2, y - buf2, x + buf2, y + buf2)
-            try:
-                gdf2 = gpd.read_file(shapefile, bbox=bbox2)
-                matches = _match(gdf2)
-            except Exception:
-                matches = gpd.GeoDataFrame()
-
-        # Fallback 2: full load (cached) if still no match
-        if matches.empty:
-            gdf_full = _load_boris_data(year)
-            if gdf_full is None:
+            # Last resort: nearest polygon within tolerance (handles tiny gaps between zones)
+            distances = gdf.geometry.distance(point)
+            min_dist = float(distances.min())
+            if min_dist > 10.0:
+                logger.debug(f"No BORIS zone found for {lat}, {lon} in {year} (min_dist={min_dist:.2f}m)")
                 return None
-            matches = _match(gdf_full)
-        
-        if matches.empty:
-            # Last resort: pick nearest polygon within tolerance (handles tiny gaps)
-            try:
-                distances = gdf_full.geometry.distance(point) if 'gdf_full' in locals() else gdf.geometry.distance(point)
-                min_dist = float(distances.min())
-                if min_dist <= 10.0:
-                    idx = distances.idxmin()
-                    matches = (gdf_full if 'gdf_full' in locals() else gdf).loc[[idx]]
-                else:
-                    logger.debug(f"No BORIS zone found for {lat}, {lon} in {year} (min_dist={min_dist:.2f}m)")
-                    return None
-            except Exception:
-                return None
+            matches = gdf.loc[[distances.idxmin()]]
 
         # Take first match
         row = matches.iloc[0]
@@ -297,7 +314,7 @@ def get_available_years() -> list[int]:
     """Get list of years with available data."""
     available = []
     for year in AVAILABLE_YEARS:
-        if _find_shapefile(year):
+        if _find_source(year):
             available.append(year)
     return available
 
@@ -313,7 +330,7 @@ def _worker(queue, lat: float, lon: float) -> None:
 
 
 def _lookup_in_subprocess(lat: float, lon: float):
-    """Run the (memory-heavy) shapefile lookup in a child process with a 12 s hard cap."""
+    """Run the geodata lookup in a child process with a 12 s hard cap (guards a cold, un-indexed shapefile read)."""
     from multiprocessing import Process, Queue
     q: Queue = Queue()
     p = Process(target=_worker, args=(q, lat, lon), daemon=True)
