@@ -1,6 +1,9 @@
 import importlib.util
 import io
+import zipfile
 from pathlib import Path
+
+import pytest
 
 _spec = importlib.util.spec_from_file_location("build_unfallatlas", Path(__file__).resolve().parent.parent / "scripts" / "build_unfallatlas.py")
 mod = importlib.util.module_from_spec(_spec)
@@ -33,3 +36,36 @@ def test_parse_rows_handles_2025_layout_without_objectid():
 
 def test_fields_order():
     assert mod.FIELDS == ["lat", "lon", "jahr", "kat", "typ", "licht", "rad", "pkw", "fuss", "krad", "gkfz"]
+
+
+def test_parse_rows_strips_bom_from_a_column_it_reads():
+    csv = ("﻿UJAHR;UKATEGORIE;UART;UTYP1;ULICHTVERH;IstRad;IstPKW;IstFuss;IstKrad;IstGkfz;IstSonstige;XGCSWGS84;YGCSWGS84\n"
+           "2024;3;1;6;0;0;1;0;0;0;0;7,0050;51,4300\n")
+    rows = mod.parse_rows(io.StringIO(csv), mod.BBOX_WGS84)
+    assert rows == [[51.43, 7.005, 2024, 3, 6, 0, 0, 1, 0, 0, 0]]
+
+
+def test_parse_rows_skips_rows_with_bad_or_missing_values():
+    csv = ("UJAHR;UKATEGORIE;UART;UTYP1;ULICHTVERH;IstRad;IstPKW;IstFuss;IstKrad;IstGkfz;IstSonstige;XGCSWGS84;YGCSWGS84\n"
+           "2024;3;1;6;0;0;1;0;0;0;0;abc;51,4300\n"        # unparsable longitude
+           "2024;;1;6;0;0;1;0;0;0;0;7,0050;51,4300\n"      # blank category
+           "2024;3;1;6;0;0;1;0;0;0;0;7,0050;51,4300\n")    # good
+    rows = mod.parse_rows(io.StringIO(csv), mod.BBOX_WGS84)
+    assert rows == [[51.43, 7.005, 2024, 3, 6, 0, 0, 1, 0, 0, 0]]
+
+
+def test_read_zip_requires_unfallorte_name_in_zip(tmp_path):
+    good_csv = ("﻿UJAHR;UKATEGORIE;UART;UTYP1;ULICHTVERH;IstRad;IstPKW;IstFuss;IstKrad;IstGkfz;IstSonstige;XGCSWGS84;YGCSWGS84\n"
+                "2024;3;1;6;0;0;1;0;0;0;0;7,0050;51,4300\n")
+    path = tmp_path / "Unfallorte2021_EPSG25832_CSV.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("csv/README.txt", "junk, not the data file")
+        z.writestr("csv/Unfallorte_2021_LinRef.txt", good_csv.encode("utf-8"))
+    rows = mod.read_zip(path, mod.BBOX_WGS84)
+    assert rows == [[51.43, 7.005, 2024, 3, 6, 0, 0, 1, 0, 0, 0]]
+
+    junk_only = tmp_path / "junk_only.zip"
+    with zipfile.ZipFile(junk_only, "w") as z:
+        z.writestr("README.txt", "no accident data in here")
+    with pytest.raises(FileNotFoundError):
+        mod.read_zip(junk_only, mod.BBOX_WGS84)

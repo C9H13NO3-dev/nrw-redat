@@ -22,7 +22,6 @@ import csv
 import gzip
 import io
 import json
-import re
 import zipfile
 from pathlib import Path
 from typing import IO
@@ -64,8 +63,11 @@ def parse_rows(fh: IO[str], bbox: tuple[float, float, float, float]) -> list[lis
 def read_zip(path: Path, bbox: tuple[float, float, float, float]) -> list[list]:
     with zipfile.ZipFile(path) as z:
         # the inner data file is always ';'-separated/BOM CSV content, but its extension varies by
-        # year — most years ship .csv, 2021 ships Unfallorte_2021_LinRef.txt
-        name = next(n for n in z.namelist() if n.lower().endswith((".csv", ".txt")))
+        # year — most years ship .csv, 2021 ships Unfallorte_2021_LinRef.txt; require "unfallorte"
+        # in the name so a stray README.txt/schema.ini alongside it is never picked by mistake
+        name = next((n for n in z.namelist() if n.lower().endswith((".csv", ".txt")) and "unfallorte" in n.lower()), None)
+        if name is None:
+            raise FileNotFoundError(f"{path}: no Unfallorte*.csv/.txt inside")
         with z.open(name) as raw:
             return parse_rows(io.TextIOWrapper(raw, encoding="utf-8-sig", errors="replace"), bbox)
 
