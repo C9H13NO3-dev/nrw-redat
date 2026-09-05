@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NRW-REDAT{% endblock %}</title>
+    <meta name="theme-color" content="#0f766e">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/site.css">
+    <link rel="stylesheet" href="/static/redat.css">
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-100 min-h-screen text-gray-900">
+    <header class="bg-white border-b border-gray-200 no-print">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            <a href="/" class="flex items-center gap-2 font-bold text-teal-700">
+                <span class="text-xl">🗺️</span> NRW-REDAT
+                <span class="hidden sm:inline text-xs font-normal text-gray-500">Real Estate Data Aggregation Tool</span>
+            </a>
+            <nav class="flex items-center gap-4 text-sm">
+                <a href="/" class="hover:text-teal-700 {{ 'font-semibold text-teal-700' if active == 'analyse' else 'text-gray-600' }}">Analyse</a>
+                <a href="/quellen" class="hover:text-teal-700 {{ 'font-semibold text-teal-700' if active == 'quellen' else 'text-gray-600' }}">Quellen</a>
+                <a href="/docs" class="text-gray-600 hover:text-teal-700">API</a>
+            </nav>
+        </div>
+    </header>
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="max-w-6xl mx-auto px-4 py-6 text-xs text-gray-400 no-print">
+        NRW-REDAT {{ version }} · Essen &amp; Bochum · Daten: siehe <a href="/quellen" class="underline">Quellen</a>
+    </footer>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="/static/map-utils.js"></script>
+    <script src="/static/charts.js"></script>
+    <script src="/static/redat.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

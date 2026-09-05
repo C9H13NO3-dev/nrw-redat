@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Standort-Analyse — NRW-REDAT{% endblock %}
+
+{% block scripts %}
+<script src="/static/analysis.js"></script>
+{% endblock %}
+
+{% block content %}
+{# page_config is injected via |tojson: None → null, strings escaped — never a bare Python literal in JS #}
+<script type="application/json" id="analysis-config">{{ page_config|tojson }}</script>
+
+<div id="analysis-root" class="space-y-4"
+     x-data="analysisPage(JSON.parse(document.getElementById('analysis-config').textContent))">
+
+    <!-- Input -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h1 class="text-xl font-bold text-gray-900 mb-4">🔍 Standort-Analyse</h1>
+        <p class="text-sm text-gray-600 mb-4">
+            Adresse oder Koordinaten eingeben. Parzellendaten (BORIS, Hochwasser, Planung) werden nur bei
+            hausnummerngenauer Adresse geladen — oder auf Wunsch trotzdem.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4">
+            <div class="flex-1">
+                <input type="text" x-model="address" data-geoapify-autocomplete="1"
+                       @keydown.enter="run()"
+                       placeholder="Straße Nr, PLZ Ort oder Koordinaten (51.45, 7.01)"
+                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <input type="number" min="0" step="1" x-model.number="plotSize" placeholder="Grundstück m²"
+                   class="w-36 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+            <input type="number" min="0" step="1" x-model.number="livingSpace" placeholder="Wohnfläche m²"
+                   class="w-36 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+            <button @click="run()" :disabled="running || !address"
+                    class="px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:opacity-50 transition">
+                <span x-show="!running">🚀 Analysieren</span>
+                <span x-show="running" x-cloak>⏳ Läuft…</span>
+            </button>
+        </div>
+        <div x-show="error" x-cloak class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            ⚠️ <span x-text="error"></span>
+        </div>
+        <div x-show="running" x-cloak class="mt-4">
+            <div class="progress-bar">
+                <div class="progress-bar-fill" :style="'width: ' + progress + '%'"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1"><span x-text="settledCount"></span> / <span x-text="manifest.length"></span> Sektionen</p>
+        </div>
+    </div>
+
+    <!-- Stored-run banner -->
+    <div x-show="runIdStored && createdAt" x-cloak class="p-3 bg-teal-50 border border-teal-200 rounded-lg text-sm text-teal-900 flex flex-wrap items-center justify-between gap-2">
+        <span>🔗 Analyse vom <span x-text="new Date(createdAt).toLocaleString('de-DE', {dateStyle: 'medium', timeStyle: 'short'})"></span> — Link teilbar: <code x-text="location.origin + '/a/' + runIdStored"></code></span>
+        <button @click="run()" class="px-3 py-1 border border-teal-400 rounded-md hover:bg-teal-100">↻ neu laden</button>
+    </div>
+
+    <!-- Map: always mounted, pinned by placePin() -->
+    <div class="bg-white rounded-lg shadow p-6 no-print">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">🗺️ Karte mit Overlays</h2>
+        <div id="result-map" class="rounded-lg border"></div>
+        <div class="mt-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+            <template x-for="(config, key) in $store.app.wmsLayerConfigs" :key="key">
+                <button @click="wmsLayers[key] && $store.app.toggleWMSLayer(map, wmsLayers, key, !wmsLayers[key].enabled)"
+                        :class="wmsLayers[key]?.enabled ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200'"
+                        class="px-2 py-1.5 rounded border text-xs font-medium hover:bg-gray-50 transition"
+                        :disabled="!wmsLayers[key]">
+                    <span x-text="config.icon"></span>
+                    <span x-text="config.name" class="hidden sm:inline ml-1"></span>
+                </button>
+            </template>
+        </div>
+    </div>
+
+    <!-- Geocode -->
+    <div x-show="geocode" x-cloak class="bg-white rounded-lg shadow p-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">📍 Geocode</h2>
+                <div class="text-sm text-gray-900 font-medium" x-text="geocode?.formatted_address"></div>
+                <div class="text-xs text-gray-500 mt-1">
+                    <span x-text="geocode?.latitude?.toFixed(6)"></span>, <span x-text="geocode?.longitude?.toFixed(6)"></span>
+                </div>
+            </div>
+            <div class="flex flex-col items-start sm:items-end gap-2">
+                <span class="px-2 py-1 rounded text-xs font-medium" :class="precisionBadge().cls"
+                      x-text="precisionBadge().icon + ' ' + precisionBadge().label"></span>
+                <div class="flex flex-wrap gap-2 justify-end">
+                    <button x-show="gatedCount > 0" x-cloak @click="loadGated()"
+                            class="px-3 py-1.5 bg-amber-500 text-white rounded-md text-sm hover:bg-amber-600 transition">
+                        🔓 Alle gesperrten laden (<span x-text="gatedCount"></span>)
+                    </button>
+                    <button @click="exportPdf()" :disabled="running || !hasResults || exporting"
+                            title="Alle geladenen Karten als formatierten PDF-Bericht exportieren"
+                            class="px-3 py-1.5 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!exporting">📄 PDF-Bericht</span>
+                        <span x-show="exporting" x-cloak>⏳ PDF wird erstellt…</span>
+                    </button>
+                </div>
+                <div x-show="exportNotice" x-cloak x-transition class="px-2 py-1 rounded text-xs font-medium"
+                     :class="exportNotice?.cls" x-text="exportNotice?.text"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section cards: one generic frame per manifest entry -->
+    {% for s in sections %}
+    {% set partial = 'planning' if s.key.startswith('planning_') else s.key %}
+    <div id="card-{{ s.key }}" x-show="sections['{{ s.key }}']" x-cloak class="bg-white rounded-lg shadow p-6 print-break-avoid">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">{{ s.icon }} {{ s.title }}</h2>
+            <div class="flex items-center gap-2 text-xs whitespace-nowrap">
+                <span class="px-2 py-0.5 rounded border" :class="tierBadge('{{ s.tier }}').cls"
+                      x-text="tierBadge('{{ s.tier }}').icon + ' ' + tierBadge('{{ s.tier }}').label"></span>
+                <span x-show="sections['{{ s.key }}']?.status === 'ok' && sections['{{ s.key }}']?.took_ms != null"
+                      class="text-gray-400" x-text="sections['{{ s.key }}']?.took_ms + ' ms'"></span>
+            </div>
+        </div>
+
+        <template x-if="sections['{{ s.key }}']?.status === 'loading'">
+            <div class="animate-pulse space-y-2">
+                <div class="h-4 bg-gray-200 rounded w-1/3"></div>
+                <div class="h-4 bg-gray-200 rounded w-2/3"></div>
+            </div>
+        </template>
+
+        <template x-if="sections['{{ s.key }}']?.status === 'gated'">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+                <span class="text-gray-700">🔒 <span x-text="sections['{{ s.key }}'].message"></span></span>
+                <button @click="load('{{ s.key }}', { force: true })"
+                        class="px-3 py-1.5 border border-amber-400 text-amber-800 rounded-md hover:bg-amber-50 transition whitespace-nowrap">
+                    Trotzdem laden
+                </button>
+            </div>
+        </template>
+
+        <template x-if="sections['{{ s.key }}']?.status === 'empty'">
+            <p class="text-sm text-gray-500" x-text="sections['{{ s.key }}'].message || 'Keine Daten für diesen Standort.'"></p>
+        </template>
+
+        <template x-if="sections['{{ s.key }}']?.status === 'error'">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+                <span class="text-red-700">⚠️ <span x-text="sections['{{ s.key }}'].message || 'Unbekannter Fehler'"></span></span>
+                <button @click="load('{{ s.key }}')"
+                        class="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition whitespace-nowrap">
+                    Erneut laden
+                </button>
+            </div>
+        </template>
+
+        <template x-if="sections['{{ s.key }}']?.status === 'ok'">
+            <div x-data="{ get d() { return sections['{{ s.key }}']?.data } }">
+                {% include "analysis/_" ~ partial ~ ".html" %}
+            </div>
+        </template>
+
+        <p x-show="sections['{{ s.key }}']?.source" class="mt-3 text-xs text-gray-400">
+            Quelle: <span x-text="sections['{{ s.key }}']?.source"></span>
+        </p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Datenquellen — NRW-REDAT{% endblock %}
+{% block content %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h1 class="text-xl font-bold mb-2">📚 Datenquellen &amp; Lizenzen</h1>
+    <p class="text-sm text-gray-600 mb-4">Jede Karte der Analyse nennt ihre Quelle; hier stehen Herausgeber, Lizenz, Endpunkt und Aktualisierung gesammelt.
+       <strong>Parzelle</strong> = nur bei hausnummerngenauer Adresse aussagekräftig, <strong>Umgebung</strong> = Umkreis-/Rasterdaten.</p>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead><tr class="text-left text-gray-500 border-b">
+            <th class="py-2 pr-3">Karte(n)</th><th class="py-2 pr-3">Quelle</th><th class="py-2 pr-3">Herausgeber</th>
+            <th class="py-2 pr-3">Lizenz</th><th class="py-2 pr-3">Endpunkt</th><th class="py-2 pr-3">Ebene</th><th class="py-2">Aktualisierung</th>
+        </tr></thead>
+        <tbody>
+        {% for s in sources %}
+        <tr class="border-b border-gray-100 align-top">
+            <td class="py-2 pr-3">{% for k in s.section_keys %}<div>{{ titles[k] }}</div>{% endfor %}</td>
+            <td class="py-2 pr-3 font-medium">{{ s.name }}</td>
+            <td class="py-2 pr-3">{{ s.publisher }}</td>
+            <td class="py-2 pr-3">{{ s.licence }}</td>
+            <td class="py-2 pr-3 text-xs text-gray-600 break-all">{{ s.endpoint }}</td>
+            <td class="py-2 pr-3">{{ 'Parzelle' if s.tier == 'parcel' else 'Umgebung' }}</td>
+            <td class="py-2">{{ s.cadence }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

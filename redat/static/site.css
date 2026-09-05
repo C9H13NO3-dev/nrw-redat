@@ -1,0 +1,52 @@
+/**
+ * NRW-REDAT - Custom Styles
+ * Alpine cloak, progress bar, map sizing, print styles
+ * (ported from house-hunter's frontend/static/css/app.css)
+ */
+
+#result-map { height: 360px; }
+@media (min-width: 768px) {
+    #result-map { height: 460px; }
+}
+
+/* Alpine.js hide until initialized */
+[x-cloak] {
+    display: none !important;
+}
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+
+.progress-bar {
+    width: 100%;
+    background-color: #e2e8f0;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 0.375rem;
+    background-color: #0d9488;
+    transition: width 0.3s ease-out;
+    border-radius: 9999px;
+}
+
+/* ============================================================
+   PRINT STYLES
+   ============================================================ */
+
+@media print {
+    nav, .no-print { display: none !important; }
+
+    body { background: white !important; }
+
+    .print-break-avoid {
+        break-after: avoid;
+        page-break-after: avoid;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    #result-map { height: 380px !important; }
+}

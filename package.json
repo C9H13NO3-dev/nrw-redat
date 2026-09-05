@@ -1,0 +1,10 @@
+{
+  "name": "nrw-redat",
+  "private": true,
+  "scripts": {
+    "css": "tailwindcss -c tailwind.config.js -i tailwind.input.css -o redat/static/redat.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
