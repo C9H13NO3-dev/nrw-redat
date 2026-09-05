@@ -85,3 +85,11 @@ def test_kf_failure_isolated(monkeypatch):
 def test_no_soil_unit_is_none(monkeypatch):
     stub(monkeypatch, html=HTML_EMPTY)
     assert bg.get_baugrund(51.4300, 7.0050) is None
+
+
+def test_erdwaerme_class_split_handles_two_word_labels():
+    assert bg._split_klassen("mittel extrem hoch") == ("mittel", "extrem hoch")
+    assert bg._split_klassen("extrem hoch mittel") == ("extrem hoch", "mittel")
+    assert bg._split_klassen("sehr gering sehr hoch") == ("sehr gering", "sehr hoch")
+    assert bg._split_klassen("unbekannt xyz") == ("unbekannt", "xyz")
+    assert bg._split_klassen("") == (None, None)

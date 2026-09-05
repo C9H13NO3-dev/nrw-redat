@@ -131,14 +131,30 @@ def _first(rows: dict, label: str, i: int = 0) -> Optional[str]:
     return cells[i] if len(cells) > i else None
 
 
+# GD NRW Bewertungsstufen as they appear in the BK50 HTML (single- and two-word labels)
+_KLASSEN = ("extrem gering", "sehr gering", "gering", "mittel", "hoch", "sehr hoch", "extrem hoch")
+
+
+def _split_klassen(text: str) -> tuple[Optional[str], Optional[str]]:
+    """'extrem hoch mittel' → ('extrem hoch', 'mittel'): find the split where both halves are known labels."""
+    words = text.split()
+    for i in range(1, len(words)):
+        a, b = " ".join(words[:i]), " ".join(words[i:])
+        if a in _KLASSEN and b in _KLASSEN:
+            return a, b
+    if not words:
+        return None, None
+    return words[0], " ".join(words[1:]) or None   # unknown vocabulary: fall back to the positional split
+
+
 def _erdwaerme(rows: dict) -> Optional[dict]:
     cells = rows.get("Eignung für Erdwärmekollektoren") or []
     if len(cells) < 4:
         return None
-    vals, klassen = cells[1].split(), cells[3]
-    m = re.match(r"(\S+)\s+(.*)", klassen)
-    return {"m1_w_mk": _float(vals[0]) if vals else None, "m1_klasse": m.group(1) if m else klassen,
-            "m2_w_mk": _float(vals[1]) if len(vals) > 1 else None, "m2_klasse": m.group(2) if m else None}
+    vals = cells[1].split()
+    m1, m2 = _split_klassen(cells[3])
+    return {"m1_w_mk": _float(vals[0]) if vals else None, "m1_klasse": m1,
+            "m2_w_mk": _float(vals[1]) if len(vals) > 1 else None, "m2_klasse": m2}
 
 
 def get_baugrund(lat: float, lon: float) -> Optional[dict]:
