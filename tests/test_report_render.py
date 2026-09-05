@@ -39,7 +39,7 @@ def test_fixture_content_is_present():
     checks = {
         "flurstueck": ["538 m²", "Rüttenscheid", "Zufahrt"],
         "boris": ["670 €/m²", "Stichtag 01.01.2025"],
-        "flood": ["HQ100", "180 m"],
+        "flood": ["HQ100", "180 m", "Ermitteltes Überschwemmungsgebiet", "Ruhr"],
         "starkregen": ["30–50 cm", "Extremereignis"],
         "noise": ["Straße", "70 dB(A)"],
         "bergbau": ["Verlassene Tagesöffnungen", "500 m-Planquadrat"],

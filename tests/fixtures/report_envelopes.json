@@ -201,7 +201,8 @@
      "hit": false,
      "min_distance_m": 131.63
     }
-   }
+   },
+   "uesg": {"zones": [{"kind": "ermittelt", "kind_label": "Ermitteltes Überschwemmungsgebiet", "name": "Ruhr", "amtsblatt": null, "date": "14.4.2016", "authority": "BR Düsseldorf"}], "legal": false, "error": null}
   },
   "message": null,
   "source": "Land NRW, Hochwassergefahrenkarten (HQhäufig / HQ100 / HQextrem)",

@@ -24,4 +24,17 @@
   {% endfor %}
   </tbody>
 </table>
+{% set ue = d.get("uesg") or {} %}
+{% if ue.get("zones") %}
+<h3>Überschwemmungsgebiet (§ 78 WHG)</h3>
+<table>
+  <thead><tr><th>Status</th><th>Gewässer</th><th>Verordnung</th></tr></thead>
+  <tbody>
+  {% for z in ue.zones %}
+    <tr><td class="strong">{{ z.get("kind_label") or "—" }}</td><td>{{ z.get("name") or "—" }}</td><td>{{ z.get("amtsblatt") or "—" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if ue.get("legal") %}<p class="footnote">Neubauten nur mit Ausnahmegenehmigung (§ 78 WHG), keine neuen Heizöltanks (§ 78c WHG).</p>{% endif %}
+{% endif %}
 <p class="footnote">HQhäufig: häufiges Hochwasser (kurze Wiederkehrzeit) · HQ100: 100-jährliches Hochwasser · HQextrem: Extremereignis, deutlich seltener als HQ100. Amtliche Überschwemmungsgebiete und Hochwassergefahrenkarten NRW.</p>

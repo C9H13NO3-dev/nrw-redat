@@ -117,7 +117,11 @@ def _s_boris_trend(d):
 def _s_flood(d):
     rating, color = FLOOD_LEVELS.get(d.get("flood_risk_level"), (None, "gray"))
     zone = d.get("flood_zone")
-    return rating, color, f"Zone {zone}" if zone else "außerhalb aller Szenarien"
+    fig = f"Zone {zone}" if zone else "außerhalb aller Szenarien"
+    legal = [z for z in ((d.get("uesg") or {}).get("zones") or []) if z.get("kind") in ("festgesetzt", "vorlaeufig")]
+    if legal:
+        fig += f" · ÜSG {legal[0].get('name') or ''} (§ 78 WHG)".rstrip()
+    return rating, color, fig
 
 
 def _s_starkregen(d):

@@ -265,13 +265,23 @@ def _fetch_boris_trend(ctx: Ctx) -> Optional[dict]:
 
 
 def _fetch_flood(ctx: Ctx) -> dict:
-    from redat.sources.flood import flood_risk
+    from redat.sources import flood, uesg
 
-    fr = flood_risk(ctx.lat, ctx.lon)
+    fr = flood.flood_risk(ctx.lat, ctx.lon)
+    level = fr.get("risk_level") or "low"
+    ue: dict = {"zones": [], "legal": False, "error": None}
+    try:
+        ue.update(uesg.get_uesg(ctx.lat, ctx.lon))
+    except Exception as exc:  # noqa: BLE001 — the ÜSG WMS must not blank the HWRM result
+        logger.warning("uesg: %s", exc)
+        ue["error"] = str(exc)
+    if ue["legal"]:
+        level = "high"   # §78 WHG Bauverbot is the strongest signal this card has
     return {
         "flood_zone": fr.get("zone"),
-        "flood_risk_level": fr.get("risk_level") or "low",
+        "flood_risk_level": level,
         "hits": {sc: {"hit": bool(h.get("hit")), "min_distance_m": h.get("min_distance_m")} for sc, h in (fr.get("hits") or {}).items()},
+        "uesg": ue,
     }
 
 
@@ -339,7 +349,9 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
             "Geobasis NRW, ALKIS vereinfacht (dl-de/zero-2-0) · Stadt Essen, Baulasteninformation (unverbindlich, wöchentlich)", _fetch_flurstueck),
     Section("boris", "Bodenrichtwert (BORIS)", "🏷️", 25, "BORIS NRW (Gutachterausschüsse)", _fetch_boris),
     Section("boris_trend", "Bodenrichtwert-Trend", "📈", 30, "BORIS NRW, historische Stichtage", _fetch_boris_trend),
-    Section("flood", "Hochwasserrisiko", "🌊", 15, "Land NRW, Hochwassergefahrenkarten (HQhäufig / HQ100 / HQextrem)", _fetch_flood),
+    Section("flood", "Hochwasserrisiko", "🌊", 15,
+            "Land NRW, Hochwassergefahrenkarten (HQhäufig / HQ100 / HQextrem) · Überschwemmungsgebiete NRW (§ 78 WHG)", _fetch_flood,
+            cache_version=2),
     Section("starkregen", "Starkregen", "🌧️", 25, "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz", _fetch_starkregen),
     Section("noise", "Lärm", "🔊", 20, "Land NRW, Umgebungslärmkartierung 2022 (WMS, Maximum im 25-m-Fenster)", _fetch_noise),
     Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat)", _fetch_bergbau),

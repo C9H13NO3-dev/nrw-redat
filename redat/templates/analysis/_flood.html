@@ -17,4 +17,19 @@
         </template>
     </tbody>
 </table>
+<template x-if="d.uesg && d.uesg.zones.length">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">⚖️ Überschwemmungsgebiet (Wasserhaushaltsgesetz)</div>
+        <ul class="mt-1 space-y-0.5">
+            <template x-for="(z, i) in d.uesg.zones" :key="i">
+                <li class="text-gray-700">
+                    <span class="font-medium" x-text="z.kind_label"></span> — <span x-text="z.name || '—'"></span>
+                    <span class="text-gray-500" x-show="z.amtsblatt || z.date" x-text="'(' + [z.amtsblatt, z.date ? 'Datenstand ' + z.date : null].filter(Boolean).join(', ') + ')'"></span>
+                </li>
+            </template>
+        </ul>
+        <p class="mt-1 text-xs text-gray-500" x-show="d.uesg.legal">Festgesetzt/vorläufig gesichert: Neubauten und Erweiterungen nur mit Ausnahmegenehmigung (§ 78 WHG), keine neuen Heizöltanks (§ 78c WHG), hochwasserangepasstes Bauen Pflicht.</p>
+    </div>
+</template>
+<p class="mt-2 text-xs text-red-700" x-show="d.uesg && d.uesg.error">Überschwemmungsgebiete NRW derzeit nicht abrufbar.</p>
 <p class="mt-3 text-xs text-gray-500">Overlays HQ100 / HQhäufig / HQextrem auf der Karte oben zuschaltbar.</p>

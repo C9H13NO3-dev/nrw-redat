@@ -224,19 +224,39 @@ def test_boris_trend_none(monkeypatch):
 
 
 def test_flood_normalizer(monkeypatch):
-    from redat.sources import flood
+    from redat.sources import flood, uesg
     raw = {"zone": "HQextrem", "risk_level": "medium", "hits": {
         "HQhaeufig": {"hit": False, "min_distance_m": 812.5, "raw": None},
         "HQ100": {"hit": False, "min_distance_m": None, "raw": None},
         "HQextrem": {"hit": True, "min_distance_m": 0.0, "raw": {"name": "Ruhr"}},
     }}
     monkeypatch.setattr(flood, "flood_risk", lambda lat, lon: raw)
+    monkeypatch.setattr(uesg, "get_uesg", lambda lat, lon: {"zones": [], "legal": False})
     d = S._fetch_flood(CTX)
     assert d == {"flood_zone": "HQextrem", "flood_risk_level": "medium", "hits": {
         "HQhaeufig": {"hit": False, "min_distance_m": 812.5},
         "HQ100": {"hit": False, "min_distance_m": None},
         "HQextrem": {"hit": True, "min_distance_m": 0.0},
-    }}
+    }, "uesg": {"zones": [], "legal": False, "error": None}}
+
+
+def test_flood_legal_uesg_lifts_level_and_failure_is_isolated(monkeypatch):
+    from redat.sources import flood, uesg
+    monkeypatch.setattr(flood, "flood_risk", lambda lat, lon: {"zone": None, "risk_level": "low", "hits": {}})
+    zone = {"kind": "festgesetzt", "kind_label": "Festgesetztes Überschwemmungsgebiet", "name": "Ruhr", "amtsblatt": None, "date": None, "authority": None}
+    monkeypatch.setattr(uesg, "get_uesg", lambda lat, lon: {"zones": [zone], "legal": True})
+    d = S._fetch_flood(CTX)
+    assert d["flood_risk_level"] == "high" and d["uesg"]["zones"] == [zone]
+
+    def boom(lat, lon):
+        raise RuntimeError("wms down")
+    monkeypatch.setattr(uesg, "get_uesg", boom)
+    d = S._fetch_flood(CTX)
+    assert d["flood_risk_level"] == "low" and d["uesg"] == {"zones": [], "legal": False, "error": "wms down"}
+
+
+def test_flood_cache_version_bumped():
+    assert S.SECTIONS["flood"].cache_version == 2
 
 
 def test_gfnp_normalizer(monkeypatch):
