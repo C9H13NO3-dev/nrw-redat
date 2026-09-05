@@ -4,8 +4,8 @@
 
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
 (`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`). LAN-open by default (`REDAT_API_KEY`
-unset). 443 tests pass hermetically; the Docker build's `test` stage re-runs the full suite and refuses
-to produce an image on a red run.
+unset). 26 cards, 588 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
+and refuses to produce an image on a red run.
 
 ## Deploy runbook
 
@@ -45,9 +45,10 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   the script's `YEARS`, re-run the script, `scripts/cache_admin.py purge --section boris`.
 - **`.env`** — holds `GEOAPIFY_API_KEY` (required) and the optional `REDAT_API_KEY`. Git-ignored; never
   commit it.
-- `redat/data/{eea_aq_grid_2023.json, zensus_2022_grid.json.gz, certs/lencr_ye_chain.pem}` are, by
-  contrast, committed package files and ship inside the image — do not confuse these with the `data/`
-  bind mount above; `.dockerignore`'s `data` pattern is root-anchored and only excludes the top-level
+- `redat/data/{eea_aq_grid_2023.json, zensus_2022_grid.json.gz, schulen_nrw.json.gz,
+  unfallatlas_2020_2025.json.gz, certs/lencr_ye_chain.pem}` are, by contrast, committed package files and
+  ship inside the image — do not confuse these with the `data/` bind mount above; README "Static grids in
+  the repo" lists build script and source per file. `.dockerignore`'s `data` pattern is root-anchored and only excludes the top-level
   `./data` directory.
 
 ## Known limitations
@@ -163,6 +164,14 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   renames, so a crash never leaves a half-written file flood.py would pick up) via `docker compose run`
   as the invoking user. README "Geodata" documents the layout, sources and the add-a-year procedure.
   Verified: idempotent against the live host data, real download into a scratch dir, docker build path.
+
+- **Tier-1 sources** (2026-09-05, plan `docs/superpowers/plans/2026-09-05-tier1-sources.md`, spec
+  `docs/superpowers/specs/2026-09-05-tier1-sources-design.md`) — six new cards (`flurstueck`, `irw`, `baugrund`,
+  `radon`, `schulen`, `unfaelle`) and three extensions (`flood` + ÜSG §78 WHG, `planning_essen` + Satzungen/
+  Sanierung, `planning_bochum` + Stadterneuerung; all three at `cache_version=2`). New shared helper
+  `redat/sources/esri_wms.py`. Two new static grids under `redat/data/` with build scripts. The ALKIS WFS proxy
+  only accepts TYPENAMES+BBOX(EPSG:25832) and answers GML — no JSON, no CQL. The BfS WFS bbox is lon,lat.
+  The BK50 WMS is read as HTML because only the HTML carries readable class labels.
 
 ## Open items
 

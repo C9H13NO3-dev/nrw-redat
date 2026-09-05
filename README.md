@@ -2,11 +2,25 @@
 
 **Real Estate Data Aggregation Tool** — a standalone Standortanalyse ("location analysis") service for
 Essen/Bochum, built from public NRW/Bund geodata (Bodenrichtwert, Hochwasser, Lärm, Denkmalschutz, ÖPNV,
-Luftqualität, Bundestagswahl and more — 20 cards in total). It runs the same analysis engine that used
+Luftqualität, Bundestagswahl and more — 26 cards in total). It runs the same analysis engine that used
 to live inside the House Hunter project, extracted into its own FastAPI service so it can be used for
 any address, not just scraped listings. Given an address it geocodes it, runs every applicable data
 source concurrently, and renders the result as a website page, a JSON payload, or a formatted A4 PDF —
 each run gets a permanent, shareable permalink.
+
+Card overview (20 original + six Tier-1 additions):
+
+| Card | What it shows |
+|---|---|
+| Flurstück & Gebäude | ALKIS parcel geometry/Flurstücksdaten (vereinfacht) plus Stadt Essen Baulasten. |
+| Immobilienrichtwerte | BORIS NRW `wms_nw_irw` — Teilmarkt richtwerte (Wohnen/Gewerbe/…) for the parcel. |
+| Baugrund & Versickerung (BK50) | GD NRW BK50 soil map (Bodentyp, Versickerungseignung) + Stadt Essen kf-Werte. |
+| Radon | BfS Radonpotenzial (geological unit, e.g. Karbon) for the area. |
+| Schulen & Sozialindex | Nearest Grundschulen with the Schulministerium Sozialindex, plus Bochum Grundschulbezirke. |
+| Verkehrsunfälle (Unfallatlas) | Per-year accident counts from the Statistische Ämter Unfallatlas grid. |
+
+The `flood` card now also covers Überschwemmungsgebiete (§78 WHG); `planning_essen` covers Satzungen/
+Sanierung and `planning_bochum` covers Stadterneuerung, in addition to their existing content.
 
 Surfaces: a website (`/`, permalinks at `/a/{id}`, a source index at `/quellen`), a versioned JSON+PDF
 API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring/container health.
@@ -17,7 +31,7 @@ API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring
 git clone <this repo> nrw-redat && cd nrw-redat
 cp .env.example .env            # fill in GEOAPIFY_API_KEY (see below)
 docker compose up -d --build    # builds on :8200 — the build stage runs pytest; a red suite aborts the build
-curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":20,"cache":{"entries":…,"bytes":…,"expired":…}}
+curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":26,"cache":{"entries":…,"bytes":…,"expired":…}}
 ```
 
 `.env` (git-ignored, copy from `.env.example`):
@@ -62,15 +76,28 @@ Adding a BORIS year: extend `AVAILABLE_YEARS` in `redat/sources/boris.py` and th
 `scripts/fetch_geodata.sh`, run the script (only the new year is fetched and appended to `brw.gpkg`), then
 `scripts/cache_admin.py purge --section boris` (and `boris_trend`) so cached cards pick it up.
 
-The smaller, still-large `redat/data/` package files (EEA air-quality grid, Zensus 2022 grid, the
-letsencrypt intermediate cert for the Breitbandatlas host) **are** committed and shipped in the image —
-they are a different directory from the host bind mount.
+The `redat/data/` package files (the static grids below, plus the letsencrypt intermediate cert for the
+Breitbandatlas host) **are** committed and shipped in the image — a different directory from the host
+bind mount above.
+
+### Static grids in the repo (`redat/data/`)
+
+Small, gzipped JSON extracts that ship with the code (no download at deploy time):
+
+| File | Built by | Source | Refresh |
+|---|---|---|---|
+| `zensus_2022_grid.json.gz` | `scripts/build_zensus_grid.py` | Destatis Zensus 2022 Gitterdaten | one-off |
+| `eea_aq_grid_2023.json` | `scripts/build_eea_aq_grid.py` | EEA 1 km air-quality maps | yearly |
+| `schulen_nrw.json.gz` | `scripts/build_schulen.py --shape … --sozialindex …` | opengeodata Schulstandorte NRW + Schulministerium Schulliste (Sozialindex) | each Schuljahr (autumn) |
+| `unfallatlas_2020_2025.json.gz` | `scripts/build_unfallatlas.py --src …` | Unfallatlas CSV zips (opengeodata.nrw.de) | yearly (July), extend `YEARS` and rename the file |
+
+The build scripts' module docstrings carry the download URLs and the exact commands.
 
 ## API overview (`/api/v1`)
 
 | Method & path | What it does |
 |---|---|
-| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 20 entries. |
+| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 26 entries. |
 | `GET /api/v1/geocode?address=` | Geocode an address → `{address, formatted_address, latitude, longitude, precision}`, 422 if unresolvable. |
 | `GET /api/v1/autocomplete?text=&limit=` | Address autocomplete suggestions. |
 | `GET /api/v1/section/{key}?lat&lon&precision&plot_size_m2&force&destinations` | Run one card in isolation; 404 for an unknown key. |
@@ -126,7 +153,7 @@ so it can be bookmarked or shared as a direct "run this address" link.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
-.venv/bin/python -m pytest -q       # 443 tests, hermetic, ~6.5s
+.venv/bin/python -m pytest -q       # 588 tests, hermetic, ~8s
 
 # manual, non-hermetic: drives a real browser against a running instance (Playwright + live
 # external services). Not collected by pytest. Point it at any running REDAT with --base-url.
