@@ -1,0 +1,17 @@
+services:
+  redat:
+    build:
+      context: .
+      target: runtime
+    image: nrw-redat:latest
+    container_name: nrw-redat
+    ports:
+      - "8200:8200"
+    env_file: .env
+    environment:
+      REDAT_DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    mem_limit: 2g
+    init: true
