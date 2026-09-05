@@ -264,6 +264,15 @@ def _fetch_boris_trend(ctx: Ctx) -> Optional[dict]:
     }
 
 
+def _fetch_irw(ctx: Ctx) -> dict:
+    from redat.sources.irw import get_irw
+
+    d = get_irw(ctx.lat, ctx.lon)
+    if d is None:
+        raise Empty("Keine Immobilienrichtwerte für diesen Ort (keine Richtwertzone oder Gutachterausschuss ohne IRW)")
+    return d
+
+
 def _fetch_flood(ctx: Ctx) -> dict:
     from redat.sources import flood, uesg
 
@@ -349,6 +358,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
             "Geobasis NRW, ALKIS vereinfacht (dl-de/zero-2-0) · Stadt Essen, Baulasteninformation (unverbindlich, wöchentlich)", _fetch_flurstueck),
     Section("boris", "Bodenrichtwert (BORIS)", "🏷️", 25, "BORIS NRW (Gutachterausschüsse)", _fetch_boris),
     Section("boris_trend", "Bodenrichtwert-Trend", "📈", 30, "BORIS NRW, historische Stichtage", _fetch_boris_trend),
+    Section("irw", "Immobilienrichtwerte", "🏠", 25, "BORIS NRW — Immobilienrichtwerte der Gutachterausschüsse (€/m² Wohnfläche, Normobjekt)", _fetch_irw),
     Section("flood", "Hochwasserrisiko", "🌊", 15,
             "Land NRW, Hochwassergefahrenkarten (HQhäufig / HQ100 / HQextrem) · Überschwemmungsgebiete NRW (§ 78 WHG)", _fetch_flood,
             cache_version=2),

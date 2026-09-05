@@ -182,6 +182,74 @@
   "status": "ok",
   "took_ms": 2971
  },
+ "irw": {
+  "key": "irw",
+  "tier": "parcel",
+  "status": "ok",
+  "message": null,
+  "took_ms": 640,
+  "source": "BORIS NRW — Immobilienrichtwerte der Gutachterausschüsse (€/m² Wohnfläche, Normobjekt)",
+  "data": {
+   "stichtag": "2026-01-01",
+   "gutachterausschuss": "Der Gutachterausschuss für Grundstückswerte in der Stadt Essen",
+   "werte": [
+    {
+     "teilmarkt": 1,
+     "teilmarkt_label": "Eigentumswohnungen",
+     "eur_m2": 2800,
+     "stichtag": "2026-01-01",
+     "ortsteil": "Rüttenscheid",
+     "plz": "45131",
+     "wohnlage": null,
+     "gutachterausschuss": "Der Gutachterausschuss für Grundstückswerte in der Stadt Essen",
+     "normobjekt": {
+      "baujahr": "1962",
+      "wohnflaeche_m2": "69",
+      "grundstueck_m2": null,
+      "anbauweise": null,
+      "wohnungen": "7-12"
+     },
+     "doku_url": "https://www.boris.nrw.de/borisfachdaten/lgd/irw/2026/LGDIR_1_0510900_2026.pdf"
+    },
+    {
+     "teilmarkt": 2,
+     "teilmarkt_label": "Ein-/Zweifamilienhäuser (freistehend)",
+     "eur_m2": 4400,
+     "stichtag": "2026-01-01",
+     "ortsteil": "Rüttenscheid",
+     "plz": "45131",
+     "wohnlage": null,
+     "gutachterausschuss": "Der Gutachterausschuss für Grundstückswerte in der Stadt Essen",
+     "normobjekt": {
+      "baujahr": "1962",
+      "wohnflaeche_m2": "200",
+      "grundstueck_m2": "700",
+      "anbauweise": null,
+      "wohnungen": null
+     },
+     "doku_url": "https://www.boris.nrw.de/borisfachdaten/lgd/irw/2026/LGDIR_2_0510900_2026.pdf"
+    },
+    {
+     "teilmarkt": 3,
+     "teilmarkt_label": "Reihen-/Doppelhäuser",
+     "eur_m2": 3950,
+     "stichtag": "2026-01-01",
+     "ortsteil": "Rüttenscheid",
+     "plz": "45131",
+     "wohnlage": null,
+     "gutachterausschuss": "Der Gutachterausschuss für Grundstückswerte in der Stadt Essen",
+     "normobjekt": {
+      "baujahr": "1962",
+      "wohnflaeche_m2": "130",
+      "grundstueck_m2": "300",
+      "anbauweise": "Doppelhaushälfte",
+      "wohnungen": null
+     },
+     "doku_url": "https://www.boris.nrw.de/borisfachdaten/lgd/irw/2026/LGDIR_3_0510900_2026.pdf"
+    }
+   ]
+  }
+ },
  "flood": {
   "key": "flood",
   "tier": "parcel",

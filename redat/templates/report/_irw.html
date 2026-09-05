@@ -1,0 +1,19 @@
+{% set w = d.get("werte") or [] %}
+{% if w %}
+<table>
+  <thead><tr><th>Teilmarkt</th><th class="num">€/m² Wohnfläche</th><th>Normobjekt</th></tr></thead>
+  <tbody>
+  {% for x in w %}
+    {% set n = x.get("normobjekt") or {} %}
+    <tr>
+      <td class="strong">{{ x.get("teilmarkt_label") or "—" }}</td>
+      <td class="num">{{ (x.eur_m2|fmt_int ~ " €/m²") if x.get("eur_m2") is not none else "—" }}</td>
+      <td class="xs">{% if n.get("baujahr") %}Baujahr {{ n.baujahr }}{% endif %}{% if n.get("wohnflaeche_m2") %} · {{ n.wohnflaeche_m2 }} m² Wohnfläche{% endif %}{% if n.get("grundstueck_m2") %} · {{ n.grundstueck_m2 }} m² Grundstück{% endif %}{% if n.get("anbauweise") %} · {{ n.anbauweise }}{% endif %}{% if n.get("wohnungen") %} · {{ n.wohnungen }} Wohnungen{% endif %}{% if x.get("wohnlage") %} · Wohnlage {{ x.wohnlage }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">Keine Immobilienrichtwerte für diesen Ort.</p>
+{% endif %}
+<p class="footnote">Immobilienrichtwerte der Gutachterausschüsse NRW{% if d.get("stichtag") %}, Stichtag {{ d.stichtag|fmt_date }}{% endif %}{% if d.get("gutachterausschuss") %} — {{ d.gutachterausschuss }}{% endif %}. Gilt für das Normobjekt; Umrechnung nach den örtlichen Fachinformationen. Kein Verkehrswert.</p>

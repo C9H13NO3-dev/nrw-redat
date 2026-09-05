@@ -19,6 +19,8 @@ SOURCES: tuple[SourceMeta, ...] = (
                "https://www.wfs.nrw.de/geobasis/wfs_nw_alkis_vereinfacht (WFS 2.0, GML) · geo.essen.de Baulasteninformation (ArcGIS REST)", "parcel", "live (ALKIS fortlaufend, Baulasten wöchentlich)"),
     SourceMeta(("boris", "boris_trend"), "BORIS NRW Bodenrichtwerte", "Gutachterausschüsse NRW / Geobasis NRW", "dl-de/zero-2-0",
                "lokale Shapefiles unter source/boris (Stichtage 2011–2025)", "parcel", "jährlich (1.1.), Datei-Import"),
+    SourceMeta(("irw",), "BORIS NRW Immobilienrichtwerte", "Gutachterausschüsse NRW / Geobasis NRW", "dl-de/zero-2-0",
+               "https://www.wms.nrw.de/boris/wms_nw_irw (WMS GetFeatureInfo, Layer 9/12/15/18/21)", "parcel", "jährlich (1.1.), live WMS"),
     SourceMeta(("flood",), "Hochwassergefahrenkarten NRW (HWRM-RL)", "Land NRW, LANUV", "dl-de/by-2-0",
                "lokale GeoPackages unter source/flood/hwrm", "parcel", "6-Jahres-Zyklus, Datei-Import"),
     SourceMeta(("starkregen",), "Hinweiskarte Starkregengefahren", "BKG", "dl-de/by-2-0",

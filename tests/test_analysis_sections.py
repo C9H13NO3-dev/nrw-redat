@@ -10,7 +10,7 @@ CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
 
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
-        "flurstueck", "boris", "boris_trend", "flood", "starkregen", "noise", "bergbau", "gfnp", "schutzgebiete", "planning_essen",
+        "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "gfnp", "schutzgebiete", "planning_essen",
         "planning_bochum", "denkmal", "amenities", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
@@ -221,6 +221,15 @@ def test_boris_trend_none(monkeypatch):
     from redat.sources import boris
     monkeypatch.setattr(boris, "get_historical_trend", lambda lat, lon: None)
     assert S._fetch_boris_trend(CTX) is None
+
+
+def test_irw_passthrough_and_empty(monkeypatch):
+    from redat.sources import irw
+    monkeypatch.setattr(irw, "get_irw", lambda lat, lon: {"stichtag": "2026-01-01", "gutachterausschuss": "GA", "werte": []})
+    assert S._fetch_irw(CTX)["stichtag"] == "2026-01-01"
+    monkeypatch.setattr(irw, "get_irw", lambda lat, lon: None)
+    with pytest.raises(Empty):
+        S._fetch_irw(CTX)
 
 
 def test_flood_normalizer(monkeypatch):

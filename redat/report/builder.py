@@ -114,6 +114,14 @@ def _s_boris_trend(d):
                           f"{d.get('current_year')}: {fmt_int(d['current_value'])} €/m² ({pct:+.0f} %)")
 
 
+def _s_irw(d):
+    w = [x for x in (d.get("werte") or []) if x.get("eur_m2") is not None]
+    if not w:
+        return None, "gray", None
+    parts = [f"{x.get('teilmarkt_label')} {fmt_int(x['eur_m2'])} €/m²" for x in w[:3]]
+    return None, "gray", " · ".join(parts)
+
+
 def _s_flood(d):
     rating, color = FLOOD_LEVELS.get(d.get("flood_risk_level"), (None, "gray"))
     zone = d.get("flood_zone")
@@ -272,7 +280,7 @@ def _s_commute(d):
 
 SUMMARY: dict[str, Callable[[dict], tuple[Optional[str], str, Optional[str]]]] = {
     "flurstueck": _s_flurstueck,
-    "boris": _s_boris, "boris_trend": _s_boris_trend, "flood": _s_flood, "starkregen": _s_starkregen,
+    "boris": _s_boris, "boris_trend": _s_boris_trend, "irw": _s_irw, "flood": _s_flood, "starkregen": _s_starkregen,
     "noise": _s_noise, "bergbau": _s_bergbau, "gfnp": _s_gfnp, "schutzgebiete": _s_schutzgebiete,
     "planning_essen": _s_planning, "planning_bochum": _s_planning, "denkmal": _s_denkmal,
     "amenities": _s_amenities, "oepnv": _s_oepnv, "zensus": _s_zensus, "energie": _s_energie,

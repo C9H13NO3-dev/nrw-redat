@@ -1,0 +1,24 @@
+<table class="w-full text-sm">
+    <thead><tr class="text-left text-gray-500"><th class="py-1">Teilmarkt</th><th class="py-1 text-right">€/m² Wohnfl.</th><th class="py-1">Normobjekt</th></tr></thead>
+    <tbody>
+        <template x-for="w in d.werte" :key="w.teilmarkt">
+            <tr class="border-t align-top">
+                <td class="py-1.5 font-medium text-gray-900" x-text="w.teilmarkt_label"></td>
+                <td class="py-1.5 text-right text-lg font-bold text-gray-900" x-text="$store.app.formatNumber(w.eur_m2)"></td>
+                <td class="py-1.5 text-xs text-gray-600">
+                    <span x-show="w.normobjekt.baujahr" x-text="'Baujahr ' + w.normobjekt.baujahr"></span>
+                    <span x-show="w.normobjekt.wohnflaeche_m2" x-text="' · ' + w.normobjekt.wohnflaeche_m2 + ' m² Wohnfläche'"></span>
+                    <span x-show="w.normobjekt.grundstueck_m2" x-text="' · ' + w.normobjekt.grundstueck_m2 + ' m² Grundstück'"></span>
+                    <span x-show="w.normobjekt.anbauweise" x-text="' · ' + w.normobjekt.anbauweise"></span>
+                    <span x-show="w.normobjekt.wohnungen" x-text="' · ' + w.normobjekt.wohnungen + ' Wohnungen im Haus'"></span>
+                    <span x-show="w.wohnlage" x-text="' · Wohnlage ' + w.wohnlage"></span>
+                    <a x-show="w.doku_url" :href="w.doku_url" target="_blank" rel="noopener" class="ml-1 text-blue-600 hover:underline">Umrechnung ↗</a>
+                </td>
+            </tr>
+        </template>
+    </tbody>
+</table>
+<p class="mt-3 text-xs text-gray-500">
+    Stichtag <span x-text="d.stichtag"></span><span x-show="d.gutachterausschuss" x-text="' · ' + d.gutachterausschuss"></span>.
+    Der Richtwert gilt für das beschriebene Normobjekt; Abweichungen (Baujahr, Größe, Zustand, Lage) werden mit den Umrechnungskoeffizienten des Gutachterausschusses angepasst. Kein Verkehrswert.
+</p>

@@ -5,7 +5,7 @@ from typing import Optional
 
 SERVICE_TIER: dict[str, str] = {
     "flurstueck": "parcel",
-    "boris": "parcel", "boris_trend": "parcel", "flood": "parcel", "starkregen": "parcel", "gfnp": "parcel",
+    "boris": "parcel", "boris_trend": "parcel", "irw": "parcel", "flood": "parcel", "starkregen": "parcel", "gfnp": "parcel",
     "planning_essen": "parcel", "planning_bochum": "parcel", "energie": "parcel", "denkmal": "parcel",
     "amenities": "area", "air_quality": "area", "btw": "area", "commute": "area", "noise": "area", "bergbau": "area",
     "zensus": "area", "schutzgebiete": "area", "breitband": "area", "oepnv": "area", "infrastruktur": "area",
