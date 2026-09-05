@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
         _app.state.runs = RunStore(settings.db_path)
         _app.state.runs.init()
         _app.state.cache = SectionCache(settings.cache_ttl_s)
+        chromium_available()  # warm the (lru_cache'd) Playwright probe so the first /healthz is cheap
         yield
 
     app = FastAPI(title="NRW-REDAT", version=__version__, description=DESCRIPTION, lifespan=lifespan)

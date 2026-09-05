@@ -46,12 +46,12 @@ def api_autocomplete(text: str, limit: int = 8):
 
 
 @router.get("/section/{key}")
-def api_section(key: str, lat: float, lon: float, precision: Optional[str] = None,
+def api_section(request: Request, key: str, lat: float, lon: float, precision: Optional[str] = None,
                 plot_size_m2: Optional[float] = None, force: bool = False, destinations: Optional[str] = None):
     if key not in SECTIONS:
         raise HTTPException(status_code=404, detail=f"Unbekannte Sektion: {key}")
     ctx = Ctx(lat=lat, lon=lon, plot_size_m2=plot_size_m2, destinations=_destinations(destinations))
-    return A.run_section(key, ctx, precision=precision, force=force)
+    return A.cached_section(key, ctx, precision=precision, force=force, cache=request.app.state.cache)
 
 
 def _analyze_sync(request: Request, address: str, plot_size_m2, force: bool, destinations) -> dict:

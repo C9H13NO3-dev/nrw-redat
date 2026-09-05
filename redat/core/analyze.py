@@ -61,23 +61,31 @@ def geocode_dict(address: str, g: GeocodeResult) -> dict:
             "latitude": g.latitude, "longitude": g.longitude, "precision": g.precision}
 
 
+def cached_section(key: str, ctx: Ctx, *, precision: Optional[str], force: bool, cache: SectionCache) -> dict:
+    """Run one section through the shared TTL cache — used by both /analyze and /section/{key}.
+
+    destinations are request-scoped: commute/oepnv results with custom destinations must not be
+    cached (they'd otherwise leak one caller's destinations to the next). Only ok/empty envelopes
+    are stored at all (SectionCache.put already enforces that).
+    """
+    cacheable = not (bool(ctx.destinations) and key in ("commute", "oepnv"))
+    k = cache.key(key, ctx.lat, ctx.lon, ctx.plot_size_m2, force)
+    if cacheable:
+        hit = cache.get(k)
+        if hit is not None:
+            return hit
+    env = run_section(key, ctx, precision=precision, force=force)
+    if cacheable:
+        cache.put(k, env)
+    return env
+
+
 def run_all(*, lat: float, lon: float, precision: Optional[str], plot_size_m2, force: bool,
             destinations: tuple[Destination, ...], cache: SectionCache) -> dict[str, dict]:
     ctx = Ctx(lat=lat, lon=lon, plot_size_m2=plot_size_m2, destinations=tuple(destinations))
-    # destinations are request-scoped: commute/oepnv results with custom destinations must not be cached
-    custom = bool(destinations)
 
     def one(key: str) -> dict:
-        cacheable = not (custom and key in ("commute", "oepnv"))
-        k = cache.key(key, lat, lon, plot_size_m2, force)
-        if cacheable:
-            hit = cache.get(k)
-            if hit is not None:
-                return hit
-        env = run_section(key, ctx, precision=precision, force=force)
-        if cacheable:
-            cache.put(k, env)
-        return env
+        return cached_section(key, ctx, precision=precision, force=force, cache=cache)
 
     keys = list(SECTIONS)
     with ThreadPoolExecutor(max_workers=POOL_SIZE) as pool:

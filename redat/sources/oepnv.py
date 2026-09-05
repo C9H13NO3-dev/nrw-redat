@@ -189,8 +189,9 @@ def get_oepnv(lat: float, lon: float, *, destinations: Optional[list[tuple[str, 
     """Stops/lines/trips around the point, or None when neither stops nor any trip exist (outside the VRR)."""
     ref = reference_time()
     errors: dict[str, str] = {}
-    dests = destinations if destinations is not None else [(n, ("stop", sid)) for n, sid in fixed_destinations()]
-    fixed_ids = {sid for _, sid in fixed_destinations()}
+    fixed = fixed_destinations()
+    dests = destinations if destinations is not None else [(n, ("stop", sid)) for n, sid in fixed]
+    fixed_ids = {sid for _, sid in fixed}
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         stops_f = pool.submit(_fetch_stops, lat, lon)

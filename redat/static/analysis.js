@@ -18,7 +18,7 @@ window.analysisPage = function (config) {
         runIdStored: config.run?.run_id ?? null,
         createdAt: config.run?.created_at ?? null,
         manifest,
-        geocode: null,            // /api/analysis/geocode response | null
+        geocode: null,            // /api/v1/geocode response | null
         sections: emptyState(),   // key -> envelope | {key, status:'loading'} | null
         running: false,
         runId: 0,                 // bumped by reset(); load() drops stale-generation responses

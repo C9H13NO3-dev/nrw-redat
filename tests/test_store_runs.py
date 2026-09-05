@@ -41,7 +41,6 @@ def test_init_is_idempotent_and_wal(tmp_path):
 
 
 def test_save_requires_coordinates(tmp_path):
-    import pytest
     with pytest.raises(ValueError):
         _store(tmp_path).save({**PAYLOAD, "latitude": None})
 

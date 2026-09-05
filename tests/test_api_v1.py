@@ -1,4 +1,3 @@
-import json
 import pytest
 from fastapi.testclient import TestClient
 
@@ -58,6 +57,43 @@ def test_section_route(client):
     assert client.get("/api/v1/section/nope", params={"lat": 1, "lon": 2}).status_code == 404
     r = client.get("/api/v1/section/commute", params={"lat": 1, "lon": 2, "destinations": "nope"})
     assert r.status_code == 422
+
+
+def test_section_route_consults_cache(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(A, "run_section", lambda key, ctx, precision=None, force=False: (calls.append(key), _env(key))[1])
+
+    r1 = client.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0})
+    assert r1.status_code == 200 and "cached" not in r1.json()
+    r2 = client.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0})
+    assert r2.status_code == 200 and r2.json()["cached"] is True
+    assert calls == ["noise"]  # second call was served from cache, run_section was not called again
+
+
+def test_section_route_with_destinations_is_never_cached(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(A, "run_section", lambda key, ctx, precision=None, force=False: (calls.append(key), _env(key))[1])
+    dests = '[{"name": "Arbeit", "lat": 51.45, "lon": 7.01}]'
+
+    client.get("/api/v1/section/commute", params={"lat": 51.38, "lon": 7.0, "destinations": dests})
+    r2 = client.get("/api/v1/section/commute", params={"lat": 51.38, "lon": 7.0, "destinations": dests})
+    assert "cached" not in r2.json()
+    assert calls == ["commute", "commute"]  # both calls actually ran, cache was bypassed
+
+
+def test_section_route_error_envelope_is_never_cached(client, monkeypatch):
+    calls = []
+
+    def fake(key, ctx, precision=None, force=False):
+        calls.append(key)
+        return _env(key, status="error")
+
+    monkeypatch.setattr(A, "run_section", fake)
+
+    client.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0})
+    r2 = client.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0})
+    assert "cached" not in r2.json()
+    assert calls == ["noise", "noise"]
 
 
 def test_analyze_and_save(client):
