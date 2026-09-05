@@ -337,6 +337,10 @@ def test_planning_bochum_not_ok_raises(monkeypatch):
         S._fetch_planning_bochum(CTX)
 
 
+def test_planning_bochum_cache_version_bumped():
+    assert S.SECTIONS["planning_bochum"].cache_version == 2
+
+
 # ---------------------------------------------------------------- risk cards (2026-09-04)
 
 def test_starkregen_passes_through_and_is_parcel(monkeypatch):
