@@ -17,7 +17,6 @@ _ON_PARCEL_SHARE of its footprint lies inside. `_wfs_gml` is the single HTTP cal
 """
 from __future__ import annotations
 
-import logging
 import xml.etree.ElementTree as ET
 from typing import Optional
 
@@ -28,8 +27,6 @@ from shapely.geometry.base import BaseGeometry
 
 from redat.http import headers
 
-logger = logging.getLogger(__name__)
-
 ALKIS_WFS_URL = "https://www.wfs.nrw.de/geobasis/wfs_nw_alkis_vereinfacht"
 _NS = {
     "ave": "http://repository.gdi-de.org/schemas/adv/produkt/alkis-vereinfacht/2.0",
@@ -38,7 +35,8 @@ _NS = {
 }
 _TO_25832 = Transformer.from_crs("EPSG:4326", "EPSG:25832", always_xy=True)
 _TIMEOUT_S = 25
-_POINT_BUFFER_M = 1.0    # half-width of the bbox around the geocoded point
+_POINT_BUFFER_M = 5.0    # the bbox must be at least as wide as the snap tolerance so the candidate
+                         # parcel is actually returned
 _SNAP_M = 5.0            # accept a parcel this far from a street-edge geocode
 _ON_PARCEL_SHARE = 0.5   # footprint share inside the parcel that makes a building "on" it
 

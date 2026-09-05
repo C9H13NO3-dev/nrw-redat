@@ -87,7 +87,7 @@ def test_parcel_buildings_and_nutzung(monkeypatch):
     assert d["nutzung_am_punkt"] == "Wohnbaufläche"
     types = [t for t, _ in calls]
     assert types == ["ave:Flurstueck", "ave:GebaeudeBauwerk", "ave:Nutzung"]
-    assert calls[0][1] == (CX - 1, CY - 1, CX + 1, CY + 1)             # ±1 m bbox around the point
+    assert calls[0][1] == (CX - 5, CY - 5, CX + 5, CY + 5)             # ±5 m bbox, as wide as the snap tolerance
     assert calls[1][1] == (CX - 10, CY - 10, CX + 10, CY + 10)         # buildings are fetched with the parcel bounds
 
 
