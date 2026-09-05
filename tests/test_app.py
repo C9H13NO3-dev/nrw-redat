@@ -23,6 +23,26 @@ def test_healthz_ignores_api_key(monkeypatch):
     assert client.get("/healthz").status_code == 200
 
 
+def test_lifespan_warms_chromium_probe_off_the_event_loop(monkeypatch):
+    """The sync Playwright API raises inside a running asyncio loop; a probe run there would
+    lru_cache `False` for the whole process (seen live: /healthz chromium=false after the M6 warm-up)."""
+    import asyncio
+    seen = []
+
+    def fake_probe():
+        try:
+            asyncio.get_running_loop()
+            seen.append("on-loop")
+        except RuntimeError:
+            seen.append("worker")
+        return True
+
+    monkeypatch.setattr(appmod, "chromium_available", fake_probe)
+    with TestClient(appmod.create_app()) as client:
+        assert client.get("/healthz").json()["chromium"] is True
+    assert seen and seen[0] == "worker"
+
+
 def test_docs_served():
     client = TestClient(appmod.create_app())
     assert client.get("/docs").status_code == 200

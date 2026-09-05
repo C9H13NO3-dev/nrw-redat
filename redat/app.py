@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 
+import anyio
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -53,7 +54,10 @@ def create_app() -> FastAPI:
         _app.state.runs = RunStore(settings.db_path)
         _app.state.runs.init()
         _app.state.cache = SectionCache(settings.cache_ttl_s)
-        chromium_available()  # warm the (lru_cache'd) Playwright probe so the first /healthz is cheap
+        # Warm the (lru_cache'd) Playwright probe so the first /healthz is cheap. It MUST run off the
+        # event loop: the sync Playwright API refuses to start inside a running asyncio loop, and the
+        # cache would pin that failure as `chromium: false` for the life of the process.
+        await anyio.to_thread.run_sync(chromium_available)
         yield
 
     app = FastAPI(title="NRW-REDAT", version=__version__, description=DESCRIPTION, lifespan=lifespan)
