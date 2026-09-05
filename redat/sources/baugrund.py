@@ -21,11 +21,13 @@ from __future__ import annotations
 import html as htmlmod
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 import httpx
 
 from redat.http import headers
+from redat.sources.esri_wms import featureinfo_params
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +49,7 @@ def in_essen(lat: float, lon: float) -> bool:
 
 def _featureinfo_html(lat: float, lon: float) -> str:
     """BK50 GetFeatureInfo as HTML — HTTP/monkeypatch point."""
-    d = 0.001
-    params = {"SERVICE": "WMS", "VERSION": "1.3.0", "REQUEST": "GetFeatureInfo", "LAYERS": BK50_LAYER, "QUERY_LAYERS": BK50_LAYER,
-              "STYLES": "", "CRS": "EPSG:4326", "BBOX": f"{lat - d:g},{lon - d:g},{lat + d:g},{lon + d:g}", "WIDTH": 101, "HEIGHT": 101,
-              "I": 50, "J": 50, "FEATURE_COUNT": 1, "INFO_FORMAT": "text/html"}
+    params = featureinfo_params(lat, lon, BK50_LAYER, feature_count=1, info_format="text/html")
     resp = httpx.get(BK50_WMS_URL, params=params, timeout=_TIMEOUT_S, headers=headers())
     resp.raise_for_status()
     return resp.text
@@ -158,7 +157,20 @@ def _erdwaerme(rows: dict) -> Optional[dict]:
 
 
 def get_baugrund(lat: float, lon: float) -> Optional[dict]:
-    rows = parse_bk50_html(_featureinfo_html(lat, lon))
+    # The BK50 WMS and the Essen kf layer are independent servers — one round-trip instead of two.
+    # kf is resolved first so a BK50 failure never escapes with the kf future's exception unretrieved.
+    kf_features, kf_error = [], None
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        bk50 = ex.submit(_featureinfo_html, lat, lon)
+        kf = ex.submit(_kf_query, lat, lon) if in_essen(lat, lon) else None
+        if kf is not None:
+            try:
+                kf_features = kf.result().get("features") or []
+            except Exception as exc:  # noqa: BLE001 — Essen down must not blank the BK50 result
+                logger.warning("Essen kf-Werte: %s", exc)
+                kf_error = str(exc)
+        html = bk50.result()          # BK50 is the card: a failure here still raises
+    rows = parse_bk50_html(html)
     if not rows.get("Bodentyp"):
         return None
     vers_text = _first(rows, "Versickerungseignung")
@@ -170,16 +182,11 @@ def get_baugrund(lat: float, lon: float) -> Optional[dict]:
     erod = rows.get("Erodierbarkeit des Oberbodens") or []
     bodenart_cells = rows.get("Bodenartengruppe des Oberbodens") or []
 
-    kf_gutachten, kf_error = [], None
-    if in_essen(lat, lon):
-        try:
-            for f in _kf_query(lat, lon).get("features") or []:
-                a = f.get("attributes") or {}
-                kf_gutachten.append({"gutachten": a.get("GUTACHTEN"), "kf": a.get("KF_WERT"), "geeignet": a.get("GEEIGNET"),
-                                     "jahr": a.get("JAHR"), "anmerkung": a.get("ANMERKUNG") or None})
-        except Exception as exc:  # noqa: BLE001 — Essen down must not blank the BK50 result
-            logger.warning("Essen kf-Werte: %s", exc)
-            kf_error = str(exc)
+    kf_gutachten = []
+    for f in kf_features:
+        a = f.get("attributes") or {}
+        kf_gutachten.append({"gutachten": a.get("GUTACHTEN"), "kf": a.get("KF_WERT"), "geeignet": a.get("GEEIGNET"),
+                             "jahr": a.get("JAHR"), "anmerkung": a.get("ANMERKUNG") or None})
 
     rating, color = rate(vers, gw, sn)
     return {

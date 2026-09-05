@@ -12,6 +12,7 @@ from redat import settings as st
 def test_registry_declares_volatility_only_for_live_cards():
     assert S.SECTIONS["air_quality"].cache_ttl_s == 3600          # live sensor readings
     assert S.SECTIONS["oepnv"].cache_ttl_s == 7 * 86400           # timetable, normalised to "next Tuesday 08:00"
+    assert S.SECTIONS["flurstueck"].cache_ttl_s == 7 * 86400      # Essen refreshes the Baulasten weekly
     assert S.SECTIONS["noise"].cache_ttl_s is None                 # static geodata -> global default
     for sec in S.SECTIONS.values():
         assert isinstance(sec.cache_version, int) and sec.cache_version >= 1

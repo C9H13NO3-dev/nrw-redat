@@ -15,7 +15,7 @@ Card overview (20 original + six Tier-1 additions):
 | Flurstück & Gebäude | ALKIS parcel geometry/Flurstücksdaten (vereinfacht) plus Stadt Essen Baulasten. |
 | Immobilienrichtwerte | BORIS NRW `wms_nw_irw` — Teilmarkt richtwerte (Wohnen/Gewerbe/…) for the parcel. |
 | Baugrund & Versickerung (BK50) | GD NRW BK50 soil map (Bodentyp, Versickerungseignung) + Stadt Essen kf-Werte. |
-| Radon | BfS Radonpotenzial (geological unit, e.g. Karbon) for the area. |
+| Radon | BfS soil-air radon (`rn_max`, 90th percentile at 1 m depth, kBq/m³ — the headline figure, with the geological unit e.g. Karbon) plus the geogenic Radonpotenzial for the area. |
 | Schulen & Sozialindex | Nearest Grundschulen with the Schulministerium Sozialindex, plus Bochum Grundschulbezirke. |
 | Verkehrsunfälle (Unfallatlas) | Per-year accident counts from the Statistische Ämter Unfallatlas grid. |
 

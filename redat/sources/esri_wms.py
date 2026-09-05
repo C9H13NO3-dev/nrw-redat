@@ -14,11 +14,14 @@ INFO_FORMAT = "application/vnd.esri.wms_featureinfo_xml"
 _NS = {"w": "http://www.esri.com/wms"}
 
 
-def featureinfo_params(lat: float, lon: float, layers: str, *, d: float = 0.001, feature_count: int = 10) -> dict:
+def featureinfo_params(lat: float, lon: float, layers: str, *, d: float = 0.001, feature_count: int = 10,
+                       info_format: str = INFO_FORMAT) -> dict:
+    # Six decimals (~0.1 m), never `:g` — six *significant* digits would round the bbox onto an ~11 m grid
+    # and move the queried centre pixel off the address.
     return {
         "SERVICE": "WMS", "VERSION": "1.3.0", "REQUEST": "GetFeatureInfo", "LAYERS": layers, "QUERY_LAYERS": layers,
-        "STYLES": "", "CRS": "EPSG:4326", "BBOX": f"{lat - d:g},{lon - d:g},{lat + d:g},{lon + d:g}",
-        "WIDTH": 101, "HEIGHT": 101, "I": 50, "J": 50, "FEATURE_COUNT": feature_count, "INFO_FORMAT": INFO_FORMAT,
+        "STYLES": "", "CRS": "EPSG:4326", "BBOX": f"{lat - d:.6f},{lon - d:.6f},{lat + d:.6f},{lon + d:.6f}",
+        "WIDTH": 101, "HEIGHT": 101, "I": 50, "J": 50, "FEATURE_COUNT": feature_count, "INFO_FORMAT": info_format,
     }
 
 

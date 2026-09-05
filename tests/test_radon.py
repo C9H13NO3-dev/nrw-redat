@@ -40,7 +40,7 @@ def test_classes():
 def test_point_in_cell_and_rating(monkeypatch):
     calls = stub(monkeypatch, {radon.TYPE_BODEN: BODEN, radon.TYPE_POTENZIAL: POT})
     d = radon.get_radon(51.4300, 7.0050)
-    assert calls == [radon.TYPE_BODEN, radon.TYPE_POTENZIAL]
+    assert sorted(calls) == sorted([radon.TYPE_BODEN, radon.TYPE_POTENZIAL])   # concurrent: order is not fixed
     assert d["bodenluft"] == {"kbq_m3": 57.0, "klasse": "erhöht", "klasse_color": "orange", "geologie": "Karbon", "zelle": "AC138"}
     assert d["potenzial"] == {"wert": 36.5, "klasse": "hoch", "klasse_color": "orange"}
     assert d["rating"] == "Erhöhtes Radonpotenzial" and d["rating_color"] == "orange"
@@ -62,5 +62,13 @@ def test_partial_and_empty(monkeypatch):
 
 def test_total_failure_raises(monkeypatch):
     stub(monkeypatch, {radon.TYPE_BODEN: RuntimeError("a"), radon.TYPE_POTENZIAL: RuntimeError("b")})
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="BfS-WFS nicht erreichbar"):
         radon.get_radon(51.43, 7.0)
+
+
+def test_one_error_and_no_usable_cell_raises(monkeypatch):
+    """One request down, the other answers a cell without `grp_pb_` → an outage, never "kein Radon"."""
+    stub(monkeypatch, {radon.TYPE_BODEN: RuntimeError("down"),
+                       radon.TYPE_POTENZIAL: [cell(POT[0]["geometry"]["coordinates"][0], gid=1762)]})
+    with pytest.raises(RuntimeError, match="down"):
+        radon.get_radon(51.4300, 7.0050)

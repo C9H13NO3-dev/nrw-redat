@@ -29,3 +29,14 @@ def test_nothing_found(monkeypatch):
     stub(monkeypatch, {})
     d = pe.get_planning_signals(51.39, 7.00)
     assert d["ok"] and not d["found"] and d["satzung"] == [] and d["sanierung"] == []
+
+
+def test_one_failing_layer_fails_the_card(monkeypatch):
+    """The eight queries run concurrently; a single failure still yields the card-level error."""
+    def boom(layer, lat, lon, out_fields, record_count=25, base=pe.PB_BASE):
+        if layer == pe.L_SATZUNG:
+            raise RuntimeError("ArcGIS 503")
+        return {"features": []}
+    monkeypatch.setattr(pe, "_query", boom)
+    d = pe.get_planning_signals(51.39, 7.00)
+    assert d == {"ok": False, "error": "ArcGIS 503"}

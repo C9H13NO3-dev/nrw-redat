@@ -4,6 +4,8 @@ We query the public ArcGIS REST services that power https://geoportal.essen.de/g
 
 Primary service:
 - https://geo.essen.de/arcgis/rest/services/essen/Planen_und_Bauen/MapServer
+- https://geo.essen.de/arcgis/rest/services/essen/Sanierung_Untersuchung/MapServer (Sanierungs- und
+  Untersuchungsgebiete, layer 0 — ART/ORT)
 
 We do point queries (WGS84) against selected layers to extract useful, address-level
 planning signals:
@@ -13,14 +15,19 @@ planning signals:
 - Aufstellungsbeschlüsse (layer 7)
 - Auslegungsbeschlüsse (layer 6)
 - Aufhebungsbeschlüsse (layer 89)
+- Sonstige Satzungen (layer 3): Gestaltungs-, Erhaltungs- und Vorkaufsrechtssatzungen, with the
+  Erklärungs-/Begründungs-PDF as the card link
+- Sanierungs-/Untersuchungsgebiete (Sanierung_Untersuchung layer 0)
 
-This is an informational aid only.
+All eight layer queries run concurrently; a single failure still fails the whole card
+(`{"ok": False, "error": …}`), as the caller expects. This is an informational aid only.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any
 
@@ -140,36 +147,28 @@ def _satzung_link(item: dict[str, Any]) -> dict[str, Any]:
 def get_planning_signals(lat: float, lon: float) -> dict[str, Any]:
     """Return planning-related signals at the coordinate."""
 
+    nr_name = {"NR": "nr", "NAME": "name"}
     try:
+        # Eight independent point queries against the same ArcGIS host — one round-trip instead of eight.
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            f_bplan = ex.submit(_query, L_BPLAN, lat, lon, "NR,NAME,PLANART,STAND,PLANID")
+            f_vhbp = ex.submit(_query, L_VHBP, lat, lon, "NR,NAME")
+            f_vsperre = ex.submit(_query, L_VSPERRE, lat, lon, "NR,NAME")
+            f_aufstellung = ex.submit(_query, L_AUFSTELLUNG, lat, lon, "NR,NAME")
+            f_auslegung = ex.submit(_query, L_AUSLEGUNG, lat, lon, "NR,NAME")
+            f_aufhebung = ex.submit(_query, L_AUFHEBUNG, lat, lon, "NR,NAME")
+            f_satzung = ex.submit(_query, L_SATZUNG, lat, lon, "NR,NAME,DATUM,PLANID,BEGRUNDURL,ERKLAERURL")
+            f_sanierung = ex.submit(_query, L_SANIERUNG, lat, lon, "ART,ORT", base=SANIERUNG_BASE)
+
         bplan = _simplify_features(
-            _query(L_BPLAN, lat, lon, out_fields="NR,NAME,PLANART,STAND,PLANID"),
+            f_bplan.result(),
             {"NR": "nr", "NAME": "name", "PLANART": "plan_type", "STAND": "status", "PLANID": "plan_id"},
         )
-
-        vhbp = _simplify_features(
-            _query(L_VHBP, lat, lon, out_fields="NR,NAME"),
-            {"NR": "nr", "NAME": "name"},
-        )
-
-        vsperre = _simplify_features(
-            _query(L_VSPERRE, lat, lon, out_fields="NR,NAME"),
-            {"NR": "nr", "NAME": "name"},
-        )
-
-        aufstellung = _simplify_features(
-            _query(L_AUFSTELLUNG, lat, lon, out_fields="NR,NAME"),
-            {"NR": "nr", "NAME": "name"},
-        )
-
-        auslegung = _simplify_features(
-            _query(L_AUSLEGUNG, lat, lon, out_fields="NR,NAME"),
-            {"NR": "nr", "NAME": "name"},
-        )
-
-        aufhebung = _simplify_features(
-            _query(L_AUFHEBUNG, lat, lon, out_fields="NR,NAME"),
-            {"NR": "nr", "NAME": "name"},
-        )
+        vhbp = _simplify_features(f_vhbp.result(), nr_name)
+        vsperre = _simplify_features(f_vsperre.result(), nr_name)
+        aufstellung = _simplify_features(f_aufstellung.result(), nr_name)
+        auslegung = _simplify_features(f_auslegung.result(), nr_name)
+        aufhebung = _simplify_features(f_aufhebung.result(), nr_name)
 
         # Attach Essen detail links when possible
         bplan = _attach_links(bplan, "bauverfahren")
@@ -180,13 +179,10 @@ def get_planning_signals(lat: float, lon: float) -> dict[str, Any]:
         aufhebung = _attach_links(aufhebung, "bauverfahren")
 
         satzung = [_satzung_link(it) for it in _simplify_features(
-            _query(L_SATZUNG, lat, lon, out_fields="NR,NAME,DATUM,PLANID,BEGRUNDURL,ERKLAERURL"),
+            f_satzung.result(),
             {"NR": "nr", "NAME": "name", "DATUM": "date", "PLANID": "plan_id", "BEGRUNDURL": "begruend_url", "ERKLAERURL": "erklaer_url"})]
 
-        sanierung = _simplify_features(
-            _query(L_SANIERUNG, lat, lon, out_fields="ART,ORT", base=SANIERUNG_BASE),
-            {"ORT": "name", "ART": "plan_type"},
-        )
+        sanierung = _simplify_features(f_sanierung.result(), {"ORT": "name", "ART": "plan_type"})
 
         found = any([bplan, vhbp, vsperre, aufstellung, auslegung, aufhebung, satzung, sanierung])
 
@@ -201,7 +197,8 @@ def get_planning_signals(lat: float, lon: float) -> dict[str, Any]:
             "aufhebungsbeschluss": aufhebung,
             "satzung": satzung,
             "sanierung": sanierung,
-            "source": "geo.essen.de ArcGIS Planen_und_Bauen (MapServer point queries) + wapps.essen.de detail links",
+            "source": ("geo.essen.de ArcGIS Planen_und_Bauen + Sanierung_Untersuchung "
+                       "(MapServer point queries) + wapps.essen.de detail links"),
         }
 
     except Exception as e:

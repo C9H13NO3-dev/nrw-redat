@@ -1,5 +1,3 @@
-import pytest
-
 from redat.sources import irw
 
 

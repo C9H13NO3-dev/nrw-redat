@@ -16,6 +16,7 @@ Radonvorsorgegebiete. `_wfs_features` is the single HTTP call and monkeypatch po
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 import httpx
@@ -77,9 +78,12 @@ def get_radon(lat: float, lon: float) -> Optional[dict]:
     """Soil-air radon and radon potential at the point; None when neither dataset covers it."""
     pt = Point(lon, lat)
     out: dict = {"bodenluft": None, "potenzial": None, "errors": {}}
-    for key, typename in (("bodenluft", TYPE_BODEN), ("potenzial", TYPE_POTENZIAL)):
+    types = (("bodenluft", TYPE_BODEN), ("potenzial", TYPE_POTENZIAL))
+    with ThreadPoolExecutor(max_workers=len(types)) as ex:   # two independent WFS calls, one round-trip
+        futures = {key: ex.submit(_wfs_features, typename, lat, lon) for key, typename in types}
+    for key, typename in types:                              # fixed order → stable errors/result order
         try:
-            props = _cell_at(_wfs_features(typename, lat, lon), pt)
+            props = _cell_at(futures[key].result(), pt)
         except Exception as exc:  # noqa: BLE001 — one type failing must not blank the other
             logger.warning("BfS %s: %s", typename, exc)
             out["errors"][key] = str(exc)
@@ -94,9 +98,10 @@ def get_radon(lat: float, lon: float) -> Optional[dict]:
             val = float(props["grp_pb_"])
             label, color = classify_potenzial(val)
             out["potenzial"] = {"wert": val, "klasse": label, "klasse_color": color}
-    if len(out["errors"]) == 2:
-        raise RuntimeError(f"BfS-WFS nicht erreichbar: {out['errors']['bodenluft']}")
     if out["bodenluft"] is None and out["potenzial"] is None:
+        # Nothing to show *and* a request failed → an outage, not "no data here": let the envelope say so.
+        if out["errors"]:
+            raise RuntimeError("BfS-WFS nicht erreichbar: " + "; ".join(out["errors"].values()))
         return None
     colors = [b["klasse_color"] for b in (out["bodenluft"], out["potenzial"]) if b]
     worst = max(colors, key=_COLOR_RANK.get)

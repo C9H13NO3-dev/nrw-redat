@@ -16,9 +16,9 @@
     <div class="font-semibold text-gray-900">⛏ Grabbarkeit</div>
     <p class="text-gray-800" x-text="d.grabbarkeit"></p>
 </div>
-<div class="mt-3 text-sm" x-show="d.erdwaerme">
+<div class="mt-3 text-sm" x-show="d.erdwaerme && (d.erdwaerme.m1_w_mk != null || d.erdwaerme.m2_w_mk != null)">
     <div class="font-semibold text-gray-900">🌡 Erdwärmekollektoren</div>
-    <p class="text-gray-800" x-text="d.erdwaerme && ('1. Meter ' + d.erdwaerme.m1_w_mk + ' W/(m·K) (' + d.erdwaerme.m1_klasse + '), 2. Meter ' + d.erdwaerme.m2_w_mk + ' W/(m·K) (' + d.erdwaerme.m2_klasse + ')')"></p>
+    <p class="text-gray-800" x-text="d.erdwaerme && [['1. Meter', d.erdwaerme.m1_w_mk, d.erdwaerme.m1_klasse], ['2. Meter', d.erdwaerme.m2_w_mk, d.erdwaerme.m2_klasse]].filter(p => p[1] != null).map(p => p[0] + ' ' + p[1] + ' W/(m·K)' + (p[2] ? ' (' + p[2] + ')' : '')).join(', ')"></p>
 </div>
 <template x-if="d.kf_gutachten && d.kf_gutachten.length">
     <div class="mt-4 text-sm">

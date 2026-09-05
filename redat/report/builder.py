@@ -92,7 +92,8 @@ def _s_flurstueck(d):
             fig += f" ({fmt_num(d['ueberbauung_pct'], 0)} %)"
     bl = d.get("baulasten") or {}
     rating, color = {"vorhanden": ("Baulast eingetragen", "orange"), "moeglich": ("Baulast möglich", "yellow"),
-                     "keine": ("Keine Baulast (Essen)", "green")}.get(bl.get("status"), (None, "gray"))
+                     "keine": ("Keine Baulast (Essen)", "green"),
+                     "unbekannt": ("Baulasten: Zuordnung nicht möglich", "gray")}.get(bl.get("status"), (None, "gray"))
     return rating, color, fig
 
 

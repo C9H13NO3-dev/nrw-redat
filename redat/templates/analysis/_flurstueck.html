@@ -36,8 +36,8 @@
         <div class="flex items-center gap-2">
             <span class="font-semibold text-gray-900">Baulasten (Essen)</span>
             <span class="px-2 py-0.5 rounded-full text-xs font-bold"
-                  :class="$store.app.getAirQualityColor({vorhanden: 'orange', moeglich: 'yellow', keine: 'green'}[d.baulasten.status])"
-                  x-text="{vorhanden: 'eingetragen', moeglich: 'möglicherweise eingetragen', keine: 'keine auf dem Flurstück'}[d.baulasten.status]"></span>
+                  :class="$store.app.getAirQualityColor({vorhanden: 'orange', moeglich: 'yellow', keine: 'green', unbekannt: 'gray'}[d.baulasten.status])"
+                  x-text="{vorhanden: 'eingetragen', moeglich: 'möglicherweise eingetragen', keine: 'keine auf dem Flurstück', unbekannt: 'Zuordnung zum Flurstück nicht möglich'}[d.baulasten.status]"></span>
         </div>
         <ul class="mt-1 space-y-0.5" x-show="d.baulasten.on_parcel.length">
             <template x-for="(b, i) in d.baulasten.on_parcel" :key="'p' + i">

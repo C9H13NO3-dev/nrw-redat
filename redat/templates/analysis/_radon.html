@@ -19,5 +19,5 @@
 <p class="mt-3 text-xs text-gray-500">
     Klassen Bodenluft: unter 20 gering, 20–40 mittel, 40–100 erhöht, über 100 kBq/m³ hoch. Das Karbon des Ruhrgebiets liegt oft in der erhöhten Klasse.
     NRW hat keine Radonvorsorgegebiete ausgewiesen; bei Wohnnutzung im Keller/Erdgeschoss eine Radonmessung (Referenzwert 300 Bq/m³ Raumluft) einplanen.
-    <span x-show="d.errors && Object.keys(d.errors).length" x-text="' · nicht abrufbar: ' + Object.keys(d.errors || {}).join(', ')"></span>
+    <span x-show="d.errors && Object.keys(d.errors).length" x-text="' · nicht abrufbar: ' + Object.keys(d.errors || {}).map(k => ({bodenluft: 'Bodenluft', potenzial: 'Radonpotenzial'})[k] || k).join(', ')"></span>
 </p>

@@ -18,6 +18,7 @@ _ON_PARCEL_SHARE of its footprint lies inside. `_wfs_gml` is the single HTTP cal
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 import httpx
@@ -135,8 +136,14 @@ def get_flurstueck(lat: float, lon: float) -> Optional[dict]:
     p, geom = parcel["props"], parcel["geom"]
     flaeche = float(p["flaeche"]) if p.get("flaeche") else round(geom.area, 1)
 
+    # Buildings (parcel bounds) and Nutzung (point bbox) are independent reads — one round-trip, not two.
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_geb = ex.submit(_wfs_gml, "ave:GebaeudeBauwerk", geom.bounds)
+        f_nut = ex.submit(_wfs_gml, "ave:Nutzung", bbox)
+        geb_gml, nut_gml = f_geb.result(), f_nut.result()
+
     buildings, on_parcel_area = [], 0.0
-    for b in parse_members(_wfs_gml("ave:GebaeudeBauwerk", geom.bounds)):
+    for b in parse_members(geb_gml):
         bg = b["geom"]
         if bg is None or bg.area == 0:
             continue
@@ -151,7 +158,7 @@ def get_flurstueck(lat: float, lon: float) -> Optional[dict]:
     buildings.sort(key=lambda b: (not b["on_parcel"], -b["grundflaeche_m2"]))
 
     nutzung_pt = None
-    for n in parse_members(_wfs_gml("ave:Nutzung", bbox)):
+    for n in parse_members(nut_gml):
         if n["geom"] is not None and n["geom"].contains(point_m):
             nutzung_pt = n["props"].get("nutzart") or None
             break

@@ -33,6 +33,7 @@ BBOX_WGS84 = (6.85, 51.33, 7.40, 51.56)   # lon_min, lat_min, lon_max, lat_max â
 FIELDS = ["lat", "lon", "jahr", "kat", "typ", "licht", "rad", "pkw", "fuss", "krad", "gkfz"]
 _INT_COLS = {"jahr": "UJAHR", "kat": "UKATEGORIE", "typ": "UTYP1", "licht": "ULICHTVERH",
              "rad": "IstRad", "pkw": "IstPKW", "fuss": "IstFuss", "krad": "IstKrad", "gkfz": "IstGkfz"}
+assert list(_INT_COLS) == FIELDS[2:]   # rows are written in FIELDS order: lat, lon, then _INT_COLS
 
 
 def _num(s: str) -> float:

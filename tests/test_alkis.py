@@ -86,9 +86,12 @@ def test_parcel_buildings_and_nutzung(monkeypatch):
     assert d["grundflaeche_m2"] == 100.0 and d["ueberbauung_pct"] == 25.0
     assert d["nutzung_am_punkt"] == "Wohnbaufläche"
     types = [t for t, _ in calls]
-    assert types == ["ave:Flurstueck", "ave:GebaeudeBauwerk", "ave:Nutzung"]
-    assert calls[0][1] == (CX - 5, CY - 5, CX + 5, CY + 5)             # ±5 m bbox, as wide as the snap tolerance
-    assert calls[1][1] == (CX - 10, CY - 10, CX + 10, CY + 10)         # buildings are fetched with the parcel bounds
+    assert types[0] == "ave:Flurstueck"                                # the parcel first, it defines the other bboxes
+    assert sorted(types[1:]) == ["ave:GebaeudeBauwerk", "ave:Nutzung"]  # then both concurrently, in any order
+    bboxes = dict(calls)
+    assert bboxes["ave:Flurstueck"] == (CX - 5, CY - 5, CX + 5, CY + 5)          # ±5 m, as wide as the snap tolerance
+    assert bboxes["ave:Nutzung"] == (CX - 5, CY - 5, CX + 5, CY + 5)
+    assert bboxes["ave:GebaeudeBauwerk"] == (CX - 10, CY - 10, CX + 10, CY + 10)  # buildings use the parcel bounds
 
 
 def test_point_just_outside_snaps_to_parcel_within_5m(monkeypatch):

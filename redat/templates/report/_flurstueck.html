@@ -33,7 +33,7 @@
 </table>
 {% endif %}
 {% if bl %}
-{% set labels = {"vorhanden": ("Baulast eingetragen", "orange"), "moeglich": ("Baulast möglich", "yellow"), "keine": ("Keine Baulast auf dem Flurstück", "green")} %}
+{% set labels = {"vorhanden": ("Baulast eingetragen", "orange"), "moeglich": ("Baulast möglich", "yellow"), "keine": ("Keine Baulast auf dem Flurstück", "green"), "unbekannt": ("Zuordnung zum Flurstück nicht möglich", "gray")} %}
 {% set lab = labels.get(bl.get("status")) %}
 <h3>Baulasten (Stadt Essen)</h3>
 {% if lab %}<p><span class="chip {{ rating_class(lab[1]) }}">{{ lab[0] }}</span></p>{% endif %}

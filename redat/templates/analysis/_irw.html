@@ -19,6 +19,6 @@
     </tbody>
 </table>
 <p class="mt-3 text-xs text-gray-500">
-    Stichtag <span x-text="d.stichtag"></span><span x-show="d.gutachterausschuss" x-text="' · ' + d.gutachterausschuss"></span>.
+    <span x-show="d.stichtag">Stichtag <span x-text="d.stichtag"></span></span><span x-show="d.gutachterausschuss" x-text="(d.stichtag ? ' · ' : '') + d.gutachterausschuss"></span>.
     Der Richtwert gilt für das beschriebene Normobjekt; Abweichungen (Baujahr, Größe, Zustand, Lage) werden mit den Umrechnungskoeffizienten des Gutachterausschusses angepasst. Kein Verkehrswert.
 </p>

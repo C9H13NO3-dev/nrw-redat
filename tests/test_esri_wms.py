@@ -25,5 +25,14 @@ def test_parse_empty_response():
 def test_params_center_pixel_and_lat_lon_axis_order():
     p = esri_wms.featureinfo_params(51.44, 7.085, "3,5,6")
     assert p["LAYERS"] == p["QUERY_LAYERS"] == "3,5,6" and p["CRS"] == "EPSG:4326"
-    assert p["BBOX"] == "51.439,7.084,51.441,7.086" and p["I"] == p["J"] == 50 and p["WIDTH"] == p["HEIGHT"] == 101
+    assert p["BBOX"] == "51.439000,7.084000,51.441000,7.086000" and p["I"] == p["J"] == 50 and p["WIDTH"] == p["HEIGHT"] == 101
     assert p["INFO_FORMAT"] == "application/vnd.esri.wms_featureinfo_xml" and p["FEATURE_COUNT"] == 10
+
+
+def test_bbox_keeps_full_precision():
+    """`:g` would round 51.455789 to 51.4558 (~11 m) and query the wrong pixel."""
+    assert esri_wms.featureinfo_params(51.456789, 7.0, "1")["BBOX"].startswith("51.455789,")
+
+
+def test_info_format_override():
+    assert esri_wms.featureinfo_params(51.44, 7.085, "1", info_format="text/html")["INFO_FORMAT"] == "text/html"

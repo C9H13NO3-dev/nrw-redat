@@ -387,13 +387,15 @@ def _fetch_planning_bochum(ctx: Ctx) -> dict:
         if it.get("legal_status"):
             name = f"{name} ({it['legal_status']})"
         items.append({"category": it.get("plan_type") or "B-Plan", "name": name, "link": it.get("plan_link") or it.get("metadata_link")})
-    return {"found": bool(items), "items": items}
+    # Per-layer failures (the Stadterneuerung layers are queried independently) — JSON needs string keys.
+    return {"found": bool(items), "items": items, "errors": {str(k): v for k, v in (p.get("errors") or {}).items()}}
 
 
 # Insertion order == card order (spec §4: table order, noise after flood).
 SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("flurstueck", "Flurstück & Gebäude (ALKIS)", "📐", 30,
-            "Geobasis NRW, ALKIS vereinfacht (dl-de/zero-2-0) · Stadt Essen, Baulasteninformation (unverbindlich, wöchentlich)", _fetch_flurstueck),
+            "Geobasis NRW, ALKIS vereinfacht (dl-de/zero-2-0) · Stadt Essen, Baulasteninformation (unverbindlich, wöchentlich)", _fetch_flurstueck,
+            cache_ttl_s=7 * 86400),   # ALKIS changes rarely, but Essen refreshes the Baulasten weekly
     Section("boris", "Bodenrichtwert (BORIS)", "🏷️", 25, "BORIS NRW (Gutachterausschüsse)", _fetch_boris),
     Section("boris_trend", "Bodenrichtwert-Trend", "📈", 30, "BORIS NRW, historische Stichtage", _fetch_boris_trend),
     Section("irw", "Immobilienrichtwerte", "🏠", 25, "BORIS NRW — Immobilienrichtwerte der Gutachterausschüsse (€/m² Wohnfläche, Normobjekt)", _fetch_irw),

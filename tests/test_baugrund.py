@@ -82,6 +82,13 @@ def test_kf_failure_isolated(monkeypatch):
     assert d["kf_gutachten"] == [] and d["kf_gutachten_error"] == "essen down" and d["bodentyp"] == "Parabraunerde"
 
 
+def test_bk50_failure_raises_even_though_kf_runs_alongside(monkeypatch):
+    monkeypatch.setattr(bg, "_featureinfo_html", lambda lat, lon: (_ for _ in ()).throw(RuntimeError("BK50 down")))
+    monkeypatch.setattr(bg, "_kf_query", lambda lat, lon: KF)
+    with pytest.raises(RuntimeError, match="BK50 down"):
+        bg.get_baugrund(51.4300, 7.0050)
+
+
 def test_no_soil_unit_is_none(monkeypatch):
     stub(monkeypatch, html=HTML_EMPTY)
     assert bg.get_baugrund(51.4300, 7.0050) is None

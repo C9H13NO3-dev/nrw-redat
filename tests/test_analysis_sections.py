@@ -345,8 +345,16 @@ def test_planning_bochum_same_shape(monkeypatch):
         "items": [{"official_name": "Nr. 800 Ehrenfeld", "plan_id": "800", "commune": "Bochum", "plan_type": "BPlan",
                    "legal_status": "rechtsverbindlich", "plan_link": None, "metadata_link": "https://rvr/meta"}]})
     d = S._fetch_planning_bochum(CTX)
-    assert d == {"found": True, "items": [
+    assert d == {"found": True, "errors": {}, "items": [
         {"category": "BPlan", "name": "Nr. 800 Ehrenfeld (rechtsverbindlich)", "link": "https://rvr/meta"}]}
+
+
+def test_planning_bochum_layer_errors_reach_the_card(monkeypatch):
+    """A Stadterneuerung layer that failed must be visible in the card, with JSON-safe string keys."""
+    from redat.sources import planning_bochum
+    monkeypatch.setattr(planning_bochum, "get_bochum_bplan_outline", lambda lat, lon: {
+        "ok": True, "found": False, "items": [], "errors": {16: "HTTP 503"}, "source": "x"})
+    assert S._fetch_planning_bochum(CTX)["errors"] == {"16": "HTTP 503"}
 
 
 def test_planning_bochum_not_ok_raises(monkeypatch):

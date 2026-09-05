@@ -65,7 +65,22 @@ def test_nothing_is_keine_and_dedupes(monkeypatch):
 def test_unknown_kennzeichen_puts_everything_nearby(monkeypatch):
     stub(monkeypatch, {0: [feat("BauOrdnungsrecht / Zufahrt", "05314403900040")], 1: []})
     d = bl.get_baulasten(51.4300, 7.0050, None)
-    assert d["status"] == "keine" and len(d["nearby"]) == 1
+    assert d["status"] == "unbekannt" and d["on_parcel"] == [] and len(d["nearby"]) == 1
+
+
+def test_malformed_kennzeichen_is_unbekannt(monkeypatch):
+    """An 18-char key (Nenner-Flurstück from another Gemarkung) cannot be matched against Essen's 14-char FSK."""
+    stub(monkeypatch, {0: [feat("BauOrdnungsrecht / Zufahrt", "05314403900040")], 1: []})
+    d = bl.get_baulasten(51.4300, 7.0050, "053144039000400012")
+    assert d["status"] == "unbekannt" and d["on_parcel"] == [] and len(d["nearby"]) == 1
+
+
+def test_two_baulasten_on_one_blatt_both_survive(monkeypatch):
+    """Same FSK and BAULAST, different ART — Zufahrt and Abstandfläche are two Baulasten, not a duplicate."""
+    stub(monkeypatch, {0: [feat("BauOrdnungsrecht / Zufahrt", "05314403900040"),
+                           feat("BauOrdnungsrecht / Abstandfläche", "05314403900040")], 1: []})
+    d = bl.get_baulasten(51.4300, 7.0050, "05314403900040")
+    assert [i["art"] for i in d["on_parcel"]] == ["Zufahrt", "Abstandfläche"] and d["nearby"] == []
 
 
 def test_query_failure_propagates(monkeypatch):
