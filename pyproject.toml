@@ -1,0 +1,10 @@
+[project]
+name = "nrw-redat"
+version = "1.0.0"
+description = "NRW Real Estate Data Aggregation Tool"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+filterwarnings = ["ignore::DeprecationWarning"]

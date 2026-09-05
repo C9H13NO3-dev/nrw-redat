@@ -1,0 +1,8 @@
+.venv
+.git
+data
+node_modules
+.superpowers
+.pytest_cache
+__pycache__
+.env

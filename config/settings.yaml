@@ -1,0 +1,12 @@
+# Committed defaults — environment variables win (see redat/settings.py).
+public_url: http://192.168.188.64:8200
+cache_ttl_s: 21600
+destinations:            # commute + ÖPNV targets when the caller passes none
+  - {name: Essen Hbf, lat: 51.4508, lon: 7.0131, group: hbf}
+  - {name: Bochum Hbf, lat: 51.4785, lon: 7.2233, group: hbf}
+  - {name: Düsseldorf Hbf, lat: 51.2199, lon: 6.7943, group: hbf}
+oepnv_stops:             # VRR EFA stop ids for the fixed ÖPNV trip targets
+  - [Essen Hbf, "de:05113:9289"]
+  - [Bochum Hbf, "de:05911:5194"]
+  - [Düsseldorf Hbf, "de:05111:18235"]
+section_timeouts: {}     # e.g. {infrastruktur: 90}
