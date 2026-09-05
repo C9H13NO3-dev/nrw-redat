@@ -20,6 +20,7 @@ This is an informational aid only.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from typing import Any
 
@@ -30,6 +31,7 @@ from redat.http import headers
 logger = logging.getLogger(__name__)
 
 PB_BASE = "https://geo.essen.de/arcgis/rest/services/essen/Planen_und_Bauen/MapServer"
+SANIERUNG_BASE = "https://geo.essen.de/arcgis/rest/services/essen/Sanierung_Untersuchung/MapServer"
 
 # Key layers (from webmap config)
 L_BPLAN = 87
@@ -38,10 +40,12 @@ L_VSPERRE = 4
 L_AUFSTELLUNG = 7
 L_AUSLEGUNG = 6
 L_AUFHEBUNG = 89
+L_SATZUNG = 3          # "Sonstige Satzungen": Gestaltungs-/Erhaltungssatzungen, Vorkaufsrechtssatzungen
+L_SANIERUNG = 0        # Sanierung_Untersuchung: ART ∈ Sanierung | Sanierung abgeschlossen, Ausgleichsbetrag | Untersuchung; ORT
 
 
-def _query(layer: int, lat: float, lon: float, out_fields: str, record_count: int = 25) -> dict:
-    url = f"{PB_BASE}/{layer}/query"
+def _query(layer: int, lat: float, lon: float, out_fields: str, record_count: int = 25, base: str = PB_BASE) -> dict:
+    url = f"{base}/{layer}/query"
     params = {
         "f": "json",
         "where": "1=1",
@@ -122,6 +126,17 @@ def _attach_links(items: list[dict[str, Any]], kind: str) -> list[dict[str, Any]
     return out
 
 
+def _satzung_link(item: dict[str, Any]) -> dict[str, Any]:
+    """Move the ERKLAERURL/BEGRUNDURL columns into the card's `link` shape (Erklärung preferred)."""
+    erklaer, begruend = item.pop("erklaer_url", None), item.pop("begruend_url", None)
+    url = erklaer or begruend
+    if url:
+        item["link"] = {"label": "Satzung (PDF)", "url": url}
+    if item.get("name"):
+        item["name"] = re.sub(r"\s+", " ", item["name"]).strip()
+    return item
+
+
 def get_planning_signals(lat: float, lon: float) -> dict[str, Any]:
     """Return planning-related signals at the coordinate."""
 
@@ -164,7 +179,16 @@ def get_planning_signals(lat: float, lon: float) -> dict[str, Any]:
         auslegung = _attach_links(auslegung, "bauverfahren")
         aufhebung = _attach_links(aufhebung, "bauverfahren")
 
-        found = any([bplan, vhbp, vsperre, aufstellung, auslegung, aufhebung])
+        satzung = [_satzung_link(it) for it in _simplify_features(
+            _query(L_SATZUNG, lat, lon, out_fields="NR,NAME,DATUM,PLANID,BEGRUNDURL,ERKLAERURL"),
+            {"NR": "nr", "NAME": "name", "DATUM": "date", "PLANID": "plan_id", "BEGRUNDURL": "begruend_url", "ERKLAERURL": "erklaer_url"})]
+
+        sanierung = _simplify_features(
+            _query(L_SANIERUNG, lat, lon, out_fields="ART,ORT", base=SANIERUNG_BASE),
+            {"ORT": "name", "ART": "plan_type"},
+        )
+
+        found = any([bplan, vhbp, vsperre, aufstellung, auslegung, aufhebung, satzung, sanierung])
 
         return {
             "ok": True,
@@ -175,6 +199,8 @@ def get_planning_signals(lat: float, lon: float) -> dict[str, Any]:
             "aufstellungsbeschluss": aufstellung,
             "auslegungsbeschluss": auslegung,
             "aufhebungsbeschluss": aufhebung,
+            "satzung": satzung,
+            "sanierung": sanierung,
             "source": "geo.essen.de ArcGIS Planen_und_Bauen (MapServer point queries) + wapps.essen.de detail links",
         }
 

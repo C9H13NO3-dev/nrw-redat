@@ -304,6 +304,21 @@ def test_planning_essen_nothing_found(monkeypatch):
     assert S._fetch_planning_essen(CTX) == {"found": False, "items": []}
 
 
+def test_planning_essen_includes_satzung_and_sanierung(monkeypatch):
+    from redat.sources import planning_essen
+    monkeypatch.setattr(planning_essen, "get_planning_signals", lambda lat, lon: {
+        "ok": True, "found": True, "bplan": [], "vhbplan": [], "veraenderungssperre": [], "aufstellungsbeschluss": [],
+        "auslegungsbeschluss": [], "aufhebungsbeschluss": [],
+        "satzung": [{"nr": "S22", "name": "Erhaltungssatzung Langenbrahm", "date": "07.11.1980", "link": {"label": "Satzung (PDF)", "url": "https://e/s22.pdf"}}],
+        "sanierung": [{"name": "Werden", "plan_type": "Sanierung abgeschlossen, Ausgleichsbetrag"}]})
+    d = S._fetch_planning_essen(CTX)
+    assert d["items"] == [
+        {"category": "Satzung", "name": "S22 Erhaltungssatzung Langenbrahm", "link": {"label": "Satzung (PDF)", "url": "https://e/s22.pdf"}},
+        {"category": "Sanierungsgebiet", "name": "Werden (Sanierung abgeschlossen, Ausgleichsbetrag)", "link": None},
+    ]
+    assert S.SECTIONS["planning_essen"].cache_version == 2
+
+
 def test_planning_bochum_same_shape(monkeypatch):
     from redat.sources import planning_bochum
     monkeypatch.setattr(planning_bochum, "get_bochum_bplan_outline", lambda lat, lon: {

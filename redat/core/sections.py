@@ -319,6 +319,8 @@ _ESSEN_LISTS = (
     ("aufstellungsbeschluss", "Aufstellungsbeschluss"),
     ("auslegungsbeschluss", "Auslegungsbeschluss"),
     ("aufhebungsbeschluss", "Aufhebungsbeschluss"),
+    ("satzung", "Satzung"),
+    ("sanierung", "Sanierungsgebiet"),
 )
 
 
@@ -368,7 +370,8 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("gfnp", "Flächennutzungsplan (GFNP)", "🗺️", 30, "geo.essen.de — Gemeinsamer Flächennutzungsplan", _fetch_gfnp),
     Section("schutzgebiete", "Schutzgebiete", "🌳", 25,
             "LANUV LINFOS (NSG/LSG/FFH/VSG/Naturpark/Biotope) · Wasserschutzgebiete NRW", _fetch_schutzgebiete),
-    Section("planning_essen", "Bauleitplanung Essen", "🏗️", 30, "geo.essen.de — Planen und Bauen", _fetch_planning_essen),
+    Section("planning_essen", "Bauleitplanung Essen", "🏗️", 30, "geo.essen.de — Planen und Bauen · Satzungen · Sanierungsgebiete", _fetch_planning_essen,
+            cache_version=2),
     Section("planning_bochum", "Bauleitplanung Bochum", "🏗️", 30, "RVR INSPIRE Bauleitplanung (WMS GetFeatureInfo)", _fetch_planning_bochum),
     Section("denkmal", "Denkmalschutz", "🏛️", 25,
             "RVR Geoportal Ruhr — Denkmäler (INSPIRE WFS) · Untere Denkmalbehörden Essen/Bochum", _fetch_denkmal),
