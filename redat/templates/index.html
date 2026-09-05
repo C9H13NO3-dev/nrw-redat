@@ -111,8 +111,15 @@
             <div class="flex items-center gap-2 text-xs whitespace-nowrap">
                 <span class="px-2 py-0.5 rounded border" :class="tierBadge('{{ s.tier }}').cls"
                       x-text="tierBadge('{{ s.tier }}').icon + ' ' + tierBadge('{{ s.tier }}').label"></span>
-                <span x-show="sections['{{ s.key }}']?.status === 'ok' && sections['{{ s.key }}']?.took_ms != null"
+                <span x-show="sections['{{ s.key }}']?.status === 'ok' && !sections['{{ s.key }}']?.cached && sections['{{ s.key }}']?.took_ms != null"
                       class="text-gray-400" x-text="sections['{{ s.key }}']?.took_ms + ' ms'"></span>
+                <span x-show="sections['{{ s.key }}']?.cached" class="text-gray-400"
+                      :title="'Aus dem Zwischenspeicher, berechnet am ' + fmtDateTime(sections['{{ s.key }}']?.cached_at)"
+                      x-text="'Stand ' + fmtDate(sections['{{ s.key }}']?.cached_at)"></span>
+                <button x-show="['ok', 'empty'].includes(sections['{{ s.key }}']?.status)"
+                        @click="load('{{ s.key }}', { fresh: true, force: !!sections['{{ s.key }}']?.forced })"
+                        class="text-gray-400 hover:text-gray-700 transition" title="Neu berechnen (Zwischenspeicher umgehen)"
+                        aria-label="Neu berechnen">↻</button>
             </div>
         </div>
 

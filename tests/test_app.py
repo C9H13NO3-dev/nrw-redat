@@ -47,3 +47,34 @@ def test_docs_served():
     client = TestClient(appmod.create_app())
     assert client.get("/docs").status_code == 200
     assert client.get("/openapi.json").json()["info"]["version"] == redat.__version__
+
+
+def test_healthz_reports_cache_stats(monkeypatch):
+    monkeypatch.setattr(appmod, "chromium_available", lambda: False)
+    with TestClient(appmod.create_app()) as client:
+        body = client.get("/healthz").json()
+    assert body["cache"] == {"entries": 0, "bytes": 0, "expired": 0}
+
+
+def test_sweep_cache_purges_expired_and_reports(monkeypatch):
+    import redat.store.cache as m
+    from redat.store.cache import SectionCache
+    now = [1e6]; monkeypatch.setattr(m.time, "time", lambda: now[0])
+    c = SectionCache(10)
+    c.put(c.key("noise", 1, 1, None, False), {"key": "noise", "status": "ok", "data": {}})
+    c.put(c.key("noise", 2, 2, None, False), {"key": "noise", "status": "ok", "data": {}})
+    now[0] += 11
+    c.put(c.key("noise", 3, 3, None, False), {"key": "noise", "status": "ok", "data": {}})
+    st = appmod.sweep_cache(c)
+    assert st["entries"] == 1 and st["expired"] == 0
+
+
+def test_cache_survives_an_app_restart(monkeypatch):
+    monkeypatch.setattr(appmod, "chromium_available", lambda: False)
+    import redat.core.analyze as A
+    env = {"key": "noise", "tier": "area", "status": "ok", "data": {}, "message": None, "source": "x", "took_ms": 1}
+    monkeypatch.setattr(A, "run_section", lambda key, ctx, precision=None, force=False: env)
+    with TestClient(appmod.create_app()) as c1:
+        assert "cached" not in c1.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0}).json()
+    with TestClient(appmod.create_app()) as c2:          # same REDAT_DATA_DIR, new process state
+        assert c2.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0}).json()["cached"] is True

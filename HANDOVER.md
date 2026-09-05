@@ -16,6 +16,7 @@ cd /srv/nrw-redat
 cp .env.example .env    # GEOAPIFY_API_KEY from /srv/house-hunter/.env, REDAT_PUBLIC_URL=http://192.168.188.64:8200
 mkdir -p data           # bind mount target; data/source/{boris,flood,elections} must be rsynced in separately (see below)
 docker compose up -d --build
+docker compose run --rm --no-deps redat python scripts/build_boris_gpkg.py   # once: index the 15 BRW shapefiles into data/source/boris/brw.gpkg (~5 min, chunked, <2 GB RAM)
 curl -s localhost:8200/healthz
 .venv/bin/python scripts/smoke_analyze.py --base-url http://localhost:8200   # manual live check: full browser flow, not run by pytest
 ```
@@ -35,6 +36,17 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   geodata directories at `/srv/house-hunter/data/{boris,flood,elections}` (exact source paths per
   `docs/2026-09-05-nrw-redat-plan.md` Task 1). Not tracked in git, not part of the Docker build context.
   If this host is ever rebuilt, this copy must be redone before `boris`/`flood`/`btw` sources will work.
+  All of it is also directly downloadable (dl-de/zero-2-0, no login): BORIS
+  `https://www.opengeodata.nrw.de/produkte/infrastruktur_bauen_wohnen/boris/BRW/BRW_{year}_EPSG25832_Shape.zip`
+  (2011-2025, unpack each into `boris/BRW_{year}/`), HWRM
+  `https://www.opengeodata.nrw.de/produkte/umwelt_klima/wasser/hochwasser/hwrm/{HQhaeufig,HQ100,HQextrem}-Ueberschwemmungsgrenzen_EPSG25832_Shape.zip`
+  (convert to `flood/hwrm/{HQ}.gpkg` with geopandas/ogr2ogr, or leave the unpacked shapefile dirs for the
+  fallback), BTW25 geometry from the `btw.py` URL into `elections/btw25/wahlkreise_shp_geo/`.
+- **`data/source/boris/brw.gpkg`** — derived, not downloaded: `scripts/build_boris_gpkg.py` streams the 15
+  yearly shapefiles into one GeoPackage with an R-tree-indexed layer per year (`brw_2011` … `brw_2025`).
+  `boris.py` prefers it and falls back to the shapefiles per year, so it is optional for correctness but
+  it is what makes `boris_trend` fast (15 indexed bbox reads ≈ well under a second vs. ~2 s per
+  un-indexed shapefile scan, ×15). Rebuild after adding a year (existing layers are skipped).
 - **`.env`** — holds `GEOAPIFY_API_KEY` (required) and the optional `REDAT_API_KEY`. Git-ignored; never
   commit it.
 - `redat/data/{eea_aq_grid_2023.json, zensus_2022_grid.json.gz, certs/lencr_ye_chain.pem}` are, by
@@ -59,19 +71,20 @@ overwritten by `docker compose build`, so there is no separate image rollback �
 - **Bochum air quality:** the `air_quality` card's "aktuell" rating for Bochum addresses comes from the
   CAMS/citizen-sensor fallback, not a continuous monitoring station — the nearest one is Hattingen-
   Blankenstein, ~9 km away. This is by design, not a bug.
-- **BORIS timeout:** `boris` (Bodenrichtwert) makes no HTTP call at all — it reads local shapefiles with
+- **BORIS timeout:** `boris` (Bodenrichtwert) makes no HTTP call at all — it reads local geodata with
   geopandas in a `multiprocessing.Process` capped at a hard 12 s (`redat/sources/boris.py`), well inside
-  the card's 25 s section timeout. A slow cold-cache shapefile read (e.g. after page-cache eviction) can
-  still trip that 12 s cap, in which case the subprocess is killed and the card returns
-  `status: error`, `message: "BORIS timeout"` — a genuine but transient section error, not a WMS
-  slowdown. A retry of the same address usually succeeds — observed live during Task 10 verification
-  (first Brückstraße 1 run: `boris` errored at 12 s; retried run: `boris ok` in 295 ms).
-- **Cache semantics:** `ok`/`empty` envelopes are cached for `REDAT_CACHE_TTL_S` per
-  `(key, lat₄, lon₄, plot, force)` — by `/analyze` and `/section/{key}` alike (both routes consult
-  `SectionCache` via the shared `core.analyze.cached_section` helper); `error`/`gated` are never cached,
-  so a transient BORIS timeout self-heals without manual cache clearing. A `destinations` param
-  suppresses caching for the two sections it can affect (`commute`, `oepnv`) and nothing else — the
-  other 18 cards are cached as usual even on a request that also carries `destinations`.
+  the card's 25 s section timeout. With `brw.gpkg` in place (see "Non-git deploy assets") a lookup is a
+  few ms and the cap is never reached. On a shapefile-only deployment a cold, un-indexed read of a
+  200-400 MB file (~2 s, more under I/O contention) can still trip it, in which case the subprocess is
+  killed and the card returns `status: error`, `message: "BORIS timeout"` — transient; a retry of the
+  same address usually succeeds (observed during Task 10 verification: first Brückstraße 1 run errored at
+  12 s, the retry was `ok` in 295 ms).
+- **Cache semantics:** see README "Cache semantics" for the full contract. In short: persistent
+  (`cache` table in `redat.db`), bounded (expired first, then LRU), per-card TTL (`cache_ttls` yaml ›
+  registry `cache_ttl_s` › global 30 d; `air_quality` 1 h, `oepnv` 7 d), key = `(key, lat₄, lon₄, plot,
+  force, cache_version)`, `ok`/`empty` only, `destinations` suppresses caching for `commute`/`oepnv`,
+  `?fresh=1` re-runs and replaces, geocode/autocomplete cached in KV namespaces, `/healthz` exposes counts,
+  `scripts/cache_admin.py` for stats/purge. Both routes go through `core.analyze.cached_section`.
 
 ## Work log
 
@@ -115,6 +128,38 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   pinned that failure, so the redeployed container reported `chromium: false` on `/healthz` until the
   probe was moved to `anyio.to_thread.run_sync`. Regression test in `tests/test_app.py`.
 
+- **Task 12** (2026-09-05, redat.ares-hud.com deploy) — `boris_trend` was unusable on a host with the
+  real 15-year data: for a point outside every zone of a given year (common for pre-2020 stands in the
+  Essen centre) `lookup_bodenrichtwert()` fell through its 1 km bbox read to a 5 km re-read and then a
+  FULL shapefile load (~80 k polygons, 6-12 s, ~1 GB) — per year. The trend blew its 30 s timeout every
+  time, OOM-killed the 2 GB container once, and starved the other cards into timeouts during a page
+  analyze. Both fallbacks were dead weight: any zone that covers the point (or sits within the 10 m snap
+  tolerance) must intersect the 1 km bbox, so the wider reads could never find anything the first one
+  missed. Fixed by (a) making the lookup a single bbox read — no full load path exists any more, the
+  module-level year cache is gone — and (b) adding `scripts/build_boris_gpkg.py` + GeoPackage-first
+  source discovery (`_find_source`), which turns the ~2 s un-indexed shapefile scan into an R-tree
+  lookup. Regression tests: one-read-only, gpkg-over-shapefile preference, shapefile fallback, 10 m snap
+  bounds, chunked/idempotent build, half-written-layer rebuild, mixed-encoding repair. Found on the way:
+  the 2022-2024 `BRW_{year}_EPSG25832_Shape.zip` files declare UTF-8 in `.cpg` but ~400 rows each
+  (Gutachterausschuss Moers) are ISO-8859-1 - a plain GDAL read raises `UnicodeDecodeError`, which the
+  old lookup swallowed into `None` for any bbox touching such a row. Both the build script and the
+  shapefile fallback in `boris.py` now re-read as Latin-1 and repair per value
+  (`repair_mixed_encoding`). Live after the fix on redat.ares-hud.com: `boris_trend` 1.2 s cold
+  (was: timeout after 30 s + one OOM restart), `boris` ~130 ms, container RSS ~100 MB (was 1.4 GB).
+
+- **Task 13** (2026-09-05) — caching strategy for a public deployment with a 30-day retention wish. The
+  old `SectionCache` was a process dict with one 6 h TTL: lost on every redeploy, unbounded, and the same
+  TTL for live sensor data and yearly geodata. Replaced by a persistent SQLite cache in `redat.db`
+  (single connection + lock, WAL; `store/cache.py`) with: per-card TTL (`Section.cache_ttl_s`, yaml
+  `cache_ttls`, global default now 30 d; `air_quality` 1 h, `oepnv` 7 d), `Section.cache_version` in
+  the key, `cached_at` on hits, bounds (`cache_max_entries`/`cache_max_bytes`, expired-then-LRU eviction
+  on write, hourly sweep task in lifespan), `?fresh=1` as the explicit refresh path (`force` never was a
+  cache bypass — the README used to imply it), geocode/autocomplete KV caching (hits 30 d, misses 1 h,
+  autocomplete 7 d; outages never), `/healthz` cache counts, `scripts/cache_admin.py`, and a „Stand
+  dd.mm.yyyy" + ↻ per card on the website. Running totals keep bounds checks O(1); the cache is built in
+  `create_app()` (not lifespan) so it exists for every caller. 33 new tests. The host `.env` no longer
+  pins `REDAT_CACHE_TTL_S`.
+
 ## Open items
 
 - **Hunter cutover** (spec §11) is explicitly out of scope for this plan — a separate, later plan covers
@@ -134,9 +179,6 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   JSON error bodies instead of a rendered `404.html`/error page, unlike `/a/{unknown}`. Fix: an exception
   handler that renders an HTML error page for non-`/api` paths, plus manual float coercion for the m²
   query params.
-- **`SectionCache` has no size cap** — only lazy expiry (an entry is dropped on read after its TTL, never
-  proactively). Not a practical risk at LAN scale with a 6 h default TTL, but there is no ceiling at all.
-  Fix: a `max_entries` cap with oldest-expiry eviction on `put`, or a periodic sweep.
 - **`RunStore.save` has no retry on a run-id collision.** A 48-bit id collides with probability ~1 in
   2⁴⁸ per pair; an `IntegrityError` would surface as a 500. A `for _ in range(3)` retry loop closes it.
   Cosmetic.

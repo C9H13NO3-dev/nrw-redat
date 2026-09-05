@@ -1,6 +1,10 @@
 # Committed defaults — environment variables win (see redat/settings.py).
 public_url: http://192.168.188.64:8200
-cache_ttl_s: 21600
+cache_ttl_s: 2592000     # 30 days. The cache is persistent (redat.db) and bounded, see below.
+cache_ttls: {}           # per-card TTL overrides in seconds, e.g. {air_quality: 1800}; 0 disables caching for that card.
+                         # Registry defaults: air_quality 3600 (live sensors), oepnv 604800 (timetable); all else cache_ttl_s.
+cache_max_entries: 100000
+cache_max_bytes: 268435456   # 256 MiB of stored JSON; expired rows are evicted first, then least recently used.
 destinations:            # commute + ÖPNV targets when the caller passes none
   - {name: Essen Hbf, lat: 51.4508, lon: 7.0131, group: hbf}
   - {name: Bochum Hbf, lat: 51.4785, lon: 7.2233, group: hbf}

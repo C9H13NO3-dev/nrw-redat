@@ -12,7 +12,10 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_YAML = ROOT / "config" / "settings.yaml"
 
 _DEFAULTS = {
-    "cache_ttl_s": 21600,
+    "cache_ttl_s": 30 * 86400,      # persistent, per-section cache (see store/cache.py); live cards override
+    "cache_ttls": {},               # per-section TTL overrides, e.g. {air_quality: 1800}; 0 disables a card
+    "cache_max_entries": 100_000,
+    "cache_max_bytes": 256 * 1024 * 1024,
     "public_url": "http://192.168.188.64:8200",
     "log_level": "INFO",
     "destinations": [
@@ -46,6 +49,9 @@ class Settings:
     api_key: Optional[str]
     data_dir: Path
     cache_ttl_s: int
+    cache_ttls: dict
+    cache_max_entries: int
+    cache_max_bytes: int
     public_url: str
     log_level: str
     destinations: tuple[Destination, ...] = ()
@@ -101,6 +107,9 @@ def load_settings(env: Optional[Mapping[str, str]] = None, yaml_path: Optional[P
         api_key=(env.get("REDAT_API_KEY") or "").strip() or None,
         data_dir=data_dir,
         cache_ttl_s=_int(env, "REDAT_CACHE_TTL_S", int(y["cache_ttl_s"])),
+        cache_ttls={str(k): int(v) for k, v in (y.get("cache_ttls") or {}).items()},
+        cache_max_entries=_int(env, "REDAT_CACHE_MAX_ENTRIES", int(y["cache_max_entries"])),
+        cache_max_bytes=_int(env, "REDAT_CACHE_MAX_BYTES", int(y["cache_max_bytes"])),
         public_url=(env.get("REDAT_PUBLIC_URL") or y["public_url"]).rstrip("/"),
         log_level=(env.get("REDAT_LOG_LEVEL") or y["log_level"]).upper(),
         destinations=dests,

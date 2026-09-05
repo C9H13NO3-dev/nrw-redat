@@ -9,7 +9,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/python -m pytest -q                     # 443 tests, hermetic, ~6.5s
+.venv/bin/python -m pytest -q                     # 455 tests, hermetic, ~8s
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
 docker compose up -d --build                      # build gate: the test stage runs `pytest -q` and aborts the image on a red suite
 npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/redat.css --minify
@@ -28,7 +28,8 @@ and the website; its `cached_section()` helper is the single place that consults
 both `run_all()` (`/analyze`) and `api_section` (`/section/{key}`). `redat/api/v1.py` is the versioned
 JSON+PDF API (`/api/v1/*`, optional `X-Api-Key` via `api/auth.py`); `redat/web/pages.py` serves `/`,
 `/a/{id}`, `/quellen`. `redat/store/` is SQLite: `runs.py` (persisted analyses, base32 ids) and `cache.py`
-(`SectionCache`, TTL-based). `redat/report/` builds and renders the PDF (Jinja2 → Playwright Chromium).
+(`SectionCache`: persistent, bounded, per-card TTL, plus KV namespaces for geocode/autocomplete; built by
+`core.analyze.build_cache()`). `redat/report/` builds and renders the PDF (Jinja2 → Playwright Chromium).
 Per-source implementation notes (legend RGB tables, BBOX CRS traps, calibrated thresholds, the
 "never say X on the parcel" rules, etc.) are documented card-by-card in the five specs copied into
 `docs/2026-09-04-*.md` (originally written for house-hunter's `/analyze`; ported here verbatim as the
@@ -42,4 +43,4 @@ detail has drifted).
 - All UI copy (website + PDF report) is German.
 - Website partials (`redat/templates/analysis/_*.html`) keep the store name `app` — an intentional carry-over from the house-hunter partials' Alpine store contract; do not rename it.
 - `data_dir()` (in each `sources/*.py` module) is always a function, never a module-level constant — it must re-read `REDAT_DATA_DIR` per call so tests can monkeypatch it.
-- `ok`/`empty` envelopes are cached for `REDAT_CACHE_TTL_S` per `(key, lat₄, lon₄, plot, force)` — by `/analyze` and `/section/{key}` alike; `error`/`gated` are never cached; a `destinations` param suppresses caching for the two sections it can affect (`commute`, `oepnv`) and nothing else.
+- Cache contract (README "Cache semantics"): `ok`/`empty` envelopes only, key `(key, lat₄, lon₄, plot, force, cache_version)`, TTL per card (`cache_ttls` yaml › `Section.cache_ttl_s` › `cache_ttl_s` 30 d), `error`/`gated` never cached, `destinations` suppresses caching for `commute`/`oepnv` only, `?fresh=1` is the cache bypass (`force` is the parcel-gate override, not a cache flag). Bump `Section.cache_version` when a card's `data` shape or meaning changes.

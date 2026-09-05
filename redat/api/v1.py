@@ -12,7 +12,6 @@ from redat.report.builder import ReportPayloadError, build_report_context
 from redat.report.pdf import RendererUnavailable
 from redat.report.service import pdf_response, render_pdf
 from redat.settings import get_settings
-from redat.sources.geoapify import autocomplete_address
 
 logger = logging.getLogger(__name__)
 
@@ -36,37 +35,40 @@ def api_sections():
 
 
 @router.get("/geocode")
-def api_geocode(address: str):
-    return A.geocode_dict(address, A.geocode_or_raise(address))
+def api_geocode(request: Request, address: str):
+    return A.geocode_dict(address, A.geocode_or_raise(address, cache=request.app.state.cache))
 
 
 @router.get("/autocomplete")
-def api_autocomplete(text: str, limit: int = 8):
-    return {"results": autocomplete_address(text, limit=limit)}
+def api_autocomplete(request: Request, text: str, limit: int = 8):
+    return {"results": A.autocomplete_cached(text, limit, cache=request.app.state.cache)}
 
 
 @router.get("/section/{key}")
 def api_section(request: Request, key: str, lat: float, lon: float, precision: Optional[str] = None,
-                plot_size_m2: Optional[float] = None, force: bool = False, destinations: Optional[str] = None):
+                plot_size_m2: Optional[float] = None, force: bool = False, destinations: Optional[str] = None,
+                fresh: bool = False):
+    """`force` lifts the parcel gate; `fresh` skips the cache read and re-runs the card (result replaces the cached one)."""
     if key not in SECTIONS:
         raise HTTPException(status_code=404, detail=f"Unbekannte Sektion: {key}")
     ctx = Ctx(lat=lat, lon=lon, plot_size_m2=plot_size_m2, destinations=_destinations(destinations))
-    return A.cached_section(key, ctx, precision=precision, force=force, cache=request.app.state.cache)
+    return A.cached_section(key, ctx, precision=precision, force=force, cache=request.app.state.cache, fresh=fresh)
 
 
-def _analyze_sync(request: Request, address: str, plot_size_m2, force: bool, destinations) -> dict:
-    g = A.geocode_or_raise(address)
+def _analyze_sync(request: Request, address: str, plot_size_m2, force: bool, destinations, fresh: bool = False) -> dict:
+    cache = request.app.state.cache
+    g = A.geocode_or_raise(address, cache=cache)
     sections = A.run_all(lat=g.latitude, lon=g.longitude, precision=g.precision, plot_size_m2=plot_size_m2,
-                         force=force, destinations=destinations, cache=request.app.state.cache)
+                         force=force, destinations=destinations, cache=cache, fresh=fresh)
     return {"geocode": A.geocode_dict(address, g), "sections": sections}
 
 
 @router.get("/analyze")
 async def api_analyze(request: Request, address: str, plot_size_m2: Optional[float] = None,
                       living_space_m2: Optional[float] = None, force: bool = False,
-                      destinations: Optional[str] = None, save: bool = False):
+                      destinations: Optional[str] = None, save: bool = False, fresh: bool = False):
     dests = _destinations(destinations)
-    out = await run_in_threadpool(_analyze_sync, request, address, plot_size_m2, force, dests)
+    out = await run_in_threadpool(_analyze_sync, request, address, plot_size_m2, force, dests, fresh)
     if save:
         run = A.payload_to_run({"address": address, "geocode": out["geocode"], "plot_size_m2": plot_size_m2,
                                 "living_space_m2": living_space_m2, "sections": out["sections"]})
@@ -129,9 +131,9 @@ async def api_report_post(request: Request):
 @router.get("/report")
 async def api_report_get(request: Request, address: str, plot_size_m2: Optional[float] = None,
                          living_space_m2: Optional[float] = None, force: bool = True,
-                         destinations: Optional[str] = None):
+                         destinations: Optional[str] = None, fresh: bool = False):
     dests = _destinations(destinations)
-    out = await run_in_threadpool(_analyze_sync, request, address, plot_size_m2, force, dests)
+    out = await run_in_threadpool(_analyze_sync, request, address, plot_size_m2, force, dests, fresh)
     return await _pdf({"address": address, "geocode": out["geocode"], "plot_size_m2": plot_size_m2,
                        "living_space_m2": living_space_m2, "sections": out["sections"]})
 

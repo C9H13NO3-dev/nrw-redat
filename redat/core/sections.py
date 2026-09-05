@@ -50,6 +50,12 @@ class Section:
     timeout_s: float
     source: str  # attribution line shown under the card
     fetch: Callable[[Ctx], Optional[dict]]  # normalized data, or None = "nothing here"
+    # Cache policy. cache_ttl_s None -> settings.cache_ttl_s (30 d default): right for geodata that
+    # changes yearly at most. Set it only where the source is live/time-bound. Bump cache_version
+    # when the card's `data` shape or meaning changes - it is part of the cache key, so stale
+    # envelopes from the previous version are simply never found again.
+    cache_ttl_s: Optional[float] = None
+    cache_version: int = 1
 
     @property
     def tier(self) -> str:  # "parcel" | "area"
@@ -328,14 +334,16 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("denkmal", "Denkmalschutz", "🏛️", 25,
             "RVR Geoportal Ruhr — Denkmäler (INSPIRE WFS) · Untere Denkmalbehörden Essen/Bochum", _fetch_denkmal),
     Section("amenities", "Entfernungen (POIs)", "📍", 25, "Geoapify Places", _fetch_amenities),
-    Section("oepnv", "ÖPNV-Erreichbarkeit", "🚋", 45, "VRR EFA-Fahrplanauskunft (efa.vrr.de) — Fahrplan-Stichtag, kein Echtzeit", _fetch_oepnv),
+    Section("oepnv", "ÖPNV-Erreichbarkeit", "🚋", 45, "VRR EFA-Fahrplanauskunft (efa.vrr.de) — Fahrplan-Stichtag, kein Echtzeit", _fetch_oepnv,
+            cache_ttl_s=7 * 86400),   # trips are normalised to "next Tuesday 08:00"; only timetable changes matter
     Section("zensus", "Nachbarschaft (Zensus 2022)", "🏘️", 5, "Destatis, Zensus 2022 — 100 m-Gitterdaten (dl-de/by-2-0)", _fetch_zensus),
     Section("energie", "Energie (Solar · Erdwärme · Wärmeplanung)", "☀️", 30,
             "LANUK Solarkataster NRW · GD NRW Geothermie · Kommunale Wärmeplanung Essen/Bochum", _fetch_energie),
     Section("breitband", "Breitband & Mobilfunk", "🌐", 30, "© BNetzA, Breitbandatlas — Datenstand 12.2025, 100 m-Raster", _fetch_breitband),
     Section("infrastruktur", "Hochspannung, Leitungen & Industrie", "⚡", 60,
             "OpenStreetMap (Overpass) · EEA Industrial Emissions Portal (IED/E-PRTR)", _fetch_infrastruktur),
-    Section("air_quality", "Luftqualität", "🌬️", 25, "EEA 1 km-Raster 2023 · UBA/LANUV Messstationen · Sensor.Community · CAMS", _fetch_air_quality),
+    Section("air_quality", "Luftqualität", "🌬️", 25, "EEA 1 km-Raster 2023 · UBA/LANUV Messstationen · Sensor.Community · CAMS", _fetch_air_quality,
+            cache_ttl_s=3600),        # "aktuell" comes from live station/sensor readings
     Section("btw", "Bundestagswahl", "🗳️", 30, "Die Bundeswahlleiterin (kerg2.csv, Zweitstimmen, Wahlkreis)", _fetch_btw),
     Section("commute", "Fahrzeiten (Auto)", "🚗", 30, "Geoapify Routing", _fetch_commute),
 ]}

@@ -9,7 +9,8 @@ def test_defaults_from_yaml_when_env_empty(tmp_path):
     cfg = s.load_settings(env={"GEOAPIFY_API_KEY": "k"}, yaml_path=None)
     assert cfg.geoapify_api_key == "k"
     assert cfg.api_key is None
-    assert cfg.cache_ttl_s == 21600
+    assert cfg.cache_ttl_s == 30 * 86400          # 30 days: the cache is persistent and per-section now
+    assert cfg.cache_ttls == {} and cfg.cache_max_entries == 100_000 and cfg.cache_max_bytes == 256 * 1024 * 1024
     assert cfg.public_url == "http://192.168.188.64:8200"
     assert cfg.log_level == "INFO"
     assert [d.name for d in cfg.destinations] == ["Essen Hbf", "Bochum Hbf", "Düsseldorf Hbf"]
@@ -57,3 +58,18 @@ def test_get_settings_is_cached_and_resettable(monkeypatch):
     assert a is s.get_settings()
     s.reset_settings()
     assert a is not s.get_settings()
+
+
+def test_cache_bounds_and_per_section_ttls_from_yaml_and_env(tmp_path):
+    y = tmp_path / "s.yaml"
+    y.write_text("cache_ttls: {air_quality: 1800, oepnv: 0}\ncache_max_entries: 10\ncache_max_bytes: 2048\n")
+    cfg = s.load_settings(env={"GEOAPIFY_API_KEY": "k"}, yaml_path=y)
+    assert cfg.cache_ttls == {"air_quality": 1800, "oepnv": 0}
+    assert cfg.cache_max_entries == 10 and cfg.cache_max_bytes == 2048
+    cfg = s.load_settings(env={"GEOAPIFY_API_KEY": "k", "REDAT_CACHE_MAX_ENTRIES": "5", "REDAT_CACHE_MAX_BYTES": "1024"}, yaml_path=y)
+    assert cfg.cache_max_entries == 5 and cfg.cache_max_bytes == 1024
+
+
+def test_bad_cache_bounds_fail_loudly():
+    with pytest.raises(s.SettingsError, match="REDAT_CACHE_MAX_BYTES"):
+        s.load_settings(env={"GEOAPIFY_API_KEY": "k", "REDAT_CACHE_MAX_BYTES": "lots"}, yaml_path=None)

@@ -91,3 +91,63 @@ def test_payload_run_roundtrip():
                    "sections": {"noise": {"status": "ok"}}}
     back = A.run_to_payload({**run, "id": "abc", "created_at": "2026-09-05T10:00:00Z"})
     assert back == payload
+
+
+# --------------------------------------------------------------------------- geocode / autocomplete caching
+def test_geocode_or_raise_caches_hits_and_misses_but_not_outages(monkeypatch):
+    calls = []
+    hit = GeocodeResult(latitude=51.45, longitude=7.01, precision="building", formatted_address="Kettwiger Str. 1, Essen")
+
+    def fake(address):
+        calls.append(address)
+        if address == "down":
+            raise GeocoderUnavailable("x")
+        return hit if address.startswith("Kettwiger") else None
+
+    monkeypatch.setattr(A, "geocode_with_precision", fake)
+    cache = SectionCache(3600)
+    assert A.geocode_or_raise("Kettwiger Str. 1, Essen", cache=cache) == hit
+    assert A.geocode_or_raise("  kettwiger  str. 1,  ESSEN ", cache=cache) == hit    # normalised key: case + whitespace
+    assert calls == ["Kettwiger Str. 1, Essen"]
+    with pytest.raises(HTTPException) as e1:
+        A.geocode_or_raise("nirgendwo", cache=cache)
+    with pytest.raises(HTTPException) as e2:
+        A.geocode_or_raise("nirgendwo", cache=cache)
+    assert e1.value.status_code == e2.value.status_code == 422 and calls.count("nirgendwo") == 1   # negative result cached
+    for _ in range(2):
+        with pytest.raises(HTTPException) as e3:
+            A.geocode_or_raise("down", cache=cache)
+        assert e3.value.status_code == 502
+    assert calls.count("down") == 2                      # outages are never cached
+    assert cache.stats()["by_namespace"] == {"geocode": 2}
+
+
+def test_geocode_cache_ttls(monkeypatch):
+    import redat.store.cache as m
+    now = [1e6]; monkeypatch.setattr(m.time, "time", lambda: now[0])
+    calls = []
+    hit = GeocodeResult(latitude=51.45, longitude=7.01, precision="building", formatted_address="x")
+    monkeypatch.setattr(A, "geocode_with_precision", lambda a: (calls.append(a), hit if a == "hit" else None)[1])
+    cache = SectionCache(3600)
+    A.geocode_or_raise("hit", cache=cache)
+    with pytest.raises(HTTPException):
+        A.geocode_or_raise("miss", cache=cache)
+    now[0] += A.GEOCODE_MISS_TTL_S + 1
+    with pytest.raises(HTTPException):
+        A.geocode_or_raise("miss", cache=cache)            # negative entries live only GEOCODE_MISS_TTL_S
+    A.geocode_or_raise("hit", cache=cache)
+    assert calls == ["hit", "miss", "miss"]
+    now[0] += A.GEOCODE_TTL_S
+    A.geocode_or_raise("hit", cache=cache)
+    assert calls == ["hit", "miss", "miss", "hit"]
+
+
+def test_autocomplete_cached(monkeypatch):
+    calls = []
+    monkeypatch.setattr(A, "autocomplete_address", lambda text, limit=8: (calls.append((text, limit)), [{"formatted": text}])[1])
+    cache = SectionCache(3600)
+    assert A.autocomplete_cached("Kettw", 8, cache=cache) == [{"formatted": "Kettw"}]
+    assert A.autocomplete_cached("kettw ", 8, cache=cache) == [{"formatted": "Kettw"}]
+    A.autocomplete_cached("Kettw", 5, cache=cache)
+    assert calls == [("Kettw", 8), ("Kettw", 5)]
+    assert A.autocomplete_cached("", 8, cache=cache) == [] and len(calls) == 2   # empty input never hits the API

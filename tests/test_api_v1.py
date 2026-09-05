@@ -46,7 +46,7 @@ def test_geocode(client):
 
 
 def test_autocomplete(client, monkeypatch):
-    monkeypatch.setattr(V, "autocomplete_address", lambda text, limit=8: [{"formatted": text, "lat": 1, "lon": 2}])
+    monkeypatch.setattr(A, "autocomplete_address", lambda text, limit=8: [{"formatted": text, "lat": 1, "lon": 2}])   # call site moved into analyze (cached)
     r = client.get("/api/v1/autocomplete", params={"text": "Brück", "limit": 3})
     assert r.status_code == 200 and r.json() == {"results": [{"formatted": "Brück", "lat": 1, "lon": 2}]}
 
@@ -155,3 +155,35 @@ def test_run_report_pdf(client):
     r = client.get(f"/api/v1/run/{rid}/report.pdf")
     assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
     assert client.get("/api/v1/run/zzzzzzzzzz/report.pdf").status_code == 404
+
+
+def test_fresh_param_bypasses_cache_on_section_and_analyze(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(A, "run_section", lambda key, ctx, precision=None, force=False: (calls.append(key), _env(key))[1])
+    client.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0})
+    r = client.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0, "fresh": 1})
+    assert "cached" not in r.json() and calls == ["noise", "noise"]
+    assert client.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0}).json()["cached"] is True
+    calls.clear()
+    client.get("/api/v1/analyze", params={"address": "Brückstraße 1, Essen"})
+    r = client.get("/api/v1/analyze", params={"address": "Brückstraße 1, Essen", "fresh": 1})
+    assert all("cached" not in env for env in r.json()["sections"].values())
+    assert len(calls) == 2 * len(A.SECTIONS)
+
+
+def test_analyze_geocodes_once_per_address(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(A, "geocode_with_precision", lambda a: (calls.append(a), OK)[1])
+    client.get("/api/v1/analyze", params={"address": "Brückstraße 1, Essen"})
+    client.get("/api/v1/analyze", params={"address": "brückstraße 1,  essen"})
+    client.get("/api/v1/geocode", params={"address": "Brückstraße 1, Essen"})
+    assert calls == ["Brückstraße 1, Essen"]
+
+
+def test_autocomplete_route_is_cached(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(A, "autocomplete_address", lambda text, limit=8: (calls.append(text), [{"formatted": "Brückstraße"}])[1])
+    for _ in range(2):
+        r = client.get("/api/v1/autocomplete", params={"text": "Brück", "limit": 8})
+        assert r.json() == {"results": [{"formatted": "Brückstraße"}]}
+    assert calls == ["Brück"]

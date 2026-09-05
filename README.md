@@ -17,7 +17,7 @@ API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring
 git clone <this repo> nrw-redat && cd nrw-redat
 cp .env.example .env            # fill in GEOAPIFY_API_KEY (see below)
 docker compose up -d --build    # builds on :8200 — the build stage runs pytest; a red suite aborts the build
-curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":20}
+curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":20,"cache":{"entries":…,"bytes":…,"expired":…}}
 ```
 
 `.env` (git-ignored, copy from `.env.example`):
@@ -27,7 +27,8 @@ curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":tr
 | `GEOAPIFY_API_KEY` | Required — geocoding, autocomplete, amenities, commute. Same key as House Hunter's `.env`. |
 | `REDAT_API_KEY` | Optional. When set, every `/api/*` route requires an `X-Api-Key` header. Leave empty for LAN-open (the agreed default) — see "Known limitations" in `HANDOVER.md` for why the website's own cards stop loading if you set this. |
 | `REDAT_DATA_DIR` | Where `redat.db` and `source/{boris,flood,elections}` live. `/data` inside the container (bind-mounted from `./data` by `docker-compose.yml`). |
-| `REDAT_CACHE_TTL_S` | Section result cache TTL in seconds (default 21600 = 6 h). |
+| `REDAT_CACHE_TTL_S` | Default cache TTL in seconds for cards without their own (default 2592000 = 30 d, `config/settings.yaml`). Per-card TTLs: `cache_ttls` in settings.yaml. |
+| `REDAT_CACHE_MAX_ENTRIES` / `REDAT_CACHE_MAX_BYTES` | Cache bounds (defaults 100 000 entries / 256 MiB). Expired rows are evicted first, then least recently used. |
 | `REDAT_PUBLIC_URL` | Base URL used to build permalinks (e.g. `http://192.168.188.64:8200`). |
 | `REDAT_LOG_LEVEL` | Python logging level. |
 
@@ -39,6 +40,12 @@ excludes the top-level `data/` bind-mount directory). The smaller, still-large `
 files (EEA air-quality grid, Zensus 2022 grid, the letsencrypt intermediate cert for the Breitbandatlas
 host) **are** committed and shipped in the image — they are a different directory from the host bind
 mount. See `HANDOVER.md` for the exact rsync source and the deploy runbook.
+
+Once the BORIS shapefiles are in place, run `scripts/build_boris_gpkg.py` once (see `HANDOVER.md`, "Deploy
+runbook"). It streams the 15 yearly shapefiles into `data/source/boris/brw.gpkg`, one R-tree-indexed layer
+per year; `boris.py` prefers that file and falls back to the shapefiles for any year it lacks. Without it
+every BORIS lookup is an un-indexed scan of a 200-400 MB shapefile (~2 s cold), which makes the 15-year
+`boris_trend` card slow and, under load, prone to its 30 s timeout.
 
 ## API overview (`/api/v1`)
 
@@ -68,9 +75,26 @@ i.e. `destinations=[{"name":"Arbeit","lat":51.45,"lon":7.01,"group":"work"}]` be
 
 ## Cache semantics
 
-`ok`/`empty` envelopes are cached for `REDAT_CACHE_TTL_S` per `(key, lat₄, lon₄, plot, force)` — by
-`/analyze` and `/section/{key}` alike; `error`/`gated` are never cached; a `destinations` param
-suppresses caching for the two sections it can affect (`commute`, `oepnv`) and nothing else.
+The cache is **persistent** (a table in `redat.db`, survives restarts and redeploys), **bounded**
+(`cache_max_entries` / `cache_max_bytes`; expired rows are evicted first, then least recently used) and
+**per card**:
+
+- `ok`/`empty` envelopes are stored per `(key, lat₄, lon₄, plot, force, cache_version)` — by `/analyze`
+  and `/section/{key}` alike; `error`/`gated` are never cached; a `destinations` param suppresses caching
+  for the two sections it can affect (`commute`, `oepnv`) and nothing else.
+- TTL per card: `settings.yaml` `cache_ttls` › the card's registry `cache_ttl_s` › the global
+  `cache_ttl_s` (30 days). Registry defaults: `air_quality` 1 h (live sensor readings), `oepnv` 7 days
+  (timetable); everything else is geodata that changes yearly at most and takes the 30 days. `0` disables
+  caching for a card.
+- A cached envelope carries `cached: true` and `cached_at` (ISO-8601 UTC); the website shows it as
+  „Stand dd.mm.yyyy" with a ↻ button. `?fresh=1` on `/section/{key}`, `/analyze` and `GET /report`
+  skips the cache read and re-runs the card(s); the fresh result replaces the cached one. (`force` lifts
+  the parcel gate and has nothing to do with the cache.)
+- Geocoding and autocomplete results are cached in the same store (hits 30 days, unknown addresses 1 h,
+  autocomplete 7 days; outages are never cached) — Geoapify is the metered resource.
+- Ops: `/healthz` reports `cache.{entries,bytes,expired}`; `scripts/cache_admin.py stats|purge` inspects or
+  purges (`--expired`, `--section KEY` e.g. after a new BRW year, `--all`). Bumping a card's
+  `cache_version` in `core/sections.py` invalidates its entries on the next deploy.
 
 ## Deep link
 

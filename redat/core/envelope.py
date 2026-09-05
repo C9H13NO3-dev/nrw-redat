@@ -49,6 +49,16 @@ def timeout_for(section) -> float:
     return float(get_settings().section_timeouts.get(section.key, section.timeout_s))
 
 
+def cache_ttl_for(section) -> int:
+    """settings.yaml `cache_ttls` > registry `cache_ttl_s` > global `cache_ttl_s`. 0 disables caching for the card."""
+    s = get_settings()
+    if section.key in s.cache_ttls:
+        return int(s.cache_ttls[section.key])
+    if section.cache_ttl_s is not None:
+        return int(section.cache_ttl_s)
+    return int(s.cache_ttl_s)
+
+
 def run_section(key: str, ctx: Ctx, *, precision: Optional[str], force: bool) -> dict:
     """Return the envelope for `key`. Raises KeyError only for an unknown key."""
     section = _sections.SECTIONS[key]

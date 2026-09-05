@@ -118,7 +118,7 @@ window.analysisPage = function (config) {
             }
         },
 
-        async load(key, { force = false } = {}) {
+        async load(key, { force = false, fresh = false } = {}) {
             const meta = manifest.find(s => s.key === key);
             if (!meta || !this.geocode) return;
             const myRun = this.runId;
@@ -128,6 +128,7 @@ window.analysisPage = function (config) {
             if (this.geocode.precision) params.set('precision', this.geocode.precision);
             if (this.plotSize) params.set('plot_size_m2', this.plotSize);
             if (force) params.set('force', '1');
+            if (fresh) params.set('fresh', '1');   // skip the server cache, re-run the card
 
             const ctrl = new AbortController();
             const timer = setTimeout(() => ctrl.abort(), (meta.timeout_s + 5) * 1000);
@@ -148,6 +149,7 @@ window.analysisPage = function (config) {
             } finally {
                 clearTimeout(timer);
             }
+            envelope.forced = force;               // so a later refresh keeps the gate override
             this.sections[key] = envelope;
             if (envelope.status === 'ok') this.$nextTick(() => this.renderChart(key));
         },
@@ -241,6 +243,18 @@ window.analysisPage = function (config) {
             if (p === 'street') return { icon: '🟡', label: 'straßengenau', cls: 'bg-yellow-100 text-yellow-800' };
             if (p === 'coordinates') return { icon: '📍', label: 'Koordinaten', cls: 'bg-blue-100 text-blue-800' };
             return { icon: '⚪', label: 'ortsgenau', cls: 'bg-gray-100 text-gray-700' };
+        },
+
+        fmtDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return isNaN(d) ? '' : d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        },
+
+        fmtDateTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return isNaN(d) ? '' : d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         },
 
         tierBadge(tier) {

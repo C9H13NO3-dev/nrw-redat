@@ -64,3 +64,8 @@ def test_pages_never_need_api_key(monkeypatch):
     from redat.app import create_app
     with TestClient(create_app()) as c:
         assert c.get("/").status_code == 200 and c.get("/quellen").status_code == 200
+
+
+def test_index_offers_a_cache_bypassing_reload_per_card(client):
+    r = client.get("/")
+    assert "Neu berechnen" in r.text and "fresh: true" in r.text and "cached_at" in r.text
