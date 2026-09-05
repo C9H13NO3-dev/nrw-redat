@@ -1,0 +1,32 @@
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Baugrund (BK50, nicht grundstücksscharf)</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+  <div class="kpi">
+    <div class="label">Bodentyp</div>
+    <div class="value" style="font-size: 11pt">{{ d.get("bodentyp") or "—" }}</div>
+    {% if d.get("bodenart") %}<div class="sub">{{ d.bodenart }}</div>{% endif %}
+  </div>
+</div>
+<table class="mt">
+  <tbody>
+    {% for label, key in [("Hauptbodenart (BBodSchG)", "hauptbodenart"), ("Grundwasser", "grundwasser"), ("Staunässe", "staunaesse"), ("Versickerungseignung", "versickerung"), ("Grabbarkeit", "grabbarkeit"), ("Verdichtungsempfindlichkeit", "verdichtung"), ("Erodierbarkeit", "erodierbarkeit")] %}
+    {% if d.get(key) %}<tr><td class="muted">{{ label }}</td><td>{{ d[key] }}</td></tr>{% endif %}
+    {% endfor %}
+    {% if d.get("kf_cm_d") is not none %}<tr><td class="muted">Gesättigte Wasserleitfähigkeit</td><td>{{ d.kf_cm_d|fmt_num(0) }} cm/d{% if d.get("kf_klasse") %} ({{ d.kf_klasse }}){% endif %}</td></tr>{% endif %}
+    {% set e = d.get("erdwaerme") %}
+    {% if e and e.get("m1_w_mk") is not none %}<tr><td class="muted">Erdwärmekollektoren</td><td>1. Meter {{ e.m1_w_mk|fmt_num(2) }} W/(m·K) ({{ e.get("m1_klasse") or "—" }}){% if e.get("m2_w_mk") is not none %}, 2. Meter {{ e.m2_w_mk|fmt_num(2) }} W/(m·K) ({{ e.get("m2_klasse") or "—" }}){% endif %}</td></tr>{% endif %}
+  </tbody>
+</table>
+{% set kf = d.get("kf_gutachten") or [] %}
+{% if kf %}
+<h3>Baugrundgutachten in der Nachbarschaft (Stadt Essen, ≤ 300 m)</h3>
+<table>
+  <thead><tr><th>kf-Wert</th><th>Versickerung</th><th>Jahr</th><th>Gutachter</th><th>Anmerkung</th></tr></thead>
+  <tbody>
+  {% for g in kf %}<tr><td>{{ g.get("kf") or "—" }} m/s</td><td>{{ "geeignet" if g.get("geeignet") == "ja" else "nicht geeignet" }}</td><td>{{ g.get("jahr") or "—" }}</td><td>{{ g.get("gutachten") or "—" }}</td><td>{{ g.get("anmerkung") or "" }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endif %}
+<p class="footnote">Geologischer Dienst NRW, IS BK50 (1 : 50 000) — Aussage für die Bodeneinheit. Versickerung: geeignet ab ca. 86 cm/d, bedingt geeignet ab ca. 43 cm/d. Vor Anbau, Keller oder Versickerungsanlage ein Baugrundgutachten einholen.</p>

@@ -44,6 +44,7 @@ def test_fixture_content_is_present():
         "starkregen": ["30–50 cm", "Extremereignis"],
         "noise": ["Straße", "70 dB(A)"],
         "bergbau": ["Verlassene Tagesöffnungen", "500 m-Planquadrat"],
+        "baugrund": ["Parabraunerde", "ungeeignet", "Auffüllung"],
         "radon": ["57", "Karbon", "erhöht"],
         "gfnp": ["Flächen für die örtlichen Hauptverkehrszüge"],
         "schutzgebiete": ["LSG-Weinberg", "180 m"],

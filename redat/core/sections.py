@@ -170,6 +170,15 @@ def _fetch_bergbau(ctx: Ctx) -> dict:
     return b
 
 
+def _fetch_baugrund(ctx: Ctx) -> dict:
+    from redat.sources.baugrund import get_baugrund
+
+    d = get_baugrund(ctx.lat, ctx.lon)
+    if d is None:
+        raise Empty("Keine Bodeneinheit der BK50 an diesem Punkt (Gewässer oder außerhalb NRW)")
+    return d
+
+
 def _fetch_radon(ctx: Ctx) -> dict:
     from redat.sources.radon import get_radon
 
@@ -394,6 +403,8 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("starkregen", "Starkregen", "🌧️", 25, "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz", _fetch_starkregen),
     Section("noise", "Lärm", "🔊", 20, "Land NRW, Umgebungslärmkartierung 2022 (WMS, Maximum im 25-m-Fenster)", _fetch_noise),
     Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat)", _fetch_bergbau),
+    Section("baugrund", "Baugrund & Versickerung (BK50)", "🪨", 25,
+            "Geologischer Dienst NRW, Bodenkarte 1:50.000 (dl-de/by-2-0) · Stadt Essen, kf-Werte aus Bauanträgen", _fetch_baugrund),
     Section("radon", "Radon", "☢️", 20, "Bundesamt für Strahlenschutz — Radon in der Bodenluft (1 km-Prognose) und Radonpotenzial (dl-de/by-2-0)", _fetch_radon),
     Section("gfnp", "Flächennutzungsplan (GFNP)", "🗺️", 30, "geo.essen.de — Gemeinsamer Flächennutzungsplan", _fetch_gfnp),
     Section("schutzgebiete", "Schutzgebiete", "🌳", 25,

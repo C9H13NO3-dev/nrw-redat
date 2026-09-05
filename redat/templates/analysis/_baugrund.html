@@ -1,0 +1,36 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm text-gray-500">Bodenkarte 1 : 50 000 — Aussage für die Bodeneinheit, nicht grundstücksscharf</div>
+</div>
+<dl class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+    <template x-for="[k, v] in [['Bodentyp', d.bodentyp], ['Bodenart Oberboden', d.bodenart], ['Hauptbodenart (BBodSchG)', d.hauptbodenart], ['Grundwasser', d.grundwasser], ['Staunässe', d.staunaesse], ['Verdichtungsempfindlichkeit', d.verdichtung], ['Erodierbarkeit', d.erodierbarkeit]]" :key="k">
+        <div class="flex justify-between gap-2 border-b border-gray-100 py-0.5" x-show="v"><dt class="text-gray-500" x-text="k"></dt><dd class="text-gray-900 text-right" x-text="v"></dd></div>
+    </template>
+</dl>
+<div class="mt-4 text-sm">
+    <div class="font-semibold text-gray-900">💧 Versickerung von Regenwasser</div>
+    <p class="text-gray-800" x-text="d.versickerung || 'keine Angabe'"></p>
+    <p class="text-xs text-gray-500" x-show="d.kf_cm_d != null" x-text="'Gesättigte Wasserleitfähigkeit im 2-Meter-Raum: ' + d.kf_cm_d + ' cm/d (' + (d.kf_klasse || '—') + '). Geeignet ab ca. 86 cm/d, bedingt geeignet ab ca. 43 cm/d.'"></p>
+</div>
+<div class="mt-3 text-sm" x-show="d.grabbarkeit">
+    <div class="font-semibold text-gray-900">⛏ Grabbarkeit</div>
+    <p class="text-gray-800" x-text="d.grabbarkeit"></p>
+</div>
+<div class="mt-3 text-sm" x-show="d.erdwaerme">
+    <div class="font-semibold text-gray-900">🌡 Erdwärmekollektoren</div>
+    <p class="text-gray-800" x-text="d.erdwaerme && ('1. Meter ' + d.erdwaerme.m1_w_mk + ' W/(m·K) (' + d.erdwaerme.m1_klasse + '), 2. Meter ' + d.erdwaerme.m2_w_mk + ' W/(m·K) (' + d.erdwaerme.m2_klasse + ')')"></p>
+</div>
+<template x-if="d.kf_gutachten && d.kf_gutachten.length">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">📄 Baugrundgutachten in der Nachbarschaft (Stadt Essen, ≤ 300 m)</div>
+        <ul class="mt-1 space-y-0.5">
+            <template x-for="(g, i) in d.kf_gutachten" :key="i">
+                <li class="text-gray-700"><span class="font-medium" x-text="'kf ' + g.kf + ' m/s'"></span><span x-text="' · Versickerung ' + (g.geeignet === 'ja' ? 'geeignet' : 'nicht geeignet') + (g.jahr ? ' · ' + g.jahr : '') + (g.gutachten ? ' · ' + g.gutachten : '')"></span><span class="text-orange-700" x-show="g.anmerkung" x-text="' · ' + g.anmerkung"></span></li>
+            </template>
+        </ul>
+    </div>
+</template>
+<p class="mt-3 text-xs text-gray-500">
+    Quelle: Geologischer Dienst NRW, IS BK50. Auffüllungen, Bergbau-Halden und verdichtete Böden sind im Ruhrgebiet häufig — vor dem Kauf ein Baugrundgutachten (DIN 4020) einholen, wenn Anbau, Keller oder Versickerung geplant sind.
+    <span x-show="d.kf_gutachten_error"> · Essener kf-Werte nicht abrufbar</span>
+</p>

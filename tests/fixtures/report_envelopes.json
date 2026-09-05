@@ -425,6 +425,47 @@
   "status": "ok",
   "took_ms": 174
  },
+ "baugrund": {
+  "key": "baugrund",
+  "tier": "area",
+  "data": {
+   "bodentyp": "Parabraunerde",
+   "bodenart": "stark toniger Schluff (3 - tonig-schluffig)",
+   "hauptbodenart": "Lehm/Schluff",
+   "grundwasser": "Stufe 0 - ohne Grundwasser",
+   "staunaesse": "Stufe 0 - ohne Staunässe",
+   "kf_cm_d": 15.0,
+   "kf_klasse": "mittel",
+   "versickerung": "ungeeignet - VSA, Mulden-Rigolen-Systeme (Bewirtschaftung mit gedrosselter Ableitung)",
+   "versickerung_klasse": "ungeeignet",
+   "grabbarkeit": "im 1. Meter : mittel grabbar im 2. Meter : mittel grabbar nicht grundnass und nicht staunass",
+   "verdichtung": "mittel",
+   "schutzwuerdigkeit": "fruchtbare Böden mit sehr hoher Funktionserfüllung",
+   "erodierbarkeit": "hoch",
+   "erdwaerme": {
+    "m1_w_mk": 1.37,
+    "m1_klasse": "mittel",
+    "m2_w_mk": 2.7367,
+    "m2_klasse": "extrem hoch"
+   },
+   "kf_gutachten": [
+    {
+     "gutachten": "UCON",
+     "kf": "<1x10-7",
+     "geeignet": "nein",
+     "jahr": 2000,
+     "anmerkung": "Auffüllung bis zu 1,9m Mächtigkeit"
+    }
+   ],
+   "kf_gutachten_error": null,
+   "rating": "Schwer versickerbarer Boden",
+   "rating_color": "orange"
+  },
+  "message": null,
+  "source": "Geologischer Dienst NRW, Bodenkarte 1:50.000 (dl-de/by-2-0) · Stadt Essen, kf-Werte aus Bauanträgen",
+  "status": "ok",
+  "took_ms": 910
+ },
  "radon": {
   "key": "radon",
   "tier": "area",

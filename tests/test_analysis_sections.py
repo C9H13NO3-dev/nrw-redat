@@ -10,7 +10,7 @@ CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
 
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
-        "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "radon", "gfnp", "schutzgebiete", "planning_essen",
+        "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "baugrund", "radon", "gfnp", "schutzgebiete", "planning_essen",
         "planning_bochum", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
@@ -394,6 +394,15 @@ def test_bergbau_none_is_empty(monkeypatch):
     monkeypatch.setattr(bergbau, "get_bergbau", lambda lat, lon: None)
     with pytest.raises(Empty, match="Planquadrat"):
         S._fetch_bergbau(CTX)
+
+
+def test_baugrund_passthrough_and_empty(monkeypatch):
+    from redat.sources import baugrund
+    monkeypatch.setattr(baugrund, "get_baugrund", lambda lat, lon: {"bodentyp": "x"})
+    assert S._fetch_baugrund(CTX) == {"bodentyp": "x"}
+    monkeypatch.setattr(baugrund, "get_baugrund", lambda lat, lon: None)
+    with pytest.raises(Empty):
+        S._fetch_baugrund(CTX)
 
 
 def test_radon_passthrough_and_empty(monkeypatch):
