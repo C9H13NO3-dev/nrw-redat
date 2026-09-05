@@ -109,7 +109,11 @@ overwritten by `docker compose build`, so there is no separate image rollback â€
   `chromium_available()` in `lifespan` so the first `/healthz` is cheap; assorted housekeeping (lazy
   `mkdtemp` in `tests/conftest.py`, a stale comment in `analysis.js`, unused imports, a duplicate
   `fixed_destinations()` call in `oepnv.py`, dead house-hunter listing helpers deleted from
-  `map-utils.js`).
+  `map-utils.js`). Commits `4660070`, `9475f91`.
+- **Task 11 follow-up** (`5071063`) â€” the lifespan warm-up had called the sync Playwright probe on the
+  event loop; `sync_playwright()` refuses to start inside a running asyncio loop and the `lru_cache`
+  pinned that failure, so the redeployed container reported `chromium: false` on `/healthz` until the
+  probe was moved to `anyio.to_thread.run_sync`. Regression test in `tests/test_app.py`.
 
 ## Open items
 
