@@ -48,9 +48,11 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        from redat.store.cache import SectionCache
         from redat.store.runs import RunStore
         _app.state.runs = RunStore(settings.db_path)
         _app.state.runs.init()
+        _app.state.cache = SectionCache(settings.cache_ttl_s)
         yield
 
     app = FastAPI(title="NRW-REDAT", version=__version__, description=DESCRIPTION, lifespan=lifespan)
