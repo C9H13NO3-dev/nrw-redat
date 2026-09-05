@@ -1,0 +1,32 @@
+<template x-if="d.below_threshold">
+    <p class="text-sm text-green-700">✅ Unter der Kartierungsschwelle (&lt; 55 dB Tag / &lt; 50 dB Nacht) — kein kartierter Umgebungslärm.</p>
+</template>
+<template x-if="!d.below_threshold">
+    <div>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+                <div class="text-gray-500">Tag (L<sub>DEN</sub>)</div>
+                <div class="text-xl font-bold text-gray-900" x-text="d.day ? d.day.label : '< 55 dB(A)'"></div>
+                <div x-show="d.day" class="text-xs text-gray-500" x-text="d.day && ({str:'Straße', scb:'Schiene (Bund)', scs:'Schiene (Stadt)', ind:'Industrie', flg:'Flughafen'}[d.day.source] || d.day.source)"></div>
+            </div>
+            <div>
+                <div class="text-gray-500">Nacht (L<sub>night</sub>)</div>
+                <div class="text-xl font-bold text-gray-900" x-text="d.night ? d.night.label : '< 50 dB(A)'"></div>
+                <div x-show="d.night" class="text-xs text-gray-500" x-text="d.night && ({str:'Straße', scb:'Schiene (Bund)', scs:'Schiene (Stadt)', ind:'Industrie', flg:'Flughafen'}[d.night.source] || d.night.source)"></div>
+            </div>
+        </div>
+        <table class="mt-4 w-full text-sm">
+            <thead><tr class="text-left text-gray-500"><th class="py-1">Quelle</th><th class="py-1">Tag ab</th><th class="py-1">Nacht ab</th></tr></thead>
+            <tbody>
+                <template x-for="[src, label] in Object.entries({str:'Straße', scb:'Schiene (Bund)', scs:'Schiene (Stadt)', ind:'Industrie', flg:'Flughafen'})" :key="src">
+                    <tr class="border-t">
+                        <td class="py-1 font-medium" x-text="label"></td>
+                        <td class="py-1" x-text="d.sources[src]?.day != null ? d.sources[src].day + ' dB' : '—'"></td>
+                        <td class="py-1" x-text="d.sources[src]?.night != null ? d.sources[src].night + ' dB' : '—'"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+        <p class="mt-3 text-xs text-gray-500">Lauteste kartierte Klasse im Umkreis von ca. <span x-text="Math.floor((d.window_m || 25) / 2)"></span> m um den Standort (Gebäudegrundrisse sind in der Kartierung ausgespart). Overlays „Lärm Tag/Nacht“ auf der Karte oben zuschaltbar.</p>
+    </div>
+</template>

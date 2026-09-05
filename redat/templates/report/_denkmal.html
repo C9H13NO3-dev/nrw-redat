@@ -1,0 +1,67 @@
+{% set onsite_tags = {"A": "tag-orange", "C": "tag-orange", "B": "tag-amber", "D": "tag-yellow"} %}
+{% set items = d.get("items") or [] %}
+{% set onsite = d.get("on_site") or [] %}
+{% set nearby = [] %}
+{% for m in items %}{% if not m.get("on_site") %}{% set _ = nearby.append(m) %}{% endif %}{% endfor %}
+
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Denkmäler auf dem Grundstück und im Umkreis von {{ d.get("radius_m") or 300 }} m</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+</div>
+
+{% if onsite %}
+<h3>🏛️ Auf dem Grundstück</h3>
+<table>
+  <thead><tr><th>Art</th><th>Name</th><th>Eingetragen</th></tr></thead>
+  <tbody>
+  {% for m in onsite %}
+    <tr>
+      <td><span class="tag {{ onsite_tags.get(m.get("kind"), "") }}">{{ m.get("kind_label") or m.get("kind") or "—" }}</span></td>
+      <td>{% if m.get("link") %}<a href="{{ m.link }}">{{ m.get("name") or "—" }}</a>{% else %}{{ m.get("name") or "—" }}{% endif %}</td>
+      <td>{{ (m.listed_since|fmt_date) if m.get("listed_since") else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% for m in onsite %}
+<p class="note">
+{% if m.get("scope") == "gebiet" %}<span class="strong">{{ m.get("name") or "—" }}</span> — Denkmalbereich/Siedlung: das äußere Erscheinungsbild (Fassade, Dach, Fenster, Einfriedung) ist geschützt — Änderungen sind erlaubnispflichtig.
+{% elif m.get("kind") == "B" %}<span class="strong">{{ m.get("name") or "—" }}</span> — Bodendenkmal: Erdarbeiten (Keller, Anbau, Leitungen, Pool) brauchen eine Erlaubnis; archäologische Begleitung und Funde können Bauzeit und Kosten erhöhen.
+{% else %}<span class="strong">{{ m.get("name") or "—" }}</span> — Baudenkmal: Umbau, Fenster, Dämmung, PV und Farbe sind erlaubnispflichtig (§ 9 DSchG NRW); dafür erhöhte Abschreibung der Sanierungskosten (§ 7i EStG) und Fördermittel.
+{% endif %}
+</p>
+{% endfor %}
+{% endif %}
+
+{% if nearby %}
+<h3>Im Umkreis</h3>
+<table>
+  <thead><tr><th>Art</th><th>Name</th><th class="num">Abstand</th><th>Jahr</th></tr></thead>
+  <tbody>
+  {% for m in nearby %}
+    <tr>
+      <td><span class="tag">{{ m.get("kind_label") or m.get("kind") or "—" }}</span></td>
+      <td>{% if m.get("link") %}<a href="{{ m.link }}">{{ m.get("name") or "—" }}</a>{% else %}{{ m.get("name") or "—" }}{% endif %}</td>
+      <td class="num">{{ (m.distance_m|fmt_m) if m.get("distance_m") is not none else "—" }}</td>
+      <td>{{ (m.get("listed_since") or "")[:4] or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% set total = ((d.get("counts") or {}).values())|sum %}
+{% if total > items|length %}
+<p class="footnote">{% if (total - items|length) == 1 %}Ein weiteres Denkmal im Umkreis nicht aufgeführt.{% else %}Weitere {{ total - items|length }} Denkmäler im Umkreis nicht aufgeführt.{% endif %}</p>
+{% endif %}
+{% endif %}
+
+{% if not items %}
+<p class="muted mt">Kein eingetragenes Bau- oder Bodendenkmal im Umkreis.</p>
+{% endif %}
+
+{% set auth = d.get("authority") %}
+<p class="footnote">Umkreis: {{ (d.get("counts") or {}).get("A", 0) }} Baudenkmäler · {{ (d.get("counts") or {}).get("B", 0) }} Bodendenkmäler · {{ (d.get("counts") or {}).get("D", 0) }} Denkmalbereiche.
+Umgebungsschutz: auch Bauvorhaben neben einem Denkmal brauchen eine Erlaubnis, wenn sie sein Erscheinungsbild beeinträchtigen (§ 9 DSchG NRW).
+Zuständig: {{ (auth.get("name") if auth else None) or "Untere Denkmalbehörde der Stadt" }}.
+Quelle: RVR Geoportal Ruhr (Denkmallisten der Kommunen) — Bochumer Baudenkmäler sind als Punkte hinterlegt (Treffer ≤ 25 m = dieses Gebäude).</p>

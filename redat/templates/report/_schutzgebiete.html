@@ -1,0 +1,53 @@
+{% set kind_tags = {"nsg": "tag-red", "ffh": "tag-red", "vsg": "tag-red", "gbt": "tag-red", "lsg": "tag-orange", "np": "tag-blue"} %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Natur-/Landschaftsschutz im Umkreis von {{ d.get("radius_m") or 500 }} m, Wasserschutz am Punkt</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+</div>
+
+{% set areas = d.get("areas") or [] %}
+{% if areas %}
+<table class="mt">
+  <thead><tr><th>Art</th><th>Name</th><th>Status</th><th class="num">Abstand</th><th>Seit</th></tr></thead>
+  <tbody>
+  {% for a in areas %}
+    <tr>
+      <td><span class="tag {{ kind_tags.get(a.get("kind"), "") }}">{{ (a.get("kind") or "—")|upper }}</span></td>
+      <td>{{ a.get("name") or "—" }}</td>
+      <td>{{ a.get("status") or "—" }}</td>
+      <td class="num">{{ "innerhalb" if a.get("inside") else ((a.distance_m|fmt_m) if a.get("distance_m") is not none else "—") }}</td>
+      <td>{{ a.get("since") or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% set total = ((d.get("counts") or {}).values())|sum %}
+{% if total > areas|length %}
+<p class="footnote">Weitere {{ total - areas|length }} Fläche{{ "n" if (total - areas|length) != 1 else "" }} (v. a. geschützte Biotope) nicht aufgeführt.</p>
+{% endif %}
+{% else %}
+<p class="muted mt">Kein Natur-, Landschafts- oder FFH-Schutzgebiet im Umkreis.</p>
+{% endif %}
+
+{% set wsg = d.get("wsg") or [] %}
+{% if wsg %}
+<h3>💧 Wasserschutzgebiet</h3>
+<table>
+  <thead><tr><th>Zone</th><th>Name</th><th>Status</th><th>Seit</th></tr></thead>
+  <tbody>
+  {% for w in wsg %}
+    <tr>
+      <td class="strong">{{ w.get("kind") or "—" }} Zone {{ w.get("zone") or "—" }}</td>
+      <td>{{ w.get("name") or "—" }}</td>
+      <td>{{ w.get("status") or "—" }}</td>
+      <td>{{ w.get("since") or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="note">Zone I/II: keine Neubebauung, keine Erdwärmesonden; Zone III: Einschränkungen für Öltanks, Versickerung, Bohrungen und Bauvorhaben — Verordnung der Bezirksregierung prüfen.</p>
+{% endif %}
+
+{% set errs = (d.get("errors") or {}).keys()|list %}
+<p class="footnote">Im LSG sind Anbauten, Nebengebäude und Einfriedungen genehmigungspflichtig (Befreiung der Unteren Naturschutzbehörde), im NSG/FFH-Gebiet praktisch ausgeschlossen — ein angrenzendes Schutzgebiet sichert dafür den Blick. Quelle: LINFOS (LANUV) · ELWAS (Wasserschutz){% if errs %} · nicht abrufbar: {{ errs|join(", ") }}{% endif %}.</p>

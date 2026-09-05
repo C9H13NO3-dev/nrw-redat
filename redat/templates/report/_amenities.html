@@ -1,0 +1,24 @@
+{% set dist = d.get("distances") or {} %}
+{% set nearest = d.get("nearest") or {} %}
+<table>
+  <thead><tr><th>Kategorie</th><th class="num">Entfernung</th><th>Nächstgelegen</th></tr></thead>
+  <tbody>
+  {% for key, icon, label in (("public_transport", "🚇", "ÖPNV"), ("supermarket", "🛒", "Supermarkt"), ("school", "🏫", "Schule"), ("kindergarten", "👶", "Kita"), ("doctor", "🩺", "Arzt")) %}
+    <tr>
+      <td>{{ icon }} {{ label }}</td>
+      <td class="num">{{ (dist[key]|fmt_m) if dist.get(key) is not none else "—" }}</td>
+      <td class="muted">{{ (nearest.get(key) or {}).get("name") or "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="kpis mt">
+  <div class="kpi">
+    <div class="label">ÖPNV-Score</div>
+    <div class="value">{{ d.public_transport_score if d.get("public_transport_score") is not none else "—" }}/10</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Walkability</div>
+    <div class="value">{{ d.walkability_score if d.get("walkability_score") is not none else "—" }}/10</div>
+  </div>
+</div>

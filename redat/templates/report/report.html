@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Standortanalyse – {{ formatted_address }}</title>
+<style>
+  @page { size: A4 portrait; }
+  * { box-sizing: border-box; }
+  html { font-size: 10.5pt; }
+  body { margin: 0; font-family: Helvetica, Arial, "Liberation Sans", sans-serif; color: #111827; line-height: 1.4; }
+  h1 { font-size: 24pt; margin: 0 0 4mm; letter-spacing: -0.01em; }
+  h2 { font-size: 14pt; margin: 0 0 1mm; }
+  h3 { font-size: 11pt; margin: 4mm 0 1.5mm; color: #111827; }
+  h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+  /* keep a heading with the first rows of what follows; keep small figure/bar groups whole */
+  .kpis, .two-col > *, .bar, tr { page-break-inside: avoid; break-inside: avoid; }
+  thead { display: table-header-group; }
+  p { margin: 0 0 2mm; }
+  a { color: #1d4ed8; text-decoration: none; }
+  .muted { color: #6b7280; }
+  .small { font-size: 8.5pt; }
+  .xs { font-size: 8pt; }
+  .strong { font-weight: 600; }
+  .nowrap { white-space: nowrap; }
+  .right { text-align: right; }
+  .mt { margin-top: 3mm; }
+
+  /* title page */
+  .title-page { page-break-after: always; }
+  .title-meta { display: grid; grid-template-columns: 38mm 1fr; row-gap: 1mm; column-gap: 4mm; margin: 4mm 0 6mm; }
+  .title-meta dt { color: #6b7280; }
+  .title-meta dd { margin: 0; }
+
+  /* chips */
+  .chip { display: inline-block; padding: 0.3mm 2.2mm; border-radius: 3mm; font-weight: 700; font-size: 9pt; white-space: nowrap; }
+  .chip-green  { background: #dcfce7; color: #166534; }
+  .chip-yellow { background: #fef9c3; color: #854d0e; }
+  .chip-orange { background: #ffedd5; color: #9a3412; }
+  .chip-red    { background: #fee2e2; color: #991b1b; }
+  .chip-gray   { background: #f3f4f6; color: #374151; }
+  .tag { display: inline-block; padding: 0.2mm 1.6mm; border-radius: 1.2mm; font-size: 8pt; font-weight: 600; background: #f3f4f6; color: #374151; white-space: nowrap; }
+  .tag-blue { background: #dbeafe; color: #1e40af; }
+  .tag-orange { background: #ffedd5; color: #9a3412; }
+  .tag-red { background: #fee2e2; color: #991b1b; }
+  .tag-yellow { background: #fef9c3; color: #854d0e; }
+  .tag-amber { background: #fef3c7; color: #92400e; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  th { text-align: left; color: #6b7280; font-weight: 600; font-size: 8.5pt; padding: 1mm 2mm 1mm 0; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 1.1mm 2mm 1.1mm 0; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .summary td:first-child { white-space: nowrap; }
+
+  /* key-figure grid */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(38mm, 1fr)); gap: 2mm 5mm; margin: 2mm 0; }
+  .kpi .label { color: #6b7280; font-size: 8.5pt; }
+  .kpi .value { font-size: 14pt; font-weight: 700; }
+  .kpi .sub { color: #6b7280; font-size: 8pt; }
+
+  /* sections */
+  .section { page-break-inside: avoid; padding: 4mm 0 5mm; border-top: 1px solid #e5e7eb; }
+  .section.breakable { page-break-inside: auto; }
+  .section-head { display: flex; align-items: baseline; gap: 3mm; }
+  .section-head .icon { font-size: 14pt; }
+  .source { color: #6b7280; font-size: 8pt; margin: 0 0 2.5mm; }
+  .note { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 2mm; padding: 2mm 3mm; font-size: 8.5pt; color: #4b5563; margin-top: 2.5mm; }
+  .footnote { color: #6b7280; font-size: 8pt; margin-top: 2.5mm; }
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li { padding: 0.8mm 0; border-bottom: 1px solid #f3f4f6; }
+  ul.plain li:last-child { border-bottom: 0; }
+  .dist { display: inline-block; min-width: 14mm; text-align: right; color: #6b7280; margin-right: 2mm; white-space: nowrap; }
+
+  /* noise maps */
+  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin: 3mm 0 2mm; }
+  .maps img { width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 1.5mm; display: block; }
+  .map-missing { aspect-ratio: 4 / 3; background: #f3f4f6; border: 1px dashed #d1d5db; border-radius: 1.5mm;
+                 display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 9pt; }
+  .legend { display: flex; flex-wrap: wrap; gap: 1.5mm 4mm; font-size: 8pt; color: #4b5563; }
+  .legend .sw { display: inline-block; width: 3.5mm; height: 3.5mm; border: 1px solid #9ca3af; vertical-align: -0.6mm; margin-right: 1.2mm; }
+
+  /* bars */
+  .bar { display: flex; align-items: center; gap: 2mm; font-size: 9pt; }
+  .bar .track { flex: 1; height: 3mm; background: #f3f4f6; border-radius: 1mm; overflow: hidden; }
+  .bar .fill { height: 100%; background: #9ca3af; }
+
+  .appendix, .sources { page-break-before: always; }
+  .sources ul { padding-left: 5mm; margin: 2mm 0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 8mm; }
+</style>
+</head>
+<body>
+
+<section class="title-page">
+  <p class="muted small">Standortanalyse · NRW-REDAT</p>
+  <h1>{{ formatted_address }}</h1>
+  <dl class="title-meta">
+    <dt>Koordinaten</dt><dd>{{ "%.5f"|format(lat) }}, {{ "%.5f"|format(lon) }} · <span class="tag">{{ precision_label }}</span></dd>
+    {% if address and address != formatted_address %}<dt>Eingabe</dt><dd>{{ address }}</dd>{% endif %}
+    {% if plot_size_m2 %}<dt>Grundstück</dt><dd>{{ plot_size_m2|fmt_int }} m²</dd>{% endif %}
+    {% if living_space_m2 %}<dt>Wohnfläche</dt><dd>{{ living_space_m2|fmt_int }} m²</dd>{% endif %}
+    <dt>Erstellt</dt><dd>{{ generated_at }}</dd>
+  </dl>
+
+  <h2>Zusammenfassung</h2>
+  {% if summary %}
+  <table class="summary">
+    <thead><tr><th>Thema</th><th>Bewertung</th><th>Kennzahl</th></tr></thead>
+    <tbody>
+    {% for row in summary %}
+      <tr>
+        <td>{{ row.icon }} {{ row.title }}</td>
+        <td>{% if row.rating %}<span class="chip {{ rating_class(row.rating_color) }}">{{ row.rating }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{{ row.figure or "—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Keine Sektion mit Daten.</p>
+  {% endif %}
+  {% if appendix %}
+  <p class="footnote">{{ appendix|length }} Sektion{{ "en" if appendix|length != 1 else "" }} ohne Befund oder nicht geprüft — siehe Anhang.</p>
+  {% endif %}
+</section>
+
+{% for s in body %}
+<section class="section {{ 'breakable' if s.key in ('oepnv', 'zensus', 'energie', 'denkmal', 'schutzgebiete') else '' }}" id="sec-{{ s.key }}">
+  <div class="section-head"><span class="icon">{{ s.icon }}</span><h2>{{ s.title }}</h2></div>
+  <p class="source">Quelle: {{ s.source }}</p>
+  {% with d = s.data, key = s.key %}
+    {% if s.key.startswith("planning_") %}{% include "report/_planning.html" %}
+    {% else %}{% include "report/_" ~ s.key ~ ".html" %}{% endif %}
+  {% endwith %}
+</section>
+{% endfor %}
+
+{% if appendix %}
+<section class="appendix">
+  <h2>Anhang: Nicht geprüft / ohne Befund</h2>
+  <p class="muted small">Diese Themen sind nicht Teil des Berichts, weil keine Daten vorlagen, die Prüfung gesperrt war oder die Abfrage fehlschlug.</p>
+  <table>
+    <thead><tr><th>Thema</th><th>Status</th><th>Hinweis</th></tr></thead>
+    <tbody>
+    {% for a in appendix %}
+      <tr><td class="nowrap">{{ a.icon }} {{ a.title }}</td><td class="nowrap">{{ a.status_label }}</td><td class="muted">{{ a.message or "" }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="sources {{ '' if appendix else '' }}">
+  <h2>Quellen</h2>
+  <ul class="small">
+    {% for src in sources %}<li>{{ src }}</li>{% endfor %}
+    <li>{{ map_attribution }}</li>
+  </ul>
+  <p class="footnote">Alle Angaben ohne Gewähr; Stichtage und Datenstände siehe die jeweilige Sektion. Parzellengenaue Aussagen (Bodenrichtwert, Hochwasser, Starkregen, Denkmal, Energie) gelten nur bei hausnummerngenauer Adresse.</p>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+<div class="text-sm text-gray-600 mb-3">
+    <span x-text="d.election"></span> · Wahlkreis <span class="font-medium text-gray-900" x-text="(d.wahlkreis?.nr ? d.wahlkreis.nr + ' ' : '') + (d.wahlkreis?.name || '')"></span> · Zweitstimmen
+</div>
+<div class="h-64 print-chart"><canvas id="btw-chart"></canvas></div>
+<ul class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-1 text-sm">
+    <template x-for="p in d.parties" :key="p.party">
+        <li><span class="inline-block w-3 h-3 rounded-sm mr-1 align-middle" :style="'background:' + (p.color || '#999')"></span><span x-text="p.party"></span> <span class="text-gray-500" x-text="p.percent + ' %'"></span></li>
+    </template>
+</ul>

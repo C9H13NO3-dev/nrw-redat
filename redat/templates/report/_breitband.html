@@ -1,0 +1,45 @@
+{% set fixed = (d.get("fixed") or {}) %}
+{% set mobile = (d.get("mobile_5g") or {}) %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Bewertung</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+</div>
+<p class="muted small">Verfügbarkeit in der {{ d.get("cell_m") if d.get("cell_m") is not none else "—" }} m-Rasterzelle, Anteil der Haushalte · Datenstand {{ d.get("datenstand") or "—" }}</p>
+
+<table class="mt">
+  <thead><tr><th>Anschluss</th><th></th><th class="num">Verfügbarkeit</th></tr></thead>
+  <tbody>
+  {% for key, label, color in [
+      ("ftth_1000", "Glasfaser (FTTB/H) ≥ 1 Gbit/s", "#6366f1"),
+      ("hh_1000", "Festnetz ≥ 1 Gbit/s (alle Techniken)", "#2563eb"),
+      ("hh_400", "Festnetz ≥ 400 Mbit/s", "#2563eb"),
+      ("hh_100", "Festnetz ≥ 100 Mbit/s", "#2563eb"),
+  ] %}
+    {% set f = fixed.get(key) %}
+    <tr>
+      <td>{{ label }}</td>
+      <td><div class="bar"><div class="track"><div class="fill" style="width: {{ (((f.get('step') or 0) / 5 * 100)|round|int) if f else 0 }}%; background: {{ color }}"></div></div></div></td>
+      <td class="num strong">{{ f.get("label") if f and f.get("label") else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h3 class="mt">5G-Mobilfunk am Haus</h3>
+<table>
+  <thead><tr><th>Anbieter</th><th>5G</th></tr></thead>
+  <tbody>
+  {% for key, label in [("telekom", "Telekom"), ("vodafone", "Vodafone"), ("o2", "o2"), ("1u1", "1&1")] %}
+    {% set v = mobile.get(key) %}
+    <tr>
+      <td>{{ label }}</td>
+      <td>{% if v == "5G" %}<span class="tag tag-blue">5G</span>{% elif v %}<span class="tag tag-yellow">{{ v }}</span>{% else %}<span class="tag">kein 5G</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% set errs = (d.get("errors") or {}) %}
+<p class="footnote">{{ d.get("attribution") or "© BNetzA, Breitbandatlas" }} — Anbietermeldungen, keine Messung: „verfügbar" heißt anschließbar, nicht angeschlossen. Konkrete Verfügbarkeit am Haus beim Anbieter prüfen · Breitbandatlas (gigabitgrundbuch.bund.de){% if errs %} · nicht abrufbar: {{ errs.keys()|join(", ") }}{% endif %}</p>

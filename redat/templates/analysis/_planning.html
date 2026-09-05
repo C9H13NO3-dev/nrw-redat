@@ -1,0 +1,14 @@
+<template x-if="!d.found">
+    <p class="text-sm text-gray-500">Keine Bauleitpläne für diese Koordinaten.</p>
+</template>
+<template x-if="d.found">
+    <ul class="space-y-2 text-sm">
+        <template x-for="(item, i) in d.items" :key="i">
+            <li class="flex items-start gap-2">
+                <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-xs whitespace-nowrap" x-text="item.category"></span>
+                <span class="text-gray-900" x-text="item.name"></span>
+                <a x-show="item.link" :href="item.link" target="_blank" rel="noopener" class="text-blue-600 hover:underline text-xs whitespace-nowrap">Details ↗</a>
+            </li>
+        </template>
+    </ul>
+</template>

@@ -1,0 +1,27 @@
+{% set raw = d.get("raw") or {} %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Bodenrichtwert</div>
+    <div class="value">{{ (d.bodenrichtwert|fmt_int ~ " €/m²") if d.get("bodenrichtwert") is not none else "—" }}</div>
+    {% if d.get("date") %}<div class="sub">Stichtag {{ d.date|fmt_date }}</div>{% endif %}
+  </div>
+  {% if d.get("grundstueckswert") %}
+  <div class="kpi">
+    <div class="label">Geschätzter Grundstückswert{% if plot_size_m2 %} (× {{ plot_size_m2|fmt_int }} m²){% endif %}</div>
+    <div class="value">{{ d.grundstueckswert|fmt_int }} €</div>
+    <div class="sub">Bodenrichtwert × Grundstücksfläche, ohne Gebäude</div>
+  </div>
+  {% endif %}
+</div>
+<table>
+  <tbody>
+    {% if d.get("zone") %}<tr><td class="muted">Zone</td><td>{{ d.zone }}{% if raw.get("ORTST") %} · {{ raw.ORTST }}{% endif %}{% if raw.get("PLZ") %} · {{ raw.PLZ }}{% endif %}</td></tr>{% endif %}
+    {% if raw.get("NUTA") %}<tr><td class="muted">Nutzungsart</td><td>{{ raw.NUTA }}{% if raw.get("ERGNUTA") and raw.ERGNUTA != "nan" %} ({{ raw.ERGNUTA }}){% endif %}</td></tr>{% endif %}
+    {% if raw.get("ENTW") %}<tr><td class="muted">Entwicklungszustand</td><td>{{ {"B": "baureifes Land", "R": "Rohbauland", "E": "Bauerwartungsland", "LF": "Land-/forstwirtschaftliche Fläche"}.get(raw.ENTW, raw.ENTW) }}</td></tr>{% endif %}
+    {% if raw.get("GEZ") %}<tr><td class="muted">Geschosszahl</td><td>{{ raw.GEZ }}</td></tr>{% endif %}
+    {% if raw.get("GTIE") %}<tr><td class="muted">Grundstückstiefe</td><td>{{ raw.GTIE }} m</td></tr>{% endif %}
+    {% if raw.get("GABE") %}<tr><td class="muted">Gutachterausschuss</td><td>{{ raw.GABE }}</td></tr>{% endif %}
+    {% if raw.get("UDOK_URL") %}<tr><td class="muted">Richtwertdokument</td><td class="xs"><a href="{{ raw.UDOK_URL }}">{{ raw.UDOK_URL }}</a></td></tr>{% endif %}
+  </tbody>
+</table>
+{% if raw.get("FREI") %}<p class="footnote">{{ raw.FREI }}</p>{% endif %}

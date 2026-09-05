@@ -1,0 +1,11 @@
+<div class="text-sm text-gray-700">
+    <template x-if="d.found">
+        <div>
+            <p class="font-medium text-gray-900" x-text="d.designation || '—'"></p>
+            <p class="text-xs text-gray-400 mt-1" x-text="(d.city || '') + (d.date ? ' (Stand: ' + d.date + ')' : '')"></p>
+        </div>
+    </template>
+    <template x-if="!d.found">
+        <p class="text-gray-500">Keine GFNP-Zuordnung für diese Koordinaten.</p>
+    </template>
+</div>

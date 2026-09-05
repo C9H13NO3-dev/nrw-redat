@@ -1,0 +1,18 @@
+{% set dests = (d.get("destinations") or []) %}
+{% if dests %}
+<table>
+  <thead><tr><th>Ziel</th><th>Adresse</th><th class="num">Fahrzeit</th><th class="num">Distanz</th></tr></thead>
+  <tbody>
+  {% for c in dests %}
+    <tr>
+      <td class="strong">{{ c.get("name") or "—" }}</td>
+      <td class="xs muted">{{ c.get("address") or "" }}</td>
+      <td class="num strong">{{ (c.get("time_minutes")|string ~ " Min") if c.get("time_minutes") is not none else "?" }}</td>
+      <td class="num muted">{{ (c.get("distance_km")|fmt_num(1) ~ " km") if c.get("distance_km") is not none else "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted small">Keine Ziele hinterlegt (Einstellungen → Wichtige Orte).</p>
+{% endif %}

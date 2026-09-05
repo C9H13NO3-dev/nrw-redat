@@ -1,0 +1,31 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm">
+        <div class="text-gray-500">Hinweise im <span x-text="d.cell_size_m"></span> m-Planquadrat</div>
+        <div class="text-xs text-gray-500">
+            Zuständig: <span x-text="d.authority"></span>
+            <span x-show="d.updated"> · Stand <span x-text="d.updated"></span></span>
+        </div>
+    </div>
+</div>
+
+<template x-if="d.items.length">
+    <ul class="mt-4 space-y-1 text-sm">
+        <template x-for="it in d.items" :key="it.key">
+            <li class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full flex-shrink-0"
+                      :class="{red: 'bg-red-500', orange: 'bg-orange-500', yellow: 'bg-yellow-400', info: 'bg-gray-400'}[it.weight]"></span>
+                <span class="text-gray-900" x-text="it.label"></span>
+                <span class="text-gray-500 text-xs" x-show="it.kind === 'count' && it.count" x-text="'(' + it.count + '×)'"></span>
+            </li>
+        </template>
+    </ul>
+</template>
+<p class="mt-4 text-sm text-gray-600" x-show="!d.items.length">Keine Einträge zu Bergbau, Tagesbrüchen, Erdfällen oder Methan in diesem Planquadrat.</p>
+
+<p class="mt-3 text-xs text-gray-500">
+    Bürgerversion der GD-NRW-Karte: Angaben gelten für das 500 m-Raster, nicht für das Grundstück. Für eine parzellenscharfe
+    Bergbauauskunft (im Ruhrgebiet vor jedem Kauf üblich) an die
+    <a class="underline" href="https://www.bra.nrw.de/energie-bergbau/bergbaufolgen/auskunft-zur-bergbaulichen-situation-und-bergschadensgefaehrdung" target="_blank" rel="noopener">Bezirksregierung Arnsberg</a>
+    wenden · Karte: <a class="underline" href="https://www.gdu.nrw.de" target="_blank" rel="noopener">NRW von unten</a>.
+</p>

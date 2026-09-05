@@ -1,0 +1,16 @@
+<div class="grid grid-cols-3 gap-4 text-sm mb-4">
+    <div>
+        <div class="text-gray-500"><span x-text="d.oldest_year"></span> → <span x-text="d.current_year"></span></div>
+        <div class="font-bold text-gray-900"><span x-text="d.oldest_value"></span> → <span x-text="d.current_value"></span> €/m²</div>
+    </div>
+    <div>
+        <div class="text-gray-500">Gesamt</div>
+        <div class="font-bold" :class="d.total_change >= 0 ? 'text-green-600' : 'text-red-600'"
+             x-text="(d.total_change >= 0 ? '+' : '') + d.total_change + ' %'"></div>
+    </div>
+    <div>
+        <div class="text-gray-500">Ø pro Jahr</div>
+        <div class="font-bold text-gray-900" x-text="(d.avg_yearly_change >= 0 ? '+' : '') + d.avg_yearly_change + ' %'"></div>
+    </div>
+</div>
+<div class="h-64 print-chart"><canvas id="boris_trend-chart"></canvas></div>

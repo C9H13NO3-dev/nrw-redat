@@ -1,0 +1,14 @@
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <template x-for="[key, icon, label] in [['public_transport','🚇','ÖPNV'], ['supermarket','🛒','Supermarkt'], ['school','🏫','Schule'], ['kindergarten','👶','Kita'], ['doctor','🩺','Arzt']]" :key="key">
+        <div>
+            <div class="text-2xl mb-1" x-text="icon"></div>
+            <div class="text-sm text-gray-500" x-text="label"></div>
+            <div class="font-bold text-gray-900" x-text="d.distances[key] != null ? $store.app.formatDistance(d.distances[key]) : '—'"></div>
+            <div class="text-xs text-gray-400 truncate" x-text="d.nearest?.[key]?.name || ''"></div>
+        </div>
+    </template>
+</div>
+<div class="mt-4 flex gap-6 text-sm">
+    <div><span class="text-gray-500">ÖPNV-Score</span> <span class="font-bold text-gray-900" x-text="d.public_transport_score ?? '—'"></span>/10</div>
+    <div><span class="text-gray-500">Walkability</span> <span class="font-bold text-gray-900" x-text="d.walkability_score ?? '—'"></span>/10</div>
+</div>

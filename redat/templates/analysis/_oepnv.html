@@ -1,0 +1,82 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm text-gray-500">
+        Fahrplan <span x-text="d.reference.weekday"></span>, <span x-text="d.reference.date.split('-').reverse().join('.')"></span>
+        · Abfahrten <span x-text="d.reference.window"></span> Uhr · Fahrzeiten ab 08:00
+    </div>
+</div>
+
+<template x-if="d.stops.length">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">🚏 Haltestellen (≤ 600 m)</div>
+        <ul class="mt-1 space-y-1">
+            <template x-for="(s, i) in d.stops" :key="'st' + i">
+                <li class="flex items-center gap-2">
+                    <span class="w-14 text-right text-gray-500 flex-shrink-0" x-text="s.distance_m + ' m'"></span>
+                    <span class="text-gray-900" :class="s.rail && 'font-medium'" x-text="s.name"></span>
+                    <template x-for="p in s.products" :key="p">
+                        <span class="px-1.5 py-0.5 rounded text-xs"
+                              :class="['U-Bahn', 'Stadtbahn', 'Straßenbahn', 'S-Bahn', 'Zug', 'Regionalzug'].includes(p) ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'"
+                              x-text="p"></span>
+                    </template>
+                </li>
+            </template>
+        </ul>
+    </div>
+</template>
+<p class="mt-4 text-sm text-gray-600" x-show="!d.stops.length">Keine VRR-Haltestelle im Umkreis von 600 m.</p>
+
+<template x-if="d.lines.length">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">🚋 Linien &amp; Takt (07–09 Uhr, nächste 3 Haltestellen)</div>
+        <div class="overflow-x-auto">
+            <table class="mt-1 w-full text-left">
+                <thead class="text-xs text-gray-500"><tr><th class="pr-3 py-0.5">Linie</th><th class="pr-3">Takt</th><th class="pr-3">ab</th><th>Richtung</th></tr></thead>
+                <tbody>
+                    <template x-for="(l, i) in d.lines" :key="'ln' + i">
+                        <tr class="border-t border-gray-100">
+                            <td class="pr-3 py-1 whitespace-nowrap"><span class="font-semibold text-gray-900" x-text="l.line"></span> <span class="text-xs text-gray-500" x-text="l.product"></span></td>
+                            <td class="pr-3 whitespace-nowrap text-gray-700" x-text="'alle ' + (l.headway_min % 1 ? l.headway_min.toFixed(1).replace('.', ',') : l.headway_min) + ' min'"
+                                :title="l.departures_2h + ' Abfahrten in 2 h'"></td>
+                            <td class="pr-3 text-gray-500 whitespace-nowrap" x-text="l.stop"></td>
+                            <td class="text-gray-700" x-text="l.destinations.join(' · ')"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</template>
+
+<template x-if="d.trips.length">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">⏱️ Fahrzeiten (Di ab 08:00, Fußweg inklusive)</div>
+        <div class="overflow-x-auto">
+            <table class="mt-1 w-full text-left">
+                <thead class="text-xs text-gray-500"><tr><th class="pr-3 py-0.5">Ziel</th><th class="pr-3">Dauer</th><th class="pr-3">Umstiege</th><th class="pr-3">Linien</th><th>Fußweg</th></tr></thead>
+                <tbody>
+                    <template x-for="(t, i) in d.trips" :key="'tr' + i">
+                        <tr class="border-t border-gray-100">
+                            <td class="pr-3 py-1 text-gray-900" x-text="t.name"></td>
+                            <td class="pr-3 whitespace-nowrap">
+                                <span class="font-semibold" :class="t.duration_min === null ? 'text-gray-400' : (t.duration_min <= 20 ? 'text-green-700' : (t.duration_min <= 45 ? 'text-gray-900' : 'text-orange-700'))"
+                                      x-text="t.duration_min === null ? 'keine Verbindung' : t.duration_min + ' min'"></span>
+                                <span class="text-xs text-gray-500" x-show="t.departure" x-text="' (' + t.departure + '–' + t.arrival + ')'"></span>
+                            </td>
+                            <td class="pr-3 text-gray-700" x-text="t.interchanges === null ? '—' : t.interchanges"></td>
+                            <td class="pr-3 text-gray-700" x-text="t.legs.join(' → ') || '—'"></td>
+                            <td class="text-gray-500" x-text="t.walk_min === null ? '—' : t.walk_min + ' min'"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</template>
+
+<p class="mt-3 text-xs text-gray-500">
+    Stichtags-Fahrplan (nächster Dienstag, kein Echtzeit) — Ferien- und Baustellenfahrpläne können abweichen. Eigene Ziele: Einstellungen → Wichtige Orte.
+    Bewertung: Schienenhaltestelle ≤ 400 m und Hbf ≤ 20 min = Sehr gut; ≤ 800 m oder ≤ 30 min = Gut.
+    Quelle: <a class="underline" href="https://www.vrr.de/" target="_blank" rel="noopener">VRR EFA</a>
+    <span x-show="Object.keys(d.errors || {}).length" x-text="' · nicht abrufbar: ' + Object.keys(d.errors).join(', ')"></span>
+</p>

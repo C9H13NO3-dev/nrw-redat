@@ -1,0 +1,45 @@
+{% set sc = d.get("scenarios") or {} %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Überflutungsgefahr im Umkreis von {{ d.get("radius_m") or 50 }} m</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+    <div class="sub">Gebäudeanteil der Fläche: {{ (d.building_share|pct) if d.get("building_share") is not none else "—" }} — das Modell rechnet nur auf unbebauter Fläche</div>
+  </div>
+</div>
+
+<table class="mt">
+  <thead><tr><th>Szenario</th><th class="num">Max. Wassertiefe</th><th class="num">Max. Fließgeschw.</th><th class="num">Nasse Fläche (≥ 10 cm)</th></tr></thead>
+  <tbody>
+  {% for key in ["agw", "extrem"] %}
+    {% set s = sc.get(key) %}
+    {% if s %}
+    <tr>
+      <td class="strong">{{ s.get("label") or key }}</td>
+      <td class="num">{{ (s.get("max") or {}).get("label") or "—" }}</td>
+      <td class="num">{{ (s.get("velocity_max") or {}).get("label") or "—" }}</td>
+      <td class="num">{{ (s.wet_share|pct) if s.get("wet_share") is not none else "—" }}</td>
+    </tr>
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="two-col mt">
+{% for key, fallback in (("agw", "Seltenes Ereignis (100-jährlich)"), ("extrem", "Extremereignis (90 mm/h)")) %}
+  {% set s = sc.get(key) %}
+  {% if s %}
+  <div>
+    <h3>{{ s.get("label") or fallback }}</h3>
+    {% for label, share in (s.get("shares") or {}).items() %}
+      <div class="bar">
+        <span class="dist">{{ label }}</span>
+        <div class="track"><div class="fill" style="width: {{ [1, (share * 100)|round|int]|max }}%"></div></div>
+        <span class="nowrap xs">{{ share|pct }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+</div>
+
+<p class="footnote">Hinweiskarte, keine Prognose: 1 m-Oberflächenmodell ohne Kanalnetz, Gebäude sind ausgespart. Ausschlaggebend ist die Wassertiefe innerhalb {{ d.get("radius_m") or 50 }} m (Straße, Hof, Garten). Quelle: BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) · Starkregen-Infos Essen.</p>

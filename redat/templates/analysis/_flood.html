@@ -1,0 +1,20 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getFloodRiskClass(d.flood_risk_level)" x-text="d.flood_risk_level"></span>
+    <div class="text-sm">
+        <div class="text-gray-500">Hochwasserzone</div>
+        <div class="font-medium text-gray-900" x-text="d.flood_zone || 'keine (außerhalb aller Szenarien)'"></div>
+    </div>
+</div>
+<table class="mt-4 w-full text-sm">
+    <thead><tr class="text-left text-gray-500"><th class="py-1">Szenario</th><th class="py-1">Betroffen</th><th class="py-1">Abstand</th></tr></thead>
+    <tbody>
+        <template x-for="sc in ['HQhaeufig', 'HQ100', 'HQextrem']" :key="sc">
+            <tr class="border-t">
+                <td class="py-1 font-medium" x-text="sc"></td>
+                <td class="py-1" x-text="d.hits[sc]?.hit ? 'ja' : 'nein'"></td>
+                <td class="py-1 text-gray-600" x-text="d.hits[sc]?.min_distance_m == null ? '—' : $store.app.formatDistance(d.hits[sc].min_distance_m)"></td>
+            </tr>
+        </template>
+    </tbody>
+</table>
+<p class="mt-3 text-xs text-gray-500">Overlays HQ100 / HQhäufig / HQextrem auf der Karte oben zuschaltbar.</p>

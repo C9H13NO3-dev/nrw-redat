@@ -1,0 +1,16 @@
+{% if not d.get("found") %}
+<p class="muted">Keine Bauleitpläne für diese Koordinaten.</p>
+{% else %}
+<table>
+  <thead><tr><th>Kategorie</th><th>Verfahren</th><th>Link</th></tr></thead>
+  <tbody>
+  {% for item in (d.get("items") or []) %}
+    <tr>
+      <td class="nowrap"><span class="tag">{{ item.get("category") or "—" }}</span></td>
+      <td>{{ item.get("name") or "—" }}</td>
+      <td class="xs nowrap">{% if item.get("link") %}<a href="{{ item.link }}">Details ↗</a>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}

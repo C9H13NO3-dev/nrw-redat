@@ -1,0 +1,53 @@
+{% set cell = (d.get("cell") or {}) %}
+{% set area = (d.get("area") or {}) %}
+<p class="muted small">100 m-Zelle und Umfeld ({{ d.get("area_cells") if d.get("area_cells") is not none else "—" }} Zellen, ±{{ d.get("radius_m") if d.get("radius_m") is not none else "—" }} m), Stichtag 15.05.{{ d.get("year") if d.get("year") is not none else "—" }}.
+{% if not d.get("cell") %}Die Zelle selbst ist unbewohnt oder geheim gehalten — Werte aus dem Umfeld.{% endif %}</p>
+
+{% set rows = [
+  ("Einwohner", "einwohner", "int", ""),
+  ("Durchschnittsalter", "alter", 1, " Jahre"),
+  ("unter 18", "u18", 1, " %"),
+  ("65 und älter", "ab65", 1, " %"),
+  ("Haushaltsgröße", "hh_groesse", 2, " Pers."),
+  ("Wohnfläche je Bewohner", "wohnfl_je_bew", 0, " m²"),
+  ("Eigentümerquote", "eigentuemer", 1, " %"),
+  ("Leerstandsquote", "leerstand", 1, " %"),
+  ("Ø Nettokaltmiete", "miete_qm", 2, " €/m²"),
+  ("Gebäude", "gebaeude", "int", ""),
+] %}
+<table class="mt">
+  <thead><tr><th>Kennzahl</th><th class="num">100 m-Zelle</th><th class="num">Umkreis ±{{ d.get("radius_m") if d.get("radius_m") is not none else 250 }} m</th></tr></thead>
+  <tbody>
+  {% for label, key, digits, suffix in rows %}
+    {% set v1 = cell.get(key) %}
+    {% set v2 = area.get(key) %}
+    <tr>
+      <td class="muted">{{ label }}</td>
+      <td class="num">{% if v1 is not none %}{{ v1|fmt_int if digits == "int" else v1|fmt_num(digits) }}{{ suffix }}{% else %}—{% endif %}</td>
+      <td class="num strong">{% if v2 is not none %}{{ v2|fmt_int if digits == "int" else v2|fmt_num(digits) }}{{ suffix }}{% else %}—{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="two-col mt">
+{% for group, title in [("baujahr", "Baujahr der Gebäude"), ("gebaeudetyp", "Wohnungen je Gebäude"), ("heizung", "Heizungsart"), ("energietraeger", "Energieträger")] %}
+  {% set gd = (area.get(group) or {}) %}
+  <div>
+    <h3>{{ title }} (Umfeld)</h3>
+    {% if gd %}
+      {% for label, share in gd|dictsort(by="value", reverse=true) %}
+        <div class="bar">
+          <span style="min-width:32mm">{{ label }}</span>
+          <div class="track"><div class="fill" style="width: {{ (share * 100)|round|int }}%; background: #6366f1"></div></div>
+          <span class="num">{{ share|pct }}</span>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="xs muted">Keine Angaben (geheim gehalten).</p>
+    {% endif %}
+  </div>
+{% endfor %}
+</div>
+
+<p class="footnote">Kleine Zellen sind aus Datenschutzgründen oft geheim gehalten; Umfeld-Werte sind über die bewohnten Zellen gemittelt (Alter, Anteile und Haushaltsgröße einwohnergewichtet). Gebäudeanteile nur über Zellen mit veröffentlichten Zahlen.</p>

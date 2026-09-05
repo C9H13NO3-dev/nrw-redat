@@ -1,0 +1,92 @@
+{% set lt = (d.get("longterm") or {}) %}
+{% set cur = (d.get("current") or {}) %}
+{% set idx_color = {1: "green", 2: "green", 3: "yellow", 4: "orange", 5: "red"} %}
+
+<div class="two-col">
+<div>
+  <h3>Langzeitbelastung <span class="chip {{ rating_class(lt.get('rating_color')) }}">{{ lt.get("rating") or "—" }}</span></h3>
+  {% set grid = lt.get("grid") %}
+  {% if grid %}
+    <p class="xs muted">Jahresmittel {{ grid.get("year") or "—" }}, 1 km-Raster (EEA)</p>
+    <table>
+      <thead><tr><th>Schadstoff</th><th class="num">Jahresmittel</th><th class="num">EU 2030</th><th class="num">WHO</th></tr></thead>
+      <tbody>
+      {% for comp, m in (grid.get("values") or {}).items() %}
+        {% set val = m.get("value") %}
+        {% set eu = m.get("eu2030") %}
+        {% set who = m.get("who") %}
+        {% set unit = m.get("unit") or "" %}
+        {% set color = "#b91c1c" if (eu is not none and val is not none and val > eu) else ("#b45309" if (who is not none and val is not none and val > who) else "#15803d") %}
+        <tr>
+          <td class="strong">{{ comp }}</td>
+          <td class="num" style="color: {{ color }}">{{ (val|fmt_num(1) ~ " " ~ unit) if val is not none else "—" }}</td>
+          <td class="num muted">{{ (eu|fmt_num(1) ~ " " ~ unit) if eu is not none else "—" }}</td>
+          <td class="num muted">{{ (who|fmt_num(1) ~ " " ~ unit) if who is not none else "—" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="xs muted mt">Bewertung gegen die EU-Grenzwerte ab 2030; O₃ (Sommer-Spitzenwert) fließt nicht ein.</p>
+  {% else %}
+    <p class="xs muted">Kein Rasterwert für diesen Ort (außerhalb Essen/Bochum).</p>
+  {% endif %}
+
+  {% set samplers = (lt.get("no2_samplers") or []) %}
+  {% if samplers %}
+    <h3 class="mt">NO₂-Messpunkte in der Nähe (Jahresmittel {{ samplers[0].get("year") or "—" }})</h3>
+    <table>
+      <tbody>
+      {% for s in samplers %}
+        <tr>
+          <td>{{ s.get("name") or "—" }} <span class="xs muted">({{ s.get("distance_km")|fmt_num(1) if s.get("distance_km") is not none else "—" }} km, {{ s.get("type") or "—" }})</span></td>
+          <td class="num" style="{{ 'color:#b91c1c' if (s.get('value') is not none and s.get('value') > 20) else '' }}">{{ (s.get("value")|fmt_num(1) ~ " " ~ (s.get("unit") or "")) if s.get("value") is not none else "—" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="xs muted">Straßenrand-Messpunkte — Werte liegen über dem Wohnumfeld.</p>
+  {% endif %}
+</div>
+
+<div>
+  <h3>Aktuell <span class="chip {{ rating_class(cur.get('rating_color')) }}">{{ cur.get("rating") or "—" }}</span></h3>
+  {% set station = cur.get("station") %}
+  {% if station %}
+    <p class="xs muted">Stand {{ station.get("timestamp") or "—" }}</p>
+    <p class="muted">Messstation <span class="xs">({{ station.get("distance_km")|fmt_num(1) if station.get("distance_km") is not none else "—" }} km, {{ station.get("type") or "—" }})</span></p>
+    <p class="strong">{{ station.get("name") or "—" }}</p>
+    {% set meas = (station.get("measurements") or {}) %}
+    {% if meas %}
+    <p>
+    {% for comp, m in meas.items() %}<span class="chip {{ rating_class(idx_color.get(m.get('index'))) }}" style="font-size:8pt">{{ comp }} {{ m.get("value") if m.get("value") is not none else "—" }} {{ m.get("unit") or "" }}</span> {% endfor %}
+    </p>
+    {% else %}
+    <p class="xs muted">Keine aktuellen Messwerte.</p>
+    {% endif %}
+  {% else %}
+    <p class="xs muted">Keine kontinuierliche Messstation im Umkreis von 15 km.</p>
+  {% endif %}
+
+  {% set citizen = cur.get("citizen") %}
+  {% if citizen %}
+    <p class="mt muted">Bürgersensoren <span class="xs">({{ citizen.get("sensors") if citizen.get("sensors") is not none else "—" }} Sensoren, {{ citizen.get("radius_km") if citizen.get("radius_km") is not none else "—" }} km, Median)</span></p>
+    <p class="small">
+    {% if citizen.get("pm10") is not none %}PM10 <span class="strong">{{ citizen.get("pm10")|fmt_num(1) }}</span> µg/m³ {% endif %}
+    {% if citizen.get("pm25") is not none %}· PM2.5 <span class="strong">{{ citizen.get("pm25")|fmt_num(1) }}</span> µg/m³{% endif %}
+    </p>
+    <p class="xs muted">Sensor.Community — Low-Cost-Sensoren, bei hoher Luftfeuchte überhöht.</p>
+  {% endif %}
+
+  {% set model = cur.get("model") %}
+  {% if model %}
+    <p class="mt muted">Modell <span class="xs">(CAMS Europa, {{ model.get("resolution_km") if model.get("resolution_km") is not none else "—" }} km)</span></p>
+    <p class="small">
+    <span class="chip {{ rating_class(model.get('aqi_color')) }}" style="font-size:8pt">EU-AQI {{ model.get("european_aqi") if model.get("european_aqi") is not none else "—" }} · {{ model.get("aqi_label") or "—" }}</span>
+    {% for comp in ["PM10", "PM2.5", "NO2", "O3"] %}{% if model.get(comp) is not none %} · {{ comp }} {{ model.get(comp)|fmt_num(1) }} µg/m³{% endif %}{% endfor %}
+    </p>
+  {% endif %}
+</div>
+</div>
+
+{% set errs = (d.get("errors") or {}) %}
+{% if errs %}<p class="footnote">Nicht erreichbar: {{ errs.keys()|join(", ") }}</p>{% endif %}

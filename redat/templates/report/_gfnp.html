@@ -1,0 +1,6 @@
+{% if d.get("found") %}
+<p class="strong">{{ d.get("designation") or "—" }}</p>
+<p class="muted small">{{ d.get("city") or "" }}{% if d.get("date") %} (Stand: {{ d.date|fmt_date }}){% endif %}</p>
+{% else %}
+<p class="muted">Keine GFNP-Zuordnung für diese Koordinaten.</p>
+{% endif %}

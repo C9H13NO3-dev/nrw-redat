@@ -1,0 +1,29 @@
+{% set weight_labels = {"red": "hoch", "orange": "erhöht", "yellow": "gering", "info": "Info"} %}
+{% set weight_tags = {"red": "tag-red", "orange": "tag-orange", "yellow": "tag-yellow"} %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Hinweise im {{ d.get("cell_size_m") or 500 }} m-Planquadrat</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+    <div class="sub">Zuständig: {{ d.get("authority") or "—" }}{% if d.get("updated") %} · Stand {{ d.updated|fmt_date }}{% endif %}</div>
+  </div>
+</div>
+
+{% set items = d.get("items") or [] %}
+{% if items %}
+<table class="mt">
+  <thead><tr><th>Hinweis</th><th>Einstufung</th><th class="num">Anzahl</th></tr></thead>
+  <tbody>
+  {% for it in items %}
+    <tr>
+      <td>{{ it.get("label") or "—" }}</td>
+      <td><span class="tag {{ weight_tags.get(it.get("weight"), "") }}">{{ weight_labels.get(it.get("weight"), it.get("weight") or "—") }}</span></td>
+      <td class="num">{{ (it.count ~ "×") if it.get("kind") == "count" and it.get("count") else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted mt">Keine Einträge zu Bergbau, Tagesbrüchen, Erdfällen oder Methan in diesem Planquadrat.</p>
+{% endif %}
+
+<p class="footnote">Bürgerversion der GD-NRW-Karte: Angaben gelten für das 500 m-Planquadrat, nicht für das Grundstück. Für eine parzellenscharfe Bergbauauskunft (im Ruhrgebiet vor jedem Kauf üblich) an die Bezirksregierung Arnsberg wenden. Quelle: NRW von unten (GD NRW).</p>

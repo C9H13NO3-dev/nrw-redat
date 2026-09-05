@@ -1,0 +1,15 @@
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+    <div>
+        <div class="text-gray-500">Bodenrichtwert</div>
+        <div class="text-2xl font-bold text-gray-900" x-text="d.bodenrichtwert + ' €/m²'"></div>
+    </div>
+    <div x-show="d.grundstueckswert">
+        <div class="text-gray-500">Geschätzter Grundstückswert (× <span x-text="plotSize"></span> m²)</div>
+        <div class="text-2xl font-bold text-green-600" x-text="$store.app.formatPrice(d.grundstueckswert)"></div>
+    </div>
+</div>
+<div class="mt-2 text-xs text-gray-500">
+    <span x-show="d.zone">Zone: <span x-text="d.zone"></span></span>
+    <span x-show="d.zone && d.date"> · </span>
+    <span x-show="d.date">Stand: <span x-text="d.date"></span></span>
+</div>

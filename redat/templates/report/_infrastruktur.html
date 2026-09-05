@@ -1,0 +1,114 @@
+{% set pls = (d.get("power_lines") or []) %}
+{% set subs = (d.get("substations") or []) %}
+{% set trafo = d.get("trafo_count") %}
+{% set wind = (d.get("wind") or []) %}
+{% set masts = (d.get("masts") or []) %}
+{% set pipes = (d.get("pipelines") or []) %}
+{% set ied = (d.get("ied_sites") or []) %}
+{% set ind = d.get("industrial_landuse_m") %}
+
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Bewertung</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+</div>
+<p class="muted small">Stromtrassen, Umspannwerke, Windkraft, Sendemasten, Pipelines (≤ 500 m) und Industrieanlagen (≤ 2 km)</p>
+
+{% if pls %}
+<h3 class="mt">⚡ Stromleitungen</h3>
+<ul class="plain">
+{% for l in pls %}
+  {% set is_hs = l.get("kind") == "hochspannung" %}
+  <li>
+    <span class="dist">{{ l.get("distance_m")|fmt_m if l.get("distance_m") is not none else "—" }}</span>
+    <span class="tag {{ 'tag-red' if is_hs and not l.get('underground') else ('tag-yellow' if is_hs else '') }}">{{ ((l.get("voltages") or [])|join("/") ~ " kV") if l.get("voltage_kv") else "Mittelspannung" }}</span>
+    {{ l.get("name") or ("Hochspannungsfreileitung" if is_hs else "Leitung") }}
+    {% if l.get("underground") %}<span class="xs muted">erdverlegt</span>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if subs or trafo %}
+<h3 class="mt">🔌 Umspannwerke</h3>
+{% if subs %}
+<ul class="plain">
+{% for s in subs %}
+  <li>
+    <span class="dist">{{ s.get("distance_m")|fmt_m if s.get("distance_m") is not none else "—" }}</span>
+    <span class="tag tag-orange">{{ s.get("voltage_kv") if s.get("voltage_kv") is not none else "—" }} kV</span>
+    {{ s.get("name") or "—" }}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+{% if trafo %}<p class="xs muted">{{ trafo }} Ortsnetz-Trafostationen (≤ 10 kV) im Umkreis von 500 m — Normalfall in Wohngebieten.</p>{% endif %}
+{% endif %}
+
+{% if wind or masts %}
+<h3 class="mt">🌬 Windkraft &amp; Sendemasten</h3>
+<ul class="plain">
+{% for w in wind %}
+  {% set wd = w.get("distance_m") %}
+  <li>
+    <span class="dist">{{ wd|fmt_m if wd is not none else "—" }}</span>
+    <span class="tag {{ 'tag-red' if wd is not none and wd <= 500 else ('tag-orange' if wd is not none and wd <= 1000 else '') }}">Windkraftanlage</span>
+    {{ w.get("name") or "" }}
+  </li>
+{% endfor %}
+{% for m in masts %}
+  {% set md = m.get("distance_m") %}
+  <li>
+    <span class="dist">{{ md|fmt_m if md is not none else "—" }}</span>
+    <span class="tag {{ 'tag-orange' if md is not none and md <= 100 else '' }}">{{ "Sendemast" if m.get("kind") == "mast" else "Funkturm" }}</span>
+    {{ m.get("name") or "" }}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if pipes %}
+<h3 class="mt">🛢 Pipelines</h3>
+<ul class="plain">
+{% for p in pipes %}
+  <li>
+    <span class="dist">{{ p.get("distance_m")|fmt_m if p.get("distance_m") is not none else "—" }}</span>
+    <span class="tag {{ 'tag-orange' if p.get('hazardous') else '' }}">{{ p.get("substance") or "unbekannt" }}</span>
+    {{ p.get("name") or "Pipeline" }}
+    {% if p.get("location") %}<span class="xs muted">{{ "erdverlegt" if p.get("location") == "underground" else p.get("location") }}</span>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% set ns = namespace(hazard=false) %}
+{% for p in pipes %}{% if p.get("hazardous") %}{% set ns.hazard = true %}{% endif %}{% endfor %}
+{% if ns.hazard %}<p class="xs muted">Gas-/Produktleitungen haben einen Schutzstreifen (meist 4–10 m beidseitig): Bauverbot, Baumverbot, Zustimmung des Betreibers für Erdarbeiten.</p>{% endif %}
+{% endif %}
+
+{% if ind is not none %}
+<p class="mt">🏭 {{ "Der Punkt liegt in einer Gewerbe-/Industriefläche (OSM landuse=industrial)." if ind == 0 else ("Nächste Gewerbe-/Industriefläche: " ~ (ind|fmt_m) ~ ".") }}</p>
+{% endif %}
+
+{% if ied %}
+<h3 class="mt">🏭 Genehmigungspflichtige Industrieanlagen (IED/E-PRTR, ≤ 2 km)</h3>
+<ul class="plain">
+{% for s in ied %}
+  <li>
+    <span class="dist">{{ (s.get("distance_m") / 1000)|fmt_num(1) ~ " km" if s.get("distance_m") is not none else "—" }}</span>
+    <span class="{{ 'muted' if s.get('stale') else 'strong' }}">{{ s.get("name") or "—" }}</span>
+    {% if s.get("sectors") %}<span class="muted"> — {{ s.get("sectors")|join(", ") }}</span>{% endif %}
+    {% if s.get("stale") %}<span class="xs muted"> · letzter Bericht {{ s.get("year") or "?" }} — evtl. stillgelegt</span>
+    {% elif s.get("year") %}<span class="xs muted"> · Bericht {{ s.get("year") }}</span>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if not pls and not subs and not trafo and not wind and not masts and not pipes and not ied and ind is none %}
+<p class="mt muted">Keine Hochspannungsleitung, Windkraftanlage, Pipeline oder meldepflichtige Industrieanlage im Umkreis.</p>
+{% endif %}
+
+<div class="note"><span class="strong">Störfallbetriebe (Seveso III):</span> {{ d.get("seveso_note") or "—" }}</div>
+
+{% set errs = (d.get("errors") or {}) %}
+<p class="footnote">Abstände zur nächsten Kante; OSM-Vollständigkeit variiert (Trassen und Umspannwerke sind gut erfasst, Pipelines lückenhaft). Freileitungen ≥ 110 kV sind wertrelevant (Sicht, Brummen, 26. BImSchV-Grenzwerte werden i. d. R. eingehalten). Quelle: OpenStreetMap · EEA Industrial Emissions Portal{% if errs %} · nicht abrufbar: {{ errs.keys()|join(", ") }}{% endif %}</p>

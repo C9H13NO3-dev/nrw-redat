@@ -1,0 +1,27 @@
+{% set levels = {"low": ("Gering", "green"), "medium": ("Mittel", "yellow"), "high": ("Hoch", "red")} %}
+{% set lvl = levels.get(d.get("flood_risk_level")) %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Hochwasserrisiko</div>
+    <div class="value">{% if lvl %}<span class="chip {{ rating_class(lvl[1]) }}">{{ lvl[0] }}</span>{% else %}<span class="muted">—</span>{% endif %}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Hochwasserzone</div>
+    <div class="value" style="font-size: 11pt">{{ d.get("flood_zone") or "keine (außerhalb aller Szenarien)" }}</div>
+  </div>
+</div>
+<table class="mt">
+  <thead><tr><th>Szenario</th><th>Betroffen</th><th class="num">Abstand</th></tr></thead>
+  <tbody>
+  {% set labels = {"HQhaeufig": "HQhäufig", "HQ100": "HQ100", "HQextrem": "HQextrem"} %}
+  {% for sc in ["HQhaeufig", "HQ100", "HQextrem"] %}
+    {% set h = (d.get("hits") or {}).get(sc) or {} %}
+    <tr>
+      <td class="strong">{{ labels[sc] }}</td>
+      <td>{{ "ja" if h.get("hit") else "nein" }}</td>
+      <td class="num">{{ (h.min_distance_m|fmt_m) if h.get("min_distance_m") is not none else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="footnote">HQhäufig: häufiges Hochwasser (kurze Wiederkehrzeit) · HQ100: 100-jährliches Hochwasser · HQextrem: Extremereignis, deutlich seltener als HQ100. Amtliche Überschwemmungsgebiete und Hochwassergefahrenkarten NRW.</p>

@@ -1,0 +1,32 @@
+{% set hist = d.get("history") or [] %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">{{ d.get("oldest_year", "—") }} → {{ d.get("current_year", "—") }}</div>
+    <div class="value">{{ d.oldest_value|fmt_int if d.get("oldest_value") is not none else "—" }} → {{ d.current_value|fmt_int if d.get("current_value") is not none else "—" }} €/m²</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Gesamt</div>
+    <div class="value" style="color: {{ '#15803d' if (d.get('total_change') or 0) >= 0 else '#b91c1c' }}">{{ "%+.1f"|format(d.get("total_change") or 0) }} %</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Ø pro Jahr</div>
+    <div class="value">{{ "%+.1f"|format(d.get("avg_yearly_change") or 0) }} %</div>
+  </div>
+</div>
+{% if boris_trend_svg %}<div class="mt">{{ boris_trend_svg|safe }}</div>{% endif %}
+{% if hist %}
+<table class="mt">
+  <thead><tr><th>Stichtag</th><th class="num">€/m²</th><th class="num">Veränderung</th><th>Nutzung</th></tr></thead>
+  <tbody>
+  {% for h in hist %}
+    <tr>
+      <td>{{ h.get("year", "—") }}</td>
+      <td class="num">{{ h.value|fmt_int if h.get("value") is not none else "—" }}</td>
+      <td class="num">{{ ("%+.1f"|format(h.change_percent) ~ " %") if h.get("change_percent") is not none else "—" }}</td>
+      <td>{{ h.get("nutzung") or "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+<p class="footnote">Bodenrichtwerte der Gutachterausschüsse NRW zu den jeweiligen Stichtagen (1. Januar). Nutzungsart-Kürzel: W Wohnbaufläche, MI Mischgebiet, G Gewerbe, MK Kerngebiet.</p>

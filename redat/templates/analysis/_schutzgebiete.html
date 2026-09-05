@@ -1,0 +1,48 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm text-gray-500">Natur- und Landschaftsschutz im Umkreis von <span x-text="d.radius_m"></span> m, Wasserschutz am Punkt</div>
+</div>
+
+<template x-if="d.areas.length">
+    <ul class="mt-4 space-y-1.5 text-sm">
+        <template x-for="(a, i) in d.areas" :key="i">
+            <li class="flex items-start gap-2">
+                <span class="mt-0.5 px-1.5 py-0.5 rounded text-xs font-semibold uppercase flex-shrink-0"
+                      :class="{nsg: 'bg-red-100 text-red-800', ffh: 'bg-red-100 text-red-800', vsg: 'bg-red-100 text-red-800', gbt: 'bg-red-50 text-red-700',
+                               lsg: 'bg-orange-100 text-orange-800', np: 'bg-green-100 text-green-800'}[a.kind]" x-text="a.kind"></span>
+                <span>
+                    <a class="text-gray-900 underline decoration-gray-300" x-show="a.link" :href="a.link" target="_blank" rel="noopener" x-text="a.name"></a>
+                    <span class="text-gray-900" x-show="!a.link" x-text="a.name"></span>
+                    <span class="text-gray-500" x-text="a.inside ? ' — innerhalb' : ' — ' + Math.round(a.distance_m) + ' m entfernt'"></span>
+                    <span class="text-xs text-gray-500" x-show="a.since" x-text="' · seit ' + a.since"></span>
+                </span>
+            </li>
+        </template>
+    </ul>
+</template>
+<p class="mt-2 text-xs text-gray-500" x-show="Object.values(d.counts || {}).reduce((s, n) => s + n, 0) > d.areas.length"
+   x-text="'Weitere ' + (Object.values(d.counts).reduce((s, n) => s + n, 0) - d.areas.length) + ' Flächen (v. a. geschützte Biotope) nicht aufgeführt.'"></p>
+<p class="mt-4 text-sm text-gray-600" x-show="!d.areas.length">Kein Natur-, Landschafts- oder FFH-Schutzgebiet im Umkreis.</p>
+
+<template x-if="d.wsg.length">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">💧 Wasserschutzgebiet</div>
+        <ul class="mt-1 space-y-0.5">
+            <template x-for="(w, i) in d.wsg" :key="i">
+                <li class="text-gray-700">
+                    <span class="font-medium" x-text="w.kind + ' Zone ' + w.zone"></span> — <span x-text="w.name"></span>
+                    <span class="text-gray-500" x-text="'(' + w.status + (w.since ? ', seit ' + w.since : '') + ')'"></span>
+                </li>
+            </template>
+        </ul>
+        <p class="mt-1 text-xs text-gray-500">Zone I/II: keine Neubebauung, keine Erdwärmesonden; Zone III: Einschränkungen für Öltanks, Versickerung, Bohrungen und Bauvorhaben — Verordnung der Bezirksregierung prüfen.</p>
+    </div>
+</template>
+
+<p class="mt-3 text-xs text-gray-500">
+    Im LSG sind Anbauten, Nebengebäude und Einfriedungen genehmigungspflichtig (Befreiung der Unteren Naturschutzbehörde), im NSG/FFH-Gebiet praktisch ausgeschlossen —
+    ein angrenzendes Schutzgebiet sichert dafür den Blick. Quelle:
+    <a class="underline" href="https://www.naturschutzinformationen.nrw.de/" target="_blank" rel="noopener">LINFOS (LANUV)</a> ·
+    <a class="underline" href="https://www.elwasweb.nrw.de/" target="_blank" rel="noopener">ELWAS (Wasserschutz)</a>
+    <span x-show="Object.keys(d.errors || {}).length" x-text="' · nicht abrufbar: ' + Object.keys(d.errors).join(', ')"></span>
+</p>

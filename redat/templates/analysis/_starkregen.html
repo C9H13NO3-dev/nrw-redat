@@ -1,0 +1,47 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm">
+        <div class="text-gray-500">Überflutungsgefahr im Umkreis von <span x-text="d.radius_m"></span> m</div>
+        <div class="text-xs text-gray-500">Gebäudeanteil der Fläche: <span x-text="Math.round(d.building_share * 100) + ' %'"></span> — das Modell rechnet nur auf unbebauter Fläche</div>
+    </div>
+</div>
+
+<div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+    <template x-for="key in ['agw', 'extrem']" :key="key">
+        <div>
+            <template x-if="d.scenarios[key]">
+                <div>
+                    <div class="font-semibold text-gray-900" x-text="d.scenarios[key].label"></div>
+                    <div class="mt-1 grid grid-cols-2 gap-2">
+                        <div>
+                            <div class="text-gray-500">Max. Wassertiefe</div>
+                            <div class="font-medium text-gray-900" x-text="d.scenarios[key].max.label"></div>
+                        </div>
+                        <div>
+                            <div class="text-gray-500">Max. Fließgeschwindigkeit</div>
+                            <div class="font-medium text-gray-900" x-text="d.scenarios[key].velocity_max ? d.scenarios[key].velocity_max.label : '—'"></div>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-gray-500">Nasse Fläche (≥ 10 cm): <span class="font-medium text-gray-900" x-text="Math.round(d.scenarios[key].wet_share * 100) + ' %'"></span></div>
+                    <div class="mt-1 space-y-0.5">
+                        <template x-for="[label, share] in Object.entries(d.scenarios[key].shares)" :key="label">
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="w-20 text-gray-600" x-text="label"></span>
+                                <div class="flex-1 h-2 bg-gray-100 rounded overflow-hidden"><div class="h-2 bg-blue-500" :style="'width:' + Math.max(1, Math.round(share * 100)) + '%'"></div></div>
+                                <span class="w-10 text-right text-gray-600" x-text="Math.round(share * 100) + ' %'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            <p class="text-xs text-gray-500" x-show="!d.scenarios[key]">Keine Daten für dieses Szenario.</p>
+        </div>
+    </template>
+</div>
+
+<p class="mt-3 text-xs text-gray-500">
+    Hinweiskarte, keine Prognose: 1 m-Oberflächenmodell ohne Kanalnetz, Gebäude sind ausgespart. Ausschlaggebend ist die Wassertiefe
+    innerhalb <span x-text="d.radius_m"></span> m (Straße, Hof, Garten). Details im
+    <a class="underline" href="https://www.geoportal.de/Info/tk_08-starkregen" target="_blank" rel="noopener">BKG-Viewer</a>
+    · <a class="underline" href="https://www.essen.de/leben/umwelt/wasser/starkregen.de.html" target="_blank" rel="noopener">Starkregen-Infos Essen</a>.
+</p>

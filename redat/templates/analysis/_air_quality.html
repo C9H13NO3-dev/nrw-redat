@@ -1,0 +1,94 @@
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+
+    <!-- Langzeit: EEA 1 km annual grid + nearest NO2 samplers -->
+    <div>
+        <div class="flex items-center gap-3 mb-2">
+            <span class="px-3 py-1 rounded font-bold text-sm" :class="$store.app.getAirQualityColor(d.longterm.rating_color)" x-text="d.longterm.rating"></span>
+            <div>
+                <div class="font-semibold text-gray-900">Langzeitbelastung</div>
+                <div class="text-xs text-gray-500" x-show="d.longterm.grid">Jahresmittel <span x-text="d.longterm.grid?.year"></span>, 1 km-Raster (EEA)</div>
+            </div>
+        </div>
+        <template x-if="d.longterm.grid">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left text-gray-500"><th class="py-1">Schadstoff</th><th class="py-1">Jahresmittel</th><th class="py-1">EU 2030</th><th class="py-1">WHO</th></tr></thead>
+                <tbody>
+                    <template x-for="[comp, m] in Object.entries(d.longterm.grid.values)" :key="comp">
+                        <tr class="border-t">
+                            <td class="py-1 font-medium" x-text="comp"></td>
+                            <td class="py-1 font-semibold" :class="m.eu2030 && m.value > m.eu2030 ? 'text-red-600' : (m.who && m.value > m.who ? 'text-amber-600' : 'text-green-700')" x-text="m.value + ' ' + m.unit"></td>
+                            <td class="py-1 text-gray-500" x-text="m.eu2030 ? m.eu2030 + ' ' + m.unit : '—'"></td>
+                            <td class="py-1 text-gray-500" x-text="m.who ? m.who + ' ' + m.unit : '—'"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </template>
+        <p class="text-xs text-gray-500" x-show="!d.longterm.grid">Kein Rasterwert für diesen Ort (außerhalb Essen/Bochum).</p>
+        <p class="mt-1 text-xs text-gray-500" x-show="d.longterm.grid">Bewertung gegen die EU-Grenzwerte ab 2030; O₃ (Sommer-Spitzenwert) fließt nicht ein.</p>
+
+        <template x-if="d.longterm.no2_samplers.length">
+            <div class="mt-3">
+                <div class="text-gray-500 mb-1">NO₂-Messpunkte in der Nähe (Jahresmittel <span x-text="d.longterm.no2_samplers[0].year"></span>)</div>
+                <ul class="space-y-0.5">
+                    <template x-for="s in d.longterm.no2_samplers" :key="s.name">
+                        <li class="flex justify-between gap-2">
+                            <span class="truncate"><span class="text-gray-900" x-text="s.name"></span> <span class="text-gray-500 text-xs" x-text="'(' + s.distance_km + ' km, ' + s.type + ')'"></span></span>
+                            <span class="font-medium whitespace-nowrap" :class="s.value > 20 ? 'text-red-600' : 'text-gray-900'" x-text="s.value + ' ' + s.unit"></span>
+                        </li>
+                    </template>
+                </ul>
+                <p class="mt-1 text-xs text-gray-500">Straßenrand-Messpunkte — Werte liegen über dem Wohnumfeld.</p>
+            </div>
+        </template>
+    </div>
+
+    <!-- Aktuell: nearest hourly station, citizen sensors, CAMS model -->
+    <div>
+        <div class="flex items-center gap-3 mb-2">
+            <span class="px-3 py-1 rounded font-bold text-sm" :class="$store.app.getAirQualityColor(d.current.rating_color)" x-text="d.current.rating"></span>
+            <div>
+                <div class="font-semibold text-gray-900">Aktuell</div>
+                <div class="text-xs text-gray-500" x-show="d.current.station?.timestamp">Stand <span x-text="d.current.station?.timestamp"></span></div>
+            </div>
+        </div>
+
+        <template x-if="d.current.station">
+            <div class="mb-3">
+                <div class="text-gray-500">Messstation <span class="text-xs" x-text="'(' + d.current.station.distance_km + ' km, ' + d.current.station.type + ')'"></span></div>
+                <div class="font-medium text-gray-900" x-text="d.current.station.name"></div>
+                <div class="flex flex-wrap gap-2 mt-1" x-show="Object.keys(d.current.station.measurements || {}).length">
+                    <template x-for="[comp, m] in Object.entries(d.current.station.measurements || {})" :key="comp">
+                        <span class="px-2 py-0.5 rounded text-xs" :class="$store.app.getAirQualityColor({1:'green',2:'green',3:'yellow',4:'orange',5:'red'}[m.index] || 'gray')"><span x-text="comp"></span> <span class="font-semibold" x-text="m.value"></span> <span x-text="m.unit"></span></span>
+                    </template>
+                </div>
+                <div class="text-xs text-gray-500" x-show="!Object.keys(d.current.station.measurements || {}).length">Keine aktuellen Messwerte.</div>
+            </div>
+        </template>
+        <p class="mb-3 text-xs text-gray-500" x-show="!d.current.station">Keine kontinuierliche Messstation im Umkreis von 15 km.</p>
+
+        <template x-if="d.current.citizen">
+            <div class="mb-3">
+                <div class="text-gray-500">Bürgersensoren <span class="text-xs" x-text="'(' + d.current.citizen.sensors + ' Sensoren, ' + d.current.citizen.radius_km + ' km, Median)'"></span></div>
+                <div class="flex flex-wrap gap-2 mt-1">
+                    <span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800" x-show="d.current.citizen.pm10 != null">PM10 <span class="font-semibold" x-text="d.current.citizen.pm10"></span> µg/m³</span>
+                    <span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800" x-show="d.current.citizen.pm25 != null">PM2.5 <span class="font-semibold" x-text="d.current.citizen.pm25"></span> µg/m³</span>
+                </div>
+                <div class="text-xs text-gray-500">Sensor.Community — Low-Cost-Sensoren, bei hoher Luftfeuchte überhöht.</div>
+            </div>
+        </template>
+
+        <template x-if="d.current.model">
+            <div>
+                <div class="text-gray-500">Modell <span class="text-xs" x-text="'(CAMS Europa, ' + d.current.model.resolution_km + ' km)'"></span></div>
+                <div class="flex flex-wrap gap-2 mt-1">
+                    <span class="px-2 py-0.5 rounded text-xs" :class="$store.app.getAirQualityColor(d.current.model.aqi_color)">EU-AQI <span class="font-semibold" x-text="d.current.model.european_aqi"></span> · <span x-text="d.current.model.aqi_label"></span></span>
+                    <template x-for="comp in ['PM10', 'PM2.5', 'NO2', 'O3']" :key="comp">
+                        <span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800" x-show="d.current.model[comp] != null"><span x-text="comp"></span> <span class="font-semibold" x-text="d.current.model[comp]"></span> µg/m³</span>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+<p class="mt-3 text-xs text-gray-400" x-show="Object.keys(d.errors || {}).length" x-text="'Nicht erreichbar: ' + Object.keys(d.errors || {}).join(', ')"></p>

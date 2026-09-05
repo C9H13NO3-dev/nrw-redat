@@ -1,0 +1,74 @@
+{% set ref = (d.get("reference") or {}) %}
+{% set rail_products = ["U-Bahn", "Stadtbahn", "Straßenbahn", "S-Bahn", "Zug", "Regionalzug"] %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Bewertung</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+</div>
+<p class="muted small">Fahrplan {{ ref.get("weekday") or "—" }}, {{ ref.get("date")|fmt_date if ref.get("date") else "—" }} · Abfahrten {{ ref.get("window") or "—" }} Uhr · Fahrzeiten ab 08:00</p>
+
+{% set stops = (d.get("stops") or []) %}
+{% if stops %}
+<h3>Haltestellen (≤ 600 m)</h3>
+<table>
+  <thead><tr><th class="num">Entfernung</th><th>Name</th><th>Produkte</th></tr></thead>
+  <tbody>
+  {% for s in stops %}
+    <tr>
+      <td class="num">{{ s.get("distance_m")|fmt_m if s.get("distance_m") is not none else "—" }}</td>
+      <td class="{{ 'strong' if s.get('rail') else '' }}">{{ s.get("name") or "—" }}</td>
+      <td>{% for p in (s.get("products") or []) %}<span class="tag {{ 'tag-blue' if p in rail_products else '' }}">{{ p }}</span> {% endfor %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted small">Keine VRR-Haltestelle im Umkreis von 600 m.</p>
+{% endif %}
+
+{% set lines = (d.get("lines") or []) %}
+{% if lines %}
+<h3 class="mt">Linien &amp; Takt (07–09 Uhr, nächste 3 Haltestellen)</h3>
+<table>
+  <thead><tr><th>Linie</th><th>Takt</th><th>ab</th><th>Richtung</th></tr></thead>
+  <tbody>
+  {% for l in lines %}
+    {% set hw = l.get("headway_min") %}
+    <tr>
+      <td class="nowrap"><span class="strong">{{ l.get("line") or "—" }}</span> <span class="xs muted">{{ l.get("product") or "" }}</span></td>
+      <td class="nowrap">{% if hw is not none %}alle {{ hw|fmt_num(1) if hw % 1 else hw|int }} min{% else %}—{% endif %}</td>
+      <td class="muted nowrap">{{ l.get("stop") or "—" }}</td>
+      <td>{{ (l.get("destinations") or [])|join(" · ") or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% set trips = (d.get("trips") or []) %}
+{% if trips %}
+<h3 class="mt">Fahrzeiten (Di ab 08:00, Fußweg inklusive)</h3>
+<table>
+  <thead><tr><th>Ziel</th><th>Dauer</th><th class="num">Umstiege</th><th>Linien</th><th class="num">Fußweg</th></tr></thead>
+  <tbody>
+  {% for t in trips %}
+    {% set dur = t.get("duration_min") %}
+    <tr>
+      <td>{{ t.get("name") or "—" }}</td>
+      <td class="nowrap">
+        {% if dur is none %}<span class="muted">keine Verbindung</span>
+        {% else %}<span class="strong">{{ dur }} min</span>{% if t.get("departure") %} <span class="xs muted">({{ t.get("departure") }}–{{ t.get("arrival") or "—" }})</span>{% endif %}
+        {% endif %}
+      </td>
+      <td class="num">{{ t.get("interchanges") if t.get("interchanges") is not none else "—" }}</td>
+      <td>{{ (t.get("legs") or [])|join(" → ") or "—" }}</td>
+      <td class="num">{{ (t.get("walk_min")|string ~ " min") if t.get("walk_min") is not none else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% set errs = (d.get("errors") or {}) %}
+<p class="footnote">Stichtags-Fahrplan (nächster Dienstag, kein Echtzeit) — Ferien- und Baustellenfahrpläne können abweichen. Eigene Ziele: Einstellungen → Wichtige Orte. Bewertung: Schienenhaltestelle ≤ 400 m und Hbf ≤ 20 min = Sehr gut; ≤ 800 m oder ≤ 30 min = Gut. Quelle: VRR EFA{% if errs %} · nicht abrufbar: {{ errs.keys()|join(", ") }}{% endif %}</p>

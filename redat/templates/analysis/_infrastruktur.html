@@ -1,0 +1,115 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm text-gray-500">Stromtrassen, Umspannwerke, Windkraft, Sendemasten, Pipelines (≤ 500 m) und Industrieanlagen (≤ 2 km)</div>
+</div>
+
+<template x-if="d.power_lines.length">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">⚡ Stromleitungen</div>
+        <ul class="mt-1 space-y-1">
+            <template x-for="(l, i) in d.power_lines" :key="'pl' + i">
+                <li class="flex items-center gap-2">
+                    <span class="w-14 text-right text-gray-500 flex-shrink-0" x-text="Math.round(l.distance_m) + ' m'"></span>
+                    <span class="px-1.5 py-0.5 rounded text-xs font-semibold flex-shrink-0"
+                          :class="l.kind === 'hochspannung' ? (l.underground ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') : 'bg-gray-100 text-gray-700'"
+                          x-text="l.voltage_kv ? l.voltages.join('/') + ' kV' : 'Mittelspannung'"></span>
+                    <span class="text-gray-900" x-text="l.name || (l.kind === 'hochspannung' ? 'Hochspannungsfreileitung' : 'Leitung')"></span>
+                    <span class="text-xs text-gray-500" x-show="l.underground">erdverlegt</span>
+                </li>
+            </template>
+        </ul>
+    </div>
+</template>
+
+<template x-if="d.substations.length || d.trafo_count">
+    <div class="mt-3 text-sm">
+        <div class="font-semibold text-gray-900">🔌 Umspannwerke</div>
+        <ul class="mt-1 space-y-1">
+            <template x-for="(s, i) in d.substations" :key="'ss' + i">
+                <li class="flex items-center gap-2">
+                    <span class="w-14 text-right text-gray-500 flex-shrink-0" x-text="Math.round(s.distance_m) + ' m'"></span>
+                    <span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800" x-text="s.voltage_kv + ' kV'"></span>
+                    <span class="text-gray-900" x-text="s.name"></span>
+                </li>
+            </template>
+        </ul>
+        <p class="text-xs text-gray-500" x-show="d.trafo_count" x-text="d.trafo_count + ' Ortsnetz-Trafostationen (≤ 10 kV) im Umkreis von 500 m — Normalfall in Wohngebieten.'"></p>
+    </div>
+</template>
+
+<template x-if="d.wind.length || d.masts.length">
+    <div class="mt-3 text-sm">
+        <div class="font-semibold text-gray-900">🌬️ Windkraft &amp; Sendemasten</div>
+        <ul class="mt-1 space-y-1">
+            <template x-for="(w, i) in d.wind" :key="'w' + i">
+                <li class="flex items-center gap-2">
+                    <span class="w-14 text-right text-gray-500 flex-shrink-0" x-text="Math.round(w.distance_m) + ' m'"></span>
+                    <span class="px-1.5 py-0.5 rounded text-xs font-semibold" :class="w.distance_m <= 500 ? 'bg-red-100 text-red-800' : (w.distance_m <= 1000 ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-700')">Windkraftanlage</span>
+                    <span class="text-gray-900" x-text="w.name || ''"></span>
+                </li>
+            </template>
+            <template x-for="(m, i) in d.masts" :key="'m' + i">
+                <li class="flex items-center gap-2">
+                    <span class="w-14 text-right text-gray-500 flex-shrink-0" x-text="Math.round(m.distance_m) + ' m'"></span>
+                    <span class="px-1.5 py-0.5 rounded text-xs font-semibold" :class="m.distance_m <= 100 ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-700'" x-text="m.kind === 'mast' ? 'Sendemast' : 'Funkturm'"></span>
+                    <span class="text-gray-900" x-text="m.name || ''"></span>
+                </li>
+            </template>
+        </ul>
+    </div>
+</template>
+
+<template x-if="d.pipelines.length">
+    <div class="mt-3 text-sm">
+        <div class="font-semibold text-gray-900">🛢️ Pipelines</div>
+        <ul class="mt-1 space-y-1">
+            <template x-for="(p, i) in d.pipelines" :key="'p' + i">
+                <li class="flex items-center gap-2">
+                    <span class="w-14 text-right text-gray-500 flex-shrink-0" x-text="Math.round(p.distance_m) + ' m'"></span>
+                    <span class="px-1.5 py-0.5 rounded text-xs font-semibold" :class="p.hazardous ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-700'" x-text="p.substance || 'unbekannt'"></span>
+                    <span class="text-gray-900" x-text="p.name || 'Pipeline'"></span>
+                    <span class="text-xs text-gray-500" x-show="p.location" x-text="p.location === 'underground' ? 'erdverlegt' : p.location"></span>
+                </li>
+            </template>
+        </ul>
+        <p class="text-xs text-gray-500" x-show="d.pipelines.some(p => p.hazardous)">Gas-/Produktleitungen haben einen Schutzstreifen (meist 4–10 m beidseitig): Bauverbot, Baumverbot, Zustimmung des Betreibers für Erdarbeiten.</p>
+    </div>
+</template>
+
+<p class="mt-3 text-sm text-gray-700" x-show="d.industrial_landuse_m !== null"
+   x-text="d.industrial_landuse_m === 0 ? '🏭 Der Punkt liegt in einer Gewerbe-/Industriefläche (OSM landuse=industrial).' : '🏭 Nächste Gewerbe-/Industriefläche: ' + Math.round(d.industrial_landuse_m) + ' m.'"></p>
+
+<template x-if="d.ied_sites.length">
+    <div class="mt-3 text-sm">
+        <div class="font-semibold text-gray-900">🏭 Genehmigungspflichtige Industrieanlagen (IED/E-PRTR, ≤ 2 km)</div>
+        <ul class="mt-1 space-y-1">
+            <template x-for="(s, i) in d.ied_sites" :key="'ied' + i">
+                <li class="flex items-start gap-2">
+                    <span class="w-14 text-right text-gray-500 flex-shrink-0" x-text="(s.distance_m / 1000).toFixed(1).replace('.', ',') + ' km'"></span>
+                    <span>
+                        <span :class="s.stale ? 'text-gray-500' : (s.distance_m <= 1000 ? 'text-gray-900 font-medium' : 'text-gray-900')" x-text="s.name"></span>
+                        <span class="text-gray-500" x-show="s.sectors.length" x-text="' — ' + s.sectors.join(', ')"></span>
+                        <span class="text-xs text-gray-500" x-show="s.year && !s.stale" x-text="' · Bericht ' + s.year"></span>
+                        <span class="text-xs text-gray-500" x-show="s.stale" x-text="' · letzter Bericht ' + (s.year || '?') + ' — evtl. stillgelegt'"></span>
+                    </span>
+                </li>
+            </template>
+        </ul>
+    </div>
+</template>
+
+<p class="mt-4 text-sm text-gray-600" x-show="!d.power_lines.length && !d.substations.length && !d.wind.length && !d.masts.length && !d.pipelines.length && !d.ied_sites.length && d.industrial_landuse_m === null">
+    Keine Hochspannungsleitung, Windkraftanlage, Pipeline oder meldepflichtige Industrieanlage im Umkreis.
+</p>
+
+<div class="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-600">
+    <span class="font-semibold text-gray-700">Störfallbetriebe (Seveso III):</span> <span x-text="d.seveso_note"></span>
+</div>
+
+<p class="mt-3 text-xs text-gray-500">
+    Abstände zur nächsten Kante; OSM-Vollständigkeit variiert (Trassen und Umspannwerke sind gut erfasst, Pipelines lückenhaft).
+    Freileitungen ≥ 110 kV sind wertrelevant (Sicht, Brummen, 26. BImSchV-Grenzwerte werden i. d. R. eingehalten).
+    Quelle: <a class="underline" href="https://www.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap</a> ·
+    <a class="underline" href="https://industry.eea.europa.eu/" target="_blank" rel="noopener">EEA Industrial Emissions Portal</a>
+    <span x-show="Object.keys(d.errors || {}).length" x-text="' · nicht abrufbar: ' + Object.keys(d.errors).join(', ')"></span>
+</p>

@@ -1,0 +1,86 @@
+{% set pv = d.get("pv") %}
+{% set ew = d.get("erdwaerme") %}
+{% set wp = d.get("waermeplanung") %}
+
+<h3>☀ Photovoltaik auf dem Dach {% if pv %}<span class="chip {{ rating_class(pv.get('rating_color')) }}">{{ pv.get("rating") or "—" }}</span>{% endif %}</h3>
+{% if pv and pv.get("segment_count") %}
+  <div class="kpis">
+    <div class="kpi"><div class="label">Installierbar</div><div class="value">{{ pv.get("total_kwp")|fmt_num(1) if pv.get("total_kwp") is not none else "—" }} kWp</div></div>
+    <div class="kpi"><div class="label">Ertrag pro Jahr</div><div class="value">{{ pv.get("total_kwh_a")|fmt_int if pv.get("total_kwh_a") is not none else "—" }} kWh</div></div>
+    <div class="kpi"><div class="label">Modulfläche</div><div class="value">{{ pv.get("module_area_m2")|fmt_int if pv.get("module_area_m2") is not none else "—" }} m²</div></div>
+    <div class="kpi"><div class="label">entspricht</div><div class="value">≈ {{ pv.get("household_equivalents")|fmt_num(1) if pv.get("household_equivalents") is not none else "—" }} Haushalte</div></div>
+  </div>
+  {% set segs = (pv.get("segments") or []) %}
+  <table class="mt">
+    <thead><tr><th>Fläche</th><th>Ausrichtung</th><th class="num">Neigung</th><th class="num">Größe</th><th class="num">kWp</th><th class="num">kWh/a</th><th class="num">kWh/m²</th></tr></thead>
+    <tbody>
+    {% for s in segs %}
+      <tr>
+        <td class="muted">{{ loop.index }} · {{ s.get("roof") or "—" }}</td>
+        <td>{{ s.get("orientation") or "—" }}</td>
+        <td class="num">{{ s.get("tilt_deg") ~ "°" if s.get("tilt_deg") is not none else "—" }}</td>
+        <td class="num">{{ (s.get("area_m2")|fmt_int ~ " m²") if s.get("area_m2") is not none else "—" }}</td>
+        <td class="num">{{ s.get("kwp")|fmt_num(1) if s.get("kwp") is not none else "—" }}</td>
+        <td class="num strong">{{ s.get("kwh_a")|fmt_int if s.get("kwh_a") is not none else "—" }}</td>
+        <td class="num muted">{{ s.get("radiation_kwh_m2") if s.get("radiation_kwh_m2") is not none else "—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if pv.get("segment_count") and segs and pv.get("segment_count") > segs|length %}
+  <p class="xs muted">… und {{ pv.get("segment_count") - segs|length }} kleinere Teilflächen</p>
+  {% endif %}
+{% elif pv %}
+  <p class="muted">Das Solarkataster weist für dieses Gebäude keine geeigneten Dachflächen aus.</p>
+{% else %}
+  <p class="muted">Kein Gebäude im Solarkataster gefunden — die Adresse liegt nicht auf einem Gebäude (Straßenmitte?) oder außerhalb NRW.</p>
+{% endif %}
+{% if pv %}
+  {% set b = (pv.get("building") or {}) %}
+  <p class="footnote">Gebäude {{ b.get("alkis_id") or "—" }} ({{ b.get("area_m2")|fmt_num(1) if b.get("area_m2") is not none else "—" }} m² Grundfläche{% if b.get("picked") == "nearest" %}, nächstgelegenes Gebäude zur Adresse{% endif %}), Befliegung {{ pv.get("survey_year") or "2020" }} — spätere An-/Umbauten fehlen. <a href="{{ pv.get('link') or '#' }}">Solarkataster NRW</a></p>
+{% endif %}
+
+<h3 class="mt">🌡 Erdwärme (Wärmepumpe) {% if ew %}<span class="chip {{ rating_class(ew.get('rating_color')) }}">{{ ew.get("rating") or "—" }}</span>{% endif %}</h3>
+{% if ew %}
+  <p class="xs muted">Mittlere Wärmeleitfähigkeit des Untergrunds für Erdwärmesonden (W/(m·K)) — je höher, desto weniger Bohrmeter</p>
+  {% set probes = (ew.get("probes") or []) %}
+  {% if probes %}
+  <table>
+    <thead><tr><th>Sonde</th><th class="num">Bereich (W/(m·K))</th></tr></thead>
+    <tbody>
+    {% for p in probes %}
+      <tr><td>{{ p.get("depth") or "—" }}</td><td class="num">{{ p.get("range") or "—" }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if ew.get("collector") %}<p>Erdwärmekollektoren (flach): Ergiebigkeit <span class="strong">{{ ew.get("collector") }}</span></p>{% endif %}
+  {% if ew.get("hydro_sensitive") %}<p class="xs" style="color:#9a3412">⚠ Hydrologisch sensibler Bereich — Bohrungen nur nach wasserrechtlicher Prüfung.</p>{% endif %}
+  {% if ew.get("high_groundwater_flow") %}<p class="xs" style="color:#9a3412">⚠ Erhöhte Grundwasser-Fließgeschwindigkeit — Sondenauslegung anpassen.</p>{% endif %}
+  {% if ew.get("wsg_note") %}<div class="note">{{ ew.get("wsg_note") }}</div>{% endif %}
+  <p class="footnote">Orientierungswerte des Geologischen Dienstes NRW; Genehmigung bei der Unteren Wasserbehörde · <a href="{{ ew.get('link') or '#' }}">geothermie.nrw.de</a></p>
+{% else %}
+  <p class="muted">Keine Geothermie-Daten für diesen Ort.</p>
+{% endif %}
+
+<h3 class="mt">🔥 Kommunale Wärmeplanung {% if wp %}<span class="chip {{ rating_class(wp.get('color')) }}">{{ wp.get("label") or "—" }}</span>{% endif %}</h3>
+{% if wp %}
+  {% set status_label = "Wärmeplan-Entwurf" if wp.get("status") == "Entwurf" else "beschlossener Wärmeplan" %}
+  <p>{{ wp.get("city") or "—" }}, Zieljahr {{ wp.get("target_year") if wp.get("target_year") is not none else "—" }} ({{ status_label }}){% if wp.get("detail") %} · {{ wp.get("detail") }}{% endif %}</p>
+  {% if wp.get("has_grid_2024") is not none %}
+  <p>Wärmenetz heute: <span class="strong">{{ "vorhanden" if wp.get("has_grid_2024") else "nicht vorhanden" }}</span> · 2045: <span class="strong">{{ "geplant/vorhanden" if wp.get("has_grid_2045") else "nicht vorgesehen" }}</span></p>
+  {% endif %}
+  {% set cat = wp.get("category") or "" %}
+  <p class="xs muted">
+    {% if cat in ("fernwaerme_bestand", "fernwaerme_ausbau") %}Fernwärmeanschluss ist oder wird wahrscheinlich möglich — vor dem Kauf beim Netzbetreiber nachfragen.
+    {% elif cat.startswith("pruefgebiet") %}Versorgungsart noch offen — mit dezentraler Lösung (Wärmepumpe) planen, Netzanschluss bleibt möglich.
+    {% elif cat == "dezentral" %}Kein Wärmenetz vorgesehen — Heizung muss vor Ort gelöst werden (Wärmepumpe, Biomasse, …).
+    {% endif %}
+    Gebietseinteilung ist Planungsabsicht, keine Versorgungszusage · <a href="{{ wp.get('link') or '#' }}">Wärmeplan {{ wp.get("city") or "—" }}</a>
+  </p>
+{% else %}
+  <p class="muted">Kein Wärmeplan-Gebiet für diesen Ort (nur Essen und Bochum hinterlegt).</p>
+{% endif %}
+
+{% set errs = (d.get("errors") or {}) %}
+{% if errs %}<p class="footnote">Nicht abrufbar: {{ errs.keys()|join(", ") }}</p>{% endif %}

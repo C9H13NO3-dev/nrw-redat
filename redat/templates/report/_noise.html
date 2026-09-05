@@ -1,0 +1,47 @@
+{% set labels = {"str": "Straße", "scb": "Schiene (Bund)", "scs": "Schiene (Stadt)", "ind": "Industrie", "flg": "Flughafen"} %}
+{% if d.get("below_threshold") %}
+<p><span class="chip chip-green">unter Kartierungsschwelle</span> &nbsp;kein kartierter Umgebungslärm (&lt; 55 dB Tag / &lt; 50 dB Nacht).</p>
+{% else %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Tag (L<sub>DEN</sub>)</div>
+    <div class="value">{{ d.day.label if d.get("day") else "< 55 dB(A)" }}</div>
+    {% if d.get("day") %}<div class="sub">{{ labels.get(d.day.source, d.day.source) }}</div>{% endif %}
+  </div>
+  <div class="kpi">
+    <div class="label">Nacht (L<sub>night</sub>)</div>
+    <div class="value">{{ d.night.label if d.get("night") else "< 50 dB(A)" }}</div>
+    {% if d.get("night") %}<div class="sub">{{ labels.get(d.night.source, d.night.source) }}</div>{% endif %}
+  </div>
+</div>
+<table>
+  <thead><tr><th>Quelle</th><th class="num">Tag ab</th><th class="num">Nacht ab</th></tr></thead>
+  <tbody>
+  {% for src, label in labels.items() %}
+    {% set v = (d.get("sources") or {}).get(src) or {} %}
+    <tr>
+      <td>{{ label }}</td>
+      <td class="num">{{ (v.day ~ " dB(A)") if v.get("day") is not none else "—" }}</td>
+      <td class="num">{{ (v.night ~ " dB(A)") if v.get("night") is not none else "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if noise_maps %}
+<div class="maps">
+  {% for key, title in (("day", "Tag (L_DEN)"), ("night", "Nacht (L_Night)")) %}
+    {% if noise_maps[key] %}
+      <img src="data:image/png;base64,{{ noise_maps[key] }}" alt="Lärmkarte {{ title }}">
+    {% else %}
+      <div class="map-missing">Karte nicht verfügbar — {{ title }}</div>
+    {% endif %}
+  {% endfor %}
+</div>
+<div class="legend">
+  {% for band in noise_maps.legend %}<span><span class="sw" style="background: {{ band.color }}"></span>{{ band.label }}</span>{% endfor %}
+</div>
+<p class="footnote">Ausschnitt ca. 600 × 450 m, Punkt im Zentrum. {{ noise_maps.attribution }}{% if noise_maps.error %} · Hinweis: {{ noise_maps.error }}{% endif %}</p>
+{% endif %}
+<p class="footnote">Umgebungslärmkartierung nach EU-Richtlinie 2002/49/EG (4. Runde, 2022): Straßen ≥ 3 Mio. Kfz/Jahr, Haupteisenbahnstrecken, Großflughäfen, Ballungsräume. Werte sind 5-dB-Klassen (Untergrenze), keine Messwerte — angegeben ist die lauteste Klasse im Umkreis von ca. {{ ((d.get("window_m") or 25) / 2) | int }} m um den Standort, da Gebäudegrundrisse in der Kartierung ausgespart sind.</p>

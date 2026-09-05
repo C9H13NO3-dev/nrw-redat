@@ -1,0 +1,12 @@
+{% set wk = (d.get("wahlkreis") or {}) %}
+<p class="muted small">{{ d.get("election") or "—" }} · Wahlkreis {% if wk.get("nr") is not none %}{{ wk.get("nr") }} {% endif %}{{ wk.get("name") or "—" }} · Zweitstimmen</p>
+
+<div class="mt">
+{% for p in (d.get("parties") or []) %}
+<div class="bar">
+  <span style="min-width:22mm">{{ p.get("party") or "—" }}</span>
+  <div class="track"><div class="fill" style="width: {{ p.get('percent') if p.get('percent') is not none else 0 }}%; background: {{ p.get('color') or '#999' }}"></div></div>
+  <span class="num">{{ (p.get("percent")|fmt_num(1) ~ " %") if p.get("percent") is not none else "—" }}</span>
+</div>
+{% endfor %}
+</div>
