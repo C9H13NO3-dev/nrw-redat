@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import httpx
@@ -122,11 +123,14 @@ def _erneuerung_item(layer: int, a: dict[str, Any]) -> dict[str, Any]:
 
 
 def stadterneuerung(lat: float, lon: float) -> tuple[list[dict[str, Any]], dict[int, str]]:
-    """Stadterneuerungs-/Stadtumbau areas at the point; one failing layer never hides the others."""
+    """Stadterneuerungs-/Stadtumbau areas at the point — the layers are queried concurrently so a slow
+    server costs one round-trip, not seven; one failing layer never hides the others."""
     items, errors = [], {}
-    for layer in STADTERNEUERUNG_LAYERS:
+    with ThreadPoolExecutor(max_workers=len(STADTERNEUERUNG_LAYERS)) as ex:
+        futures = {layer: ex.submit(_arcgis_query, layer, lat, lon) for layer in STADTERNEUERUNG_LAYERS}
+    for layer, fut in futures.items():          # dict order == STADTERNEUERUNG_LAYERS order → stable item order
         try:
-            for f in _arcgis_query(layer, lat, lon).get("features") or []:
+            for f in fut.result().get("features") or []:
                 items.append(_erneuerung_item(layer, f.get("attributes") or {}))
         except Exception as e:  # noqa: BLE001
             logger.warning("Bochum Stadtplanung layer %s failed: %s", layer, e)
