@@ -52,11 +52,25 @@ mount. See `HANDOVER.md` for the exact rsync source and the deploy runbook.
 | `POST /api/v1/runs` | Persist a pre-computed payload (same shape `analyze` returns) as a run; returns `run_id`/`permalink`. |
 | `GET /api/v1/run/{run_id}` | Fetch a stored run's full payload; 404 if unknown. |
 | `POST /api/v1/report` | Render a PDF from a posted payload (the browser's own "already-fetched" path — nothing is re-fetched server-side). |
-| `GET /api/v1/report?address=&plot_size_m2&living_space_m2&destinations` | Convenience machine path: geocode + analyze + PDF in one call. |
+| `GET /api/v1/report?address=&plot_size_m2&living_space_m2&destinations` | Convenience machine path: geocode + analyze + PDF in one call. `force` defaults to `1` here (unlike `/analyze`), so a report always reflects live data, not a cached card. |
 | `GET /api/v1/run/{run_id}/report.pdf` | Re-render a stored run as a PDF. |
 
-`destinations` is a `;`-separated list of `Name,lat,lon` triples for custom commute destinations (bypasses
-the section cache — see `HANDOVER.md`).
+`destinations` is a JSON-encoded list of up to 10 objects, each `{"name":…,"lat":…,"lon":…,"group":…}`
+(`group` optional), feeding the `commute` and `oepnv` cards only — anything else 422s. URL-encoded
+example:
+
+```
+GET /api/v1/analyze?address=…&destinations=%5B%7B%22name%22%3A%22Arbeit%22%2C%22lat%22%3A51.45%2C%22lon%22%3A7.01%2C%22group%22%3A%22work%22%7D%5D
+```
+
+i.e. `destinations=[{"name":"Arbeit","lat":51.45,"lon":7.01,"group":"work"}]` before encoding. See
+"Cache semantics" below for how a `destinations` param interacts with caching.
+
+## Cache semantics
+
+`ok`/`empty` envelopes are cached for `REDAT_CACHE_TTL_S` per `(key, lat₄, lon₄, plot, force)` — by
+`/analyze` and `/section/{key}` alike; `error`/`gated` are never cached; a `destinations` param
+suppresses caching for the two sections it can affect (`commute`, `oepnv`) and nothing else.
 
 ## Deep link
 
@@ -69,7 +83,11 @@ so it can be bookmarked or shared as a direct "run this address" link.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
-.venv/bin/python -m pytest -q       # 439 tests, hermetic, ~6.5s
+.venv/bin/python -m pytest -q       # 443 tests, hermetic, ~6.5s
+
+# manual, non-hermetic: drives a real browser against a running instance (Playwright + live
+# external services). Not collected by pytest. Point it at any running REDAT with --base-url.
+.venv/bin/python scripts/smoke_analyze.py
 ```
 
 ### Tailwind

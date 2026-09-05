@@ -4,7 +4,7 @@
 
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
 (`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`). LAN-open by default (`REDAT_API_KEY`
-unset). 439 tests pass hermetically; the Docker build's `test` stage re-runs the full suite and refuses
+unset). 443 tests pass hermetically; the Docker build's `test` stage re-runs the full suite and refuses
 to produce an image on a red run.
 
 ## Deploy runbook
@@ -17,6 +17,7 @@ cp .env.example .env    # GEOAPIFY_API_KEY from /srv/house-hunter/.env, REDAT_PU
 mkdir -p data           # bind mount target; data/source/{boris,flood,elections} must be rsynced in separately (see below)
 docker compose up -d --build
 curl -s localhost:8200/healthz
+.venv/bin/python scripts/smoke_analyze.py --base-url http://localhost:8200   # manual live check: full browser flow, not run by pytest
 ```
 
 **Update:**
@@ -58,16 +59,19 @@ overwritten by `docker compose build`, so there is no separate image rollback �
 - **Bochum air quality:** the `air_quality` card's "aktuell" rating for Bochum addresses comes from the
   CAMS/citizen-sensor fallback, not a continuous monitoring station — the nearest one is Hattingen-
   Blankenstein, ~9 km away. This is by design, not a bug.
-- **BORIS timeout:** the `boris` (Bodenrichtwert) card has a 25 s timeout; the BORIS NRW WMS is
-  occasionally slow enough to trip it (`status: error`, `message: "BORIS timeout"`), which then shows up
-  as a genuine but transient section error. A retry of the same address usually succeeds — observed live
-  during Task 10 verification (first Brückstraße 1 run: `boris` errored at 25 s; retried run: `boris ok`
-  in 295 ms).
-- **Cache semantics:** `SectionCache` only stores `ok`/`empty` envelopes — `error`/`gated` are always
-  recomputed on the next request, so a transient BORIS timeout self-heals without manual cache clearing.
-  Any `/analyze` or `/section` call carrying a `destinations` param bypasses the cache entirely (custom
-  commute destinations are per-request and must not pollute or be served from another caller's cached
-  result).
+- **BORIS timeout:** `boris` (Bodenrichtwert) makes no HTTP call at all — it reads local shapefiles with
+  geopandas in a `multiprocessing.Process` capped at a hard 12 s (`redat/sources/boris.py`), well inside
+  the card's 25 s section timeout. A slow cold-cache shapefile read (e.g. after page-cache eviction) can
+  still trip that 12 s cap, in which case the subprocess is killed and the card returns
+  `status: error`, `message: "BORIS timeout"` — a genuine but transient section error, not a WMS
+  slowdown. A retry of the same address usually succeeds — observed live during Task 10 verification
+  (first Brückstraße 1 run: `boris` errored at 12 s; retried run: `boris ok` in 295 ms).
+- **Cache semantics:** `ok`/`empty` envelopes are cached for `REDAT_CACHE_TTL_S` per
+  `(key, lat₄, lon₄, plot, force)` — by `/analyze` and `/section/{key}` alike (both routes consult
+  `SectionCache` via the shared `core.analyze.cached_section` helper); `error`/`gated` are never cached,
+  so a transient BORIS timeout self-heals without manual cache clearing. A `destinations` param
+  suppresses caching for the two sections it can affect (`commute`, `oepnv`) and nothing else — the
+  other 18 cards are cached as usual even on a request that also carries `destinations`.
 
 ## Work log
 
@@ -96,6 +100,16 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   'redat'`) because nothing put the project root on `sys.path` — it only worked locally via
   `python -m pytest` (which inserts the cwd). Fixed by adding `pythonpath = ["."]` to
   `[tool.pytest.ini_options]` in `pyproject.toml`; no test or gate logic changed.
+- **Task 11** (post-review fix round) — `GET /api/v1/section/{key}` now consults `SectionCache` too
+  (`core.analyze.cached_section()`, shared with `/analyze`'s `run_all()`); corrected the cache-semantics
+  and `destinations`-format wording in this file, `README.md` and `CLAUDE.md`; corrected the "BORIS
+  timeout" explanation above; copied the five `2026-09-04-*` card specs into `docs/`; ported
+  `scripts/smoke_analyze.py` (manual Playwright check against a running instance); fixed
+  `require_api_key` to byte-compare so a non-ASCII `X-Api-Key` is a 401, not a 500; warmed
+  `chromium_available()` in `lifespan` so the first `/healthz` is cheap; assorted housekeeping (lazy
+  `mkdtemp` in `tests/conftest.py`, a stale comment in `analysis.js`, unused imports, a duplicate
+  `fixed_destinations()` call in `oepnv.py`, dead house-hunter listing helpers deleted from
+  `map-utils.js`).
 
 ## Open items
 
@@ -103,3 +117,35 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   pointing House Hunter's `/analyze` page at this service instead of its own embedded analysis code.
 - The API-key-vs-website gap above (same-origin cookie or proxy auth) is unresolved; low priority while
   the service stays LAN-open.
+- **`_pdf()` builds the report context twice** (`redat/api/v1.py`) — once in `build_report_context()` for
+  validation, again inside `render_pdf()`. Cosmetic (~ms), but also means the "generated_at" timestamp
+  used for validation is discarded and recomputed. Fix: let `render_pdf` accept a pre-built `ctx`, or
+  move the `ReportPayloadError` catch to wrap one build.
+- **`/quellen` and the PDF report footer are two independently maintained lists.** `core/sources_meta.py`
+  drives `/quellen`; the report footer's sources come from `Section.source` strings in
+  `core/sections.py`. `sources_meta.py` exists precisely so the two can't drift — but they still can
+  today. Fix: derive `Section.source` from `sources_meta.for_section(key)`, or have the report footer
+  render `for_section()` results directly.
+- **Non-HTML 422/404 on HTML routes.** `GET /?plot_size_m2=abc` and `GET /nope` return FastAPI's default
+  JSON error bodies instead of a rendered `404.html`/error page, unlike `/a/{unknown}`. Fix: an exception
+  handler that renders an HTML error page for non-`/api` paths, plus manual float coercion for the m²
+  query params.
+- **`SectionCache` has no size cap** — only lazy expiry (an entry is dropped on read after its TTL, never
+  proactively). Not a practical risk at LAN scale with a 6 h default TTL, but there is no ceiling at all.
+  Fix: a `max_entries` cap with oldest-expiry eviction on `put`, or a periodic sweep.
+- **`RunStore.save` has no retry on a run-id collision.** A 48-bit id collides with probability ~1 in
+  2⁴⁸ per pair; an `IntegrityError` would surface as a 500. A `for _ in range(3)` retry loop closes it.
+  Cosmetic.
+- **Container runs as root**, so `data/redat.db` (and its `-wal`/`-shm`) in the host bind mount end up
+  root-owned — the host user needs `sudo` to rotate or delete them. Not required by spec, but worth
+  fixing (`USER pwuser` in the runtime stage after `chown`-ing `/data`) or at least documenting as a
+  `sudo` requirement in the runbook.
+- **Single-worker assumption is load-bearing and undocumented in the Dockerfile.** `SectionCache` and
+  `RunStore`'s connections are per-process state; running `uvicorn --workers N > 1` would silently give
+  each worker its own disjoint cache (and, for SQLite, is still safe but pointless). The `CMD` is
+  correctly single-worker already — never add `--workers N` without redesigning the cache as shared
+  state first.
+- **`api_analyze`/`api_report_get` hold one anyio threadpool worker each, and a single page load fires
+  20 concurrent `/section` requests** (each spawning its own section thread) — two simultaneous page
+  loads plus one `/analyze` can saturate the default 40-worker limiter. Not a problem at LAN scale, and
+  I1's cache fix reduces the load materially, but worth knowing before this sits behind anything shared.
