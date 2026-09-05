@@ -13,10 +13,10 @@ to produce an image on a red run.
 
 ```bash
 cd /srv/nrw-redat
-cp .env.example .env    # GEOAPIFY_API_KEY from /srv/house-hunter/.env, REDAT_PUBLIC_URL=http://192.168.188.64:8200
-mkdir -p data           # bind mount target; data/source/{boris,flood,elections} must be rsynced in separately (see below)
-docker compose up -d --build
-docker compose run --rm --no-deps redat python scripts/build_boris_gpkg.py   # once: index the 15 BRW shapefiles into data/source/boris/brw.gpkg (~5 min, chunked, <2 GB RAM)
+cp .env.example .env    # GEOAPIFY_API_KEY, REDAT_PUBLIC_URL
+docker compose build    # the geodata script runs its GeoPackage builds inside this image
+scripts/fetch_geodata.sh   # downloads BORIS/HWRM/BTW25 (~3.3 GB) into ./data/source and builds brw.gpkg + the flood .gpkg files (~10 min); idempotent
+docker compose up -d
 curl -s localhost:8200/healthz
 .venv/bin/python scripts/smoke_analyze.py --base-url http://localhost:8200   # manual live check: full browser flow, not run by pytest
 ```
@@ -32,21 +32,17 @@ overwritten by `docker compose build`, so there is no separate image rollback �
 
 ## Non-git deploy assets
 
-- **`data/source/{boris,flood,elections}`** (~6.2 GB) — a one-time rsync copy of House Hunter's own
-  geodata directories at `/srv/house-hunter/data/{boris,flood,elections}` (exact source paths per
-  `docs/2026-09-05-nrw-redat-plan.md` Task 1). Not tracked in git, not part of the Docker build context.
-  If this host is ever rebuilt, this copy must be redone before `boris`/`flood`/`btw` sources will work.
-  All of it is also directly downloadable (dl-de/zero-2-0, no login): BORIS
-  `https://www.opengeodata.nrw.de/produkte/infrastruktur_bauen_wohnen/boris/BRW/BRW_{year}_EPSG25832_Shape.zip`
-  (2011-2025, unpack each into `boris/BRW_{year}/`), HWRM
-  `https://www.opengeodata.nrw.de/produkte/umwelt_klima/wasser/hochwasser/hwrm/{HQhaeufig,HQ100,HQextrem}-Ueberschwemmungsgrenzen_EPSG25832_Shape.zip`
-  (convert to `flood/hwrm/{HQ}.gpkg` with geopandas/ogr2ogr, or leave the unpacked shapefile dirs for the
-  fallback), BTW25 geometry from the `btw.py` URL into `elections/btw25/wahlkreise_shp_geo/`.
-- **`data/source/boris/brw.gpkg`** — derived, not downloaded: `scripts/build_boris_gpkg.py` streams the 15
-  yearly shapefiles into one GeoPackage with an R-tree-indexed layer per year (`brw_2011` … `brw_2025`).
-  `boris.py` prefers it and falls back to the shapefiles per year, so it is optional for correctness but
-  it is what makes `boris_trend` fast (15 indexed bbox reads ≈ well under a second vs. ~2 s per
-  un-indexed shapefile scan, ×15). Rebuild after adding a year (existing layers are skipped).
+- **`data/source/`** (~11 GB) — not tracked in git, not part of the Docker build context. Everything in it
+  is public open data (dl-de/zero-2-0 / Bundeswahlleiterin) and `scripts/fetch_geodata.sh` fetches and
+  prepares all of it; the README "Geodata" table lists every path, its source URL and the card that uses
+  it. Originally this was an rsync copy of House Hunter's `/srv/house-hunter/data/{boris,flood,elections}`;
+  since Task 14 the script is the source of truth, so a rebuilt host needs no other machine.
+- **`data/source/boris/brw.gpkg`** and **`flood/hwrm/{HQ}.gpkg`** — derived by `scripts/build_boris_gpkg.py`
+  / `scripts/build_flood_gpkg.py` (the fetch script runs both inside the app image; chunked, idempotent,
+  crash-safe). The sources prefer the GeoPackages and fall back to the shapefiles, so the .gpkg files are
+  optional for correctness but are what makes `boris`/`boris_trend`/`flood` fast (R-tree bbox reads in ms
+  instead of scanning a 200-400 MB shapefile). After a new BORIS year: extend `AVAILABLE_YEARS` +
+  the script's `YEARS`, re-run the script, `scripts/cache_admin.py purge --section boris`.
 - **`.env`** — holds `GEOAPIFY_API_KEY` (required) and the optional `REDAT_API_KEY`. Git-ignored; never
   commit it.
 - `redat/data/{eea_aq_grid_2023.json, zensus_2022_grid.json.gz, certs/lencr_ye_chain.pem}` are, by
@@ -159,6 +155,14 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   dd.mm.yyyy" + ↻ per card on the website. Running totals keep bounds checks O(1); the cache is built in
   `create_app()` (not lifespan) so it exists for every caller. 33 new tests. The host `.env` no longer
   pins `REDAT_CACHE_TTL_S`.
+
+- **Task 14** (2026-09-05) — new-server runbook made executable: `scripts/fetch_geodata.sh` downloads
+  BORIS 2011-2025, the three HWRM zips and the BTW25 geometry (resumable curl, idempotent, `--only`,
+  `--no-build`, `--prune`, `--data-dir`/`--python` for non-docker), then runs `build_boris_gpkg.py` and the
+  new chunked `build_flood_gpkg.py` (replaces the by-hand ogr2ogr step; writes `<HQ>.partial.gpkg` and
+  renames, so a crash never leaves a half-written file flood.py would pick up) via `docker compose run`
+  as the invoking user. README "Geodata" documents the layout, sources and the add-a-year procedure.
+  Verified: idempotent against the live host data, real download into a scratch dir, docker build path.
 
 ## Open items
 

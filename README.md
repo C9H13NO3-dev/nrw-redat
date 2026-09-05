@@ -34,18 +34,37 @@ curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":tr
 
 ### Geodata (not in git)
 
-`data/source/{boris,flood,elections}` (~6.2 GB) is a copy of House Hunter's own geodata files, rsynced
-onto the host once — it is not tracked in git and not part of the Docker build context (`.dockerignore`
-excludes the top-level `data/` bind-mount directory). The smaller, still-large `redat/data/` package
-files (EEA air-quality grid, Zensus 2022 grid, the letsencrypt intermediate cert for the Breitbandatlas
-host) **are** committed and shipped in the image — they are a different directory from the host bind
-mount. See `HANDOVER.md` for the exact rsync source and the deploy runbook.
+`data/source/` (~11 GB with the derived GeoPackages, ~6.6 GB without) is not tracked in git and not part of
+the Docker build context (`.dockerignore` excludes the top-level `data/` bind-mount directory). It is all
+public open data and one script fetches and prepares it:
 
-Once the BORIS shapefiles are in place, run `scripts/build_boris_gpkg.py` once (see `HANDOVER.md`, "Deploy
-runbook"). It streams the 15 yearly shapefiles into `data/source/boris/brw.gpkg`, one R-tree-indexed layer
-per year; `boris.py` prefers that file and falls back to the shapefiles for any year it lacks. Without it
-every BORIS lookup is an un-indexed scan of a 200-400 MB shapefile (~2 s cold), which makes the 15-year
-`boris_trend` card slow and, under load, prone to its 30 s timeout.
+```bash
+docker compose build            # once - the GeoPackage builds run inside the app image (geopandas lives there)
+scripts/fetch_geodata.sh        # ~3.3 GB from opengeodata.nrw.de + bundeswahlleiterin.de, then builds the .gpkg files (~10 min)
+docker compose up -d            # or `docker compose restart redat` if it was already running
+```
+
+The script is idempotent (anything present is skipped, interrupted downloads resume), so re-run it after a
+failure or when a new BORIS year is published. `--only boris|flood|btw` limits it to one dataset,
+`--no-build` skips the GeoPackage step, `--prune` deletes the unpacked shapefiles once their GeoPackages
+exist (saves ~6.6 GB), `--data-dir` / `--python` are for non-docker setups (`--help` lists everything).
+What it produces under `data/source/`:
+
+| Path | Source | Used by |
+|---|---|---|
+| `boris/BRW_{2011…2025}/BRW_{year}_Polygon.shp` | [opengeodata.nrw.de …/boris/BRW/](https://www.opengeodata.nrw.de/produkte/infrastruktur_bauen_wohnen/boris/BRW/) `BRW_{year}_EPSG25832_Shape.zip`, dl-de/zero-2-0, 15 × 150–225 MB | `boris`, `boris_trend` (fallback per year) |
+| `boris/brw.gpkg` | derived by `scripts/build_boris_gpkg.py`: one R-tree-indexed layer `brw_{year}` per year, chunked, UTF-8-repaired (the 2022–2024 zips carry a few ISO-8859-1 rows) | `boris`, `boris_trend` (preferred: ms instead of a ~2 s file scan per year) |
+| `flood/hwrm/{HQ}-Ueberschwemmungsgrenzen_EPSG25832_Shape/*.shp` | [opengeodata.nrw.de …/hochwasser/hwrm/](https://www.opengeodata.nrw.de/produkte/umwelt_klima/wasser/hochwasser/hwrm/) for HQhaeufig / HQ100 / HQextrem, 150–200 MB each | `flood` (fallback) |
+| `flood/hwrm/{HQhaeufig,HQ100,HQextrem}.gpkg` | derived by `scripts/build_flood_gpkg.py` | `flood` (preferred) |
+| `elections/btw25/wahlkreise_shp_geo/*.shp` | [bundeswahlleiterin.de](https://www.bundeswahlleiterin.de/bundestagswahlen/2025/wahlkreiseinteilung/downloads.html) `btw25_geometrie_wahlkreise_vg250_shp_geo.zip`, 5 MB | `btw` (the Zweitstimmen CSV is fetched live) |
+
+Adding a BORIS year: extend `AVAILABLE_YEARS` in `redat/sources/boris.py` and the `YEARS` line in
+`scripts/fetch_geodata.sh`, run the script (only the new year is fetched and appended to `brw.gpkg`), then
+`scripts/cache_admin.py purge --section boris` (and `boris_trend`) so cached cards pick it up.
+
+The smaller, still-large `redat/data/` package files (EEA air-quality grid, Zensus 2022 grid, the
+letsencrypt intermediate cert for the Breitbandatlas host) **are** committed and shipped in the image —
+they are a different directory from the host bind mount.
 
 ## API overview (`/api/v1`)
 
