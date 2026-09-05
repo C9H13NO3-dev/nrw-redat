@@ -793,6 +793,28 @@
   "status": "ok",
   "took_ms": 21
  },
+ "unfaelle": {
+  "key": "unfaelle",
+  "tier": "area",
+  "data": {
+   "radius_m": 300,
+   "years": [2020, 2021, 2022, 2023, 2024, 2025],
+   "total": 4,
+   "per_year": {"2020": 1, "2021": 1, "2022": 1, "2023": 1, "2024": 0, "2025": 0},
+   "per_year_avg": 0.7,
+   "by_severity": {"getoetete": 1, "schwerverletzte": 1, "leichtverletzte": 2},
+   "beteiligt": {"rad": 1, "fuss": 1, "pkw": 3, "krad": 0, "gkfz": 1},
+   "by_type": {"Fahrunfall": 1, "Einbiegen/Kreuzen": 1, "Überschreiten": 1, "Längsverkehr": 1},
+   "nachts": 1,
+   "nearest_m": 55.6,
+   "rating": "Viele Unfälle",
+   "rating_color": "orange"
+  },
+  "message": null,
+  "source": "Statistische Ämter des Bundes und der Länder, Unfallatlas 2020–2025 (dl-de/by-2-0) — nur Unfälle mit Personenschaden",
+  "status": "ok",
+  "took_ms": 9
+ },
  "oepnv": {
   "key": "oepnv",
   "tier": "area",

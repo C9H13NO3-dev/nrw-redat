@@ -104,6 +104,15 @@ def _fetch_schulen(ctx: Ctx) -> dict:
     return d
 
 
+def _fetch_unfaelle(ctx: Ctx) -> dict:
+    from redat.sources import unfaelle
+
+    d = unfaelle.lookup(ctx.lat, ctx.lon)
+    if d is None:
+        raise Empty("Keine Unfallatlas-Daten für diesen Ort (außerhalb Essen/Bochum oder Datei fehlt)")
+    return d
+
+
 def _fetch_air_quality(ctx: Ctx) -> dict:
     from redat.sources import airquality
 
@@ -388,6 +397,8 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("amenities", "Entfernungen (POIs)", "📍", 25, "Geoapify Places", _fetch_amenities),
     Section("schulen", "Schulen & Sozialindex", "🎒", 20,
             "Schulministerium NRW, Schulliste 2025/26 mit Sozialindex · Geobasis NRW Schulstandorte (dl-de/by-2-0) · Stadt Bochum, Grundschulbezirke", _fetch_schulen),
+    Section("unfaelle", "Verkehrsunfälle (Unfallatlas)", "🚧", 10,
+            "Statistische Ämter des Bundes und der Länder, Unfallatlas 2020–2025 (dl-de/by-2-0) — nur Unfälle mit Personenschaden", _fetch_unfaelle),
     Section("oepnv", "ÖPNV-Erreichbarkeit", "🚋", 45, "VRR EFA-Fahrplanauskunft (efa.vrr.de) — Fahrplan-Stichtag, kein Echtzeit", _fetch_oepnv,
             cache_ttl_s=7 * 86400),   # trips are normalised to "next Tuesday 08:00"; only timetable changes matter
     Section("zensus", "Nachbarschaft (Zensus 2022)", "🏘️", 5, "Destatis, Zensus 2022 — 100 m-Gitterdaten (dl-de/by-2-0)", _fetch_zensus),

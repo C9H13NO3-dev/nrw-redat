@@ -1,0 +1,27 @@
+{% set sev = d.get("by_severity") or {} %}
+{% set bet = d.get("beteiligt") or {} %}
+{% set years = d.get("years") or [] %}
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Unfälle mit Personenschaden ≤ {{ d.get("radius_m") or 300 }} m{% if years %}, {{ years[0] }}–{{ years[-1] }}{% endif %}</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+  <div class="kpi">
+    <div class="label">Gesamt · pro Jahr</div>
+    <div class="value">{{ d.get("total") if d.get("total") is not none else "—" }} · Ø {{ d.per_year_avg|fmt_num(1) if d.get("per_year_avg") is not none else "—" }}</div>
+    {% if d.get("nearest_m") is not none %}<div class="sub">nächster Unfallort {{ d.nearest_m|fmt_m }}</div>{% endif %}
+  </div>
+</div>
+{% if d.get("total") %}
+<table class="mt">
+  <thead><tr><th>Schwere</th><th class="num">Unfälle</th><th>Beteiligte</th><th class="num">Unfälle</th></tr></thead>
+  <tbody>
+    <tr><td>mit Getöteten</td><td class="num">{{ sev.get("getoetete", 0) }}</td><td>Rad</td><td class="num">{{ bet.get("rad", 0) }}</td></tr>
+    <tr><td>mit Schwerverletzten</td><td class="num">{{ sev.get("schwerverletzte", 0) }}</td><td>Fußgänger</td><td class="num">{{ bet.get("fuss", 0) }}</td></tr>
+    <tr><td>mit Leichtverletzten</td><td class="num">{{ sev.get("leichtverletzte", 0) }}</td><td>Pkw / Krad / Lkw</td><td class="num">{{ bet.get("pkw", 0) }} / {{ bet.get("krad", 0) }} / {{ bet.get("gkfz", 0) }}</td></tr>
+  </tbody>
+</table>
+{% set types = d.get("by_type") or {} %}
+{% if types %}<p class="xs">Unfalltypen: {% for t, n in types.items() %}{{ t }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}{% if d.get("nachts") %} · {{ d.nachts }} bei Dunkelheit{% endif %}</p>{% endif %}
+{% endif %}
+<p class="footnote">Unfallatlas der Statistischen Ämter: nur polizeilich erfasste Unfälle mit Personenschaden, Lage = Unfallort auf der Straße.</p>

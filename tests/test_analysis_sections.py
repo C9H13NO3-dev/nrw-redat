@@ -11,7 +11,7 @@ CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
         "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "gfnp", "schutzgebiete", "planning_essen",
-        "planning_bochum", "denkmal", "amenities", "schulen", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
+        "planning_bochum", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
 
@@ -71,6 +71,16 @@ def test_schulen_passthrough_and_empty(monkeypatch):
     monkeypatch.setattr(schulen, "lookup", lambda lat, lon: None)
     with pytest.raises(Empty):
         S._fetch_schulen(CTX)
+
+
+def test_unfaelle_passthrough_and_empty(monkeypatch):
+    from redat.sources import unfaelle
+    monkeypatch.setattr(unfaelle, "lookup", lambda lat, lon: {"total": 3})
+    assert S._fetch_unfaelle(CTX) == {"total": 3}
+    monkeypatch.setattr(unfaelle, "lookup", lambda lat, lon: None)
+    with pytest.raises(Empty) as ei:
+        S._fetch_unfaelle(CTX)
+    assert "Unfallatlas" in ei.value.message
 
 
 AIR_REPORT = {
