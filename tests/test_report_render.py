@@ -49,6 +49,7 @@ def test_fixture_content_is_present():
         "planning_bochum": ["Gestaltungssatzung Werden"],
         "denkmal": ["Wohnhaus Effmann", "Untere Denkmalbehörde Essen"],
         "amenities": ["EDEKA Diekmann", "65 m"],
+        "schulen": ["Käthe-Kollwitz-Schule", "Stufe 3 von 9", "Goetheschule"],
         "oepnv": ["Werdener Markt", "SB19", "Essen Hbf"],
         "zensus": ["1.572", "vor 1919"],
         "energie": ["3.411", "Prüfgebiet Wärmenetze", "2,5 – 2,9"],

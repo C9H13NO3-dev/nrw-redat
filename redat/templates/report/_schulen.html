@@ -1,0 +1,30 @@
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Schulen im Umkreis von {{ ((d.get("radius_m") or 2000) / 1000)|fmt_num(0) }} km</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+</div>
+{% for label, key in [("Grundschulen", "grundschulen"), ("Weiterführende Schulen (je Schulform die nächste)", "weiterfuehrend"), ("Förderschulen", "foerderschulen")] %}
+{% set list = d.get(key) or [] %}
+{% if list %}
+<h3>{{ label }}</h3>
+<table>
+  <thead><tr><th class="num">Abstand</th><th>Schule</th><th>Schulform</th><th class="num">Schüler</th><th>Sozialindex</th></tr></thead>
+  <tbody>
+  {% for s in list %}
+    <tr>
+      <td class="num">{{ (s.distance_m|fmt_m) if s.get("distance_m") is not none else "—" }}</td>
+      <td>{{ s.get("name") or "—" }}</td>
+      <td>{{ s.get("form") or "—" }}</td>
+      <td class="num">{{ s.schueler|fmt_int if s.get("schueler") else "—" }}</td>
+      <td>{{ s.get("sozialindex_label") or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endfor %}
+{% if d.get("grundschulbezirk") %}
+<p>Bochumer Grundschulbezirk: <strong>{{ d.grundschulbezirk.get("schule") or "—" }}</strong>{% if d.grundschulbezirk.get("kapazitaet") %} (Kapazität {{ d.grundschulbezirk.kapazitaet }} Plätze){% endif %}</p>
+{% endif %}
+<p class="footnote">Schulliste NRW{% if d.get("schuljahr") %} {{ d.schuljahr }}{% endif %} mit schulscharfem Sozialindex (1 = geringe, 9 = hohe soziale Herausforderungen; kein Qualitätsurteil). Essen: freie Grundschulwahl; Bochum: Grundschulbezirke.</p>

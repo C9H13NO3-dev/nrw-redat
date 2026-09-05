@@ -11,7 +11,7 @@ CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
         "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "gfnp", "schutzgebiete", "planning_essen",
-        "planning_bochum", "denkmal", "amenities", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
+        "planning_bochum", "denkmal", "amenities", "schulen", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
 
@@ -62,6 +62,15 @@ def test_amenities_normalizer(monkeypatch):
             "doctor": {"name": "—", "distance_m": 800},
         },
     }
+
+
+def test_schulen_passthrough_and_empty(monkeypatch):
+    from redat.sources import schulen
+    monkeypatch.setattr(schulen, "lookup", lambda lat, lon: {"radius_m": 2000, "grundschulen": []})
+    assert S._fetch_schulen(CTX)["radius_m"] == 2000
+    monkeypatch.setattr(schulen, "lookup", lambda lat, lon: None)
+    with pytest.raises(Empty):
+        S._fetch_schulen(CTX)
 
 
 AIR_REPORT = {

@@ -745,6 +745,54 @@
   "status": "ok",
   "took_ms": 8365
  },
+ "schulen": {
+  "key": "schulen",
+  "tier": "area",
+  "data": {
+   "radius_m": 2000,
+   "schuljahr": "2025/26",
+   "grundschulen": [
+    {
+     "name": "Käthe-Kollwitz-Schule",
+     "form": "Grundschule",
+     "distance_m": 330,
+     "sozialindex": 3,
+     "sozialindex_label": "Stufe 3 von 9 (geringe soziale Herausforderungen)",
+     "schueler": 250,
+     "adresse": "Christinenstr. 4",
+     "plz": "45131",
+     "ort": "Essen"
+    }
+   ],
+   "weiterfuehrend": [
+    {
+     "name": "Goetheschule",
+     "form": "Gymnasium",
+     "distance_m": 900,
+     "sozialindex": 2,
+     "sozialindex_label": "Stufe 2 von 9 (geringe soziale Herausforderungen)",
+     "schueler": 900,
+     "adresse": null,
+     "plz": null,
+     "ort": "Essen"
+    }
+   ],
+   "foerderschulen": [],
+   "counts": {
+    "grundschulen": 2,
+    "weiterfuehrend": 3,
+    "foerderschulen": 0
+   },
+   "grundschulbezirk": null,
+   "grundschulbezirk_error": null,
+   "rating": "Grundschule fußläufig",
+   "rating_color": "green"
+  },
+  "message": null,
+  "source": "Schulministerium NRW, Schulliste 2025/26 mit Sozialindex · Geobasis NRW Schulstandorte (dl-de/by-2-0) · Stadt Bochum, Grundschulbezirke",
+  "status": "ok",
+  "took_ms": 21
+ },
  "oepnv": {
   "key": "oepnv",
   "tier": "area",

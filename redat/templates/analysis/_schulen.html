@@ -1,0 +1,30 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm text-gray-500">Schulen im Umkreis von <span x-text="d.radius_m / 1000"></span> km, Schuljahr <span x-text="d.schuljahr"></span></div>
+</div>
+<template x-for="[label, list] in [['Grundschulen', d.grundschulen], ['Weiterführende Schulen (je Schulform die nächste)', d.weiterfuehrend], ['Förderschulen', d.foerderschulen]]" :key="label">
+    <div class="mt-4" x-show="list.length">
+        <div class="text-sm font-semibold text-gray-900" x-text="label"></div>
+        <ul class="mt-1 space-y-1 text-sm">
+            <template x-for="(s, i) in list" :key="i">
+                <li class="flex items-start gap-2">
+                    <span class="text-gray-500 w-14 flex-shrink-0 text-right" x-text="$store.app.formatDistance(s.distance_m)"></span>
+                    <span>
+                        <span class="text-gray-900" x-text="s.name"></span>
+                        <span class="text-gray-500" x-text="' · ' + s.form + (s.schueler ? ' · ' + s.schueler + ' Schüler' : '')"></span>
+                        <span class="block text-xs text-gray-500" x-show="s.sozialindex_label" x-text="'Sozialindex ' + s.sozialindex_label"></span>
+                    </span>
+                </li>
+            </template>
+        </ul>
+    </div>
+</template>
+<p class="mt-3 text-sm text-gray-600" x-show="!d.grundschulen.length && !d.weiterfuehrend.length && !d.foerderschulen.length">Keine Schule im Umkreis.</p>
+<template x-if="d.grundschulbezirk">
+    <p class="mt-3 text-sm text-gray-700">🏫 Bochumer Grundschulbezirk: <span class="font-medium" x-text="d.grundschulbezirk.schule"></span><span x-show="d.grundschulbezirk.kapazitaet" x-text="' (Kapazität ' + d.grundschulbezirk.kapazitaet + ' Plätze)'"></span></p>
+</template>
+<p class="mt-3 text-xs text-gray-500">
+    Der schulscharfe Sozialindex NRW (1 = geringe, 9 = hohe soziale Herausforderungen) steuert die Ressourcenzuweisung und ist ausdrücklich kein Qualitätsurteil über die Schule.
+    In Essen gilt freie Grundschulwahl; in Bochum entscheidet der Grundschulbezirk über den Anspruch auf einen Platz.
+    <span x-show="d.grundschulbezirk_error"> · Grundschulbezirk Bochum nicht abrufbar</span>
+</p>

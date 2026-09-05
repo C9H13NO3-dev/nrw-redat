@@ -95,6 +95,15 @@ def _fetch_amenities(ctx: Ctx) -> dict:
     }
 
 
+def _fetch_schulen(ctx: Ctx) -> dict:
+    from redat.sources import schulen
+
+    d = schulen.lookup(ctx.lat, ctx.lon)
+    if d is None:
+        raise Empty("Schuldaten nicht verfügbar (redat/data/schulen_nrw.json.gz fehlt)")
+    return d
+
+
 def _fetch_air_quality(ctx: Ctx) -> dict:
     from redat.sources import airquality
 
@@ -377,6 +386,8 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("denkmal", "Denkmalschutz", "🏛️", 25,
             "RVR Geoportal Ruhr — Denkmäler (INSPIRE WFS) · Untere Denkmalbehörden Essen/Bochum", _fetch_denkmal),
     Section("amenities", "Entfernungen (POIs)", "📍", 25, "Geoapify Places", _fetch_amenities),
+    Section("schulen", "Schulen & Sozialindex", "🎒", 20,
+            "Schulministerium NRW, Schulliste 2025/26 mit Sozialindex · Geobasis NRW Schulstandorte (dl-de/by-2-0) · Stadt Bochum, Grundschulbezirke", _fetch_schulen),
     Section("oepnv", "ÖPNV-Erreichbarkeit", "🚋", 45, "VRR EFA-Fahrplanauskunft (efa.vrr.de) — Fahrplan-Stichtag, kein Echtzeit", _fetch_oepnv,
             cache_ttl_s=7 * 86400),   # trips are normalised to "next Tuesday 08:00"; only timetable changes matter
     Section("zensus", "Nachbarschaft (Zensus 2022)", "🏘️", 5, "Destatis, Zensus 2022 — 100 m-Gitterdaten (dl-de/by-2-0)", _fetch_zensus),

@@ -198,6 +198,17 @@ def _s_amenities(d):
     return None, "gray", " · ".join(parts) or None
 
 
+def _s_schulen(d):
+    rating, color = _rated(d)
+    gs = (d.get("grundschulen") or [{}])[0]
+    parts = []
+    if gs.get("name"):
+        parts.append(f"Grundschule {fmt_m(gs['distance_m'])}" + (f" (Sozialindex {gs['sozialindex']})" if gs.get("sozialindex") else ""))
+    for w in (d.get("weiterfuehrend") or [])[:2]:
+        parts.append(f"{w.get('form')} {fmt_m(w['distance_m'])}")
+    return rating, color, " · ".join(parts) or None
+
+
 def _s_oepnv(d):
     rating, color = _rated(d)
     rail = d.get("nearest_rail_m")
@@ -283,7 +294,7 @@ SUMMARY: dict[str, Callable[[dict], tuple[Optional[str], str, Optional[str]]]] =
     "boris": _s_boris, "boris_trend": _s_boris_trend, "irw": _s_irw, "flood": _s_flood, "starkregen": _s_starkregen,
     "noise": _s_noise, "bergbau": _s_bergbau, "gfnp": _s_gfnp, "schutzgebiete": _s_schutzgebiete,
     "planning_essen": _s_planning, "planning_bochum": _s_planning, "denkmal": _s_denkmal,
-    "amenities": _s_amenities, "oepnv": _s_oepnv, "zensus": _s_zensus, "energie": _s_energie,
+    "amenities": _s_amenities, "schulen": _s_schulen, "oepnv": _s_oepnv, "zensus": _s_zensus, "energie": _s_energie,
     "breitband": _s_breitband, "infrastruktur": _s_infrastruktur, "air_quality": _s_air_quality,
     "btw": _s_btw, "commute": _s_commute,
 }
