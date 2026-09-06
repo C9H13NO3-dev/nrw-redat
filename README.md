@@ -2,13 +2,13 @@
 
 **Real Estate Data Aggregation Tool** — a standalone Standortanalyse ("location analysis") service for
 Essen/Bochum, built from public NRW/Bund geodata (Bodenrichtwert, Hochwasser, Lärm, Denkmalschutz, ÖPNV,
-Luftqualität, Bundestagswahl and more — 26 cards in total). It runs the same analysis engine that used
+Luftqualität, Bundestagswahl and more — 27 cards in total). It runs the same analysis engine that used
 to live inside the House Hunter project, extracted into its own FastAPI service so it can be used for
 any address, not just scraped listings. Given an address it geocodes it, runs every applicable data
 source concurrently, and renders the result as a website page, a JSON payload, or a formatted A4 PDF —
 each run gets a permanent, shareable permalink.
 
-Card overview (20 original + six Tier-1 additions):
+Card overview (20 original + six Tier-1 additions + one Tier-2 addition):
 
 | Card | What it shows |
 |---|---|
@@ -18,9 +18,17 @@ Card overview (20 original + six Tier-1 additions):
 | Radon | BfS soil-air radon (`rn_max`, 90th percentile at 1 m depth, kBq/m³ — the headline figure, with the geological unit e.g. Karbon) plus the geogenic Radonpotenzial for the area. |
 | Schulen & Sozialindex | Nearest Grundschulen with the Schulministerium Sozialindex, plus Bochum Grundschulbezirke. |
 | Verkehrsunfälle (Unfallatlas) | Per-year accident counts from the Statistische Ämter Unfallatlas grid. |
+| E-Ladepunkte (Ladesäulen) | Public EV chargers within 1 km from the BNetzA Ladesäulenregister (count, nearest 5, rating). |
 
 The `flood` card now also covers Überschwemmungsgebiete (§78 WHG); `planning_essen` covers Satzungen/
 Sanierung and `planning_bochum` covers Stadterneuerung, in addition to their existing content.
+
+Tier-2 extended three existing cards: `bergbau` gained Bergbauberechtigungen (mining rights at the point,
+Bezirksregierung Arnsberg) and Copernicus EGMS Bodenbewegung (vertical ground velocity, InSAR);
+`starkregen` gained Gelände (DGM1 height, Hanglage/Tieflage, slope, from the NRW DGM1 WCS); `noise` gained
+Fluglärm DUS/EMH and Ruhige Gebiete from the Essen and Bochum city layers. Two PDF-only figures were added:
+"Der Ort im Wandel" (four historic map panels 1840s/1900s/1950s/today on the Flurstück page) and "Grün und
+Hitze" (RVR canopy-cover and surface-temperature panels on the Nachbarschaft/Zensus page).
 
 Surfaces: a website (`/`, permalinks at `/a/{id}`, a source index at `/quellen`), a versioned JSON+PDF
 API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring/container health.
@@ -31,7 +39,7 @@ API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring
 git clone <this repo> nrw-redat && cd nrw-redat
 cp .env.example .env            # fill in GEOAPIFY_API_KEY (see below)
 docker compose up -d --build    # builds on :8200 — the build stage runs pytest; a red suite aborts the build
-curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":26,"cache":{"entries":…,"bytes":…,"expired":…}}
+curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":27,"cache":{"entries":…,"bytes":…,"expired":…}}
 ```
 
 `.env` (git-ignored, copy from `.env.example`):
@@ -91,6 +99,7 @@ Small, gzipped JSON extracts that ship with the code (no download at deploy time
 | `schulen_nrw.json.gz` | `scripts/build_schulen.py --shape … --sozialindex …` | opengeodata Schulstandorte NRW + Schulministerium Schulliste (Sozialindex) | each Schuljahr (autumn) |
 | `unfallatlas_2020_2025.json.gz` | `scripts/build_unfallatlas.py --src …` | Unfallatlas CSV zips (opengeodata.nrw.de) | yearly (July), extend `YEARS` and rename the file |
 | `bergbauberechtigungen.geojson.gz` | `scripts/build_bergbauberechtigungen.py --shape …` | Bergbauberechtigungen NRW shapefile, Bezirksregierung Arnsberg (opengeodata.nrw.de) | a few times a year |
+| `ladesaeulen.json.gz` | `scripts/build_ladesaeulen.py --csv …` | BNetzA Ladesäulenregister CSV (CC BY 4.0) | monthly |
 | `egms_vertical_velocity.json.gz` | `scripts/build_egms.py --tif …` | Copernicus EGMS L3 Ortho vertical velocity tile E41N31 (EU-Login / insar-api) | yearly EGMS release |
 
 The build scripts' module docstrings carry the download URLs and the exact commands.
@@ -99,7 +108,7 @@ The build scripts' module docstrings carry the download URLs and the exact comma
 
 | Method & path | What it does |
 |---|---|
-| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 26 entries. |
+| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 27 entries. |
 | `GET /api/v1/geocode?address=` | Geocode an address → `{address, formatted_address, latitude, longitude, precision}`, 422 if unresolvable. |
 | `GET /api/v1/autocomplete?text=&limit=` | Address autocomplete suggestions. |
 | `GET /api/v1/section/{key}?lat&lon&precision&plot_size_m2&force&destinations` | Run one card in isolation; 404 for an unknown key. |

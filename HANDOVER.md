@@ -4,7 +4,7 @@
 
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
 (`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`). LAN-open by default (`REDAT_API_KEY`
-unset). 26 cards, 588 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
+unset). 27 cards, 654 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
 and refuses to produce an image on a red run.
 
 ## Deploy runbook
@@ -46,7 +46,8 @@ overwritten by `docker compose build`, so there is no separate image rollback �
 - **`.env`** — holds `GEOAPIFY_API_KEY` (required) and the optional `REDAT_API_KEY`. Git-ignored; never
   commit it.
 - `redat/data/{eea_aq_grid_2023.json, zensus_2022_grid.json.gz, schulen_nrw.json.gz,
-  unfallatlas_2020_2025.json.gz, certs/lencr_ye_chain.pem}` are, by contrast, committed package files and
+  unfallatlas_2020_2025.json.gz, bergbauberechtigungen.geojson.gz, ladesaeulen.json.gz,
+  egms_vertical_velocity.json.gz, certs/lencr_ye_chain.pem}` are, by contrast, committed package files and
   ship inside the image — do not confuse these with the `data/` bind mount above; README "Static grids in
   the repo" lists build script and source per file. `.dockerignore`'s `data` pattern is root-anchored and only excludes the top-level
   `./data` directory.
@@ -178,6 +179,38 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   CPython broke the import cycle and left numpy half-initialised in `sys.modules` for the life of the process.
   `create_app()` now calls `core/warmup.warm_geo_stack()` in the main thread before serving (~0.4 s). Verified
   with three fresh restarts × 26 concurrent `/section` requests: 0 errors.
+
+- **Tier-2 sources** (2026-09-06, plan `docs/superpowers/plans/2026-09-06-tier2-sources.md`, spec
+  `docs/superpowers/specs/2026-09-06-tier2-sources-design.md`) — three card extensions and one new card:
+  `bergbau` gained Bergbauberechtigungen at the point (`73c44ab`, Bezirksregierung Arnsberg shapefile
+  cropped to the Essen/Bochum window, `redat/data/bergbauberechtigungen.geojson.gz`, 630 features) and
+  Copernicus EGMS Bodenbewegung (`9dd3782`, `0261ce1`, vertical ground velocity,
+  `redat/data/egms_vertical_velocity.json.gz`, release 2020-2024, downloaded via the insar-api with a
+  CLMS token — no longer data-gated, the tile shipped); `starkregen` gained Gelände from the NRW DGM1 WCS
+  (`06284fd`, `37e25e1`, height/Hanglage-Tieflage/slope, fetched concurrently with the Starkregen lookup);
+  `noise` gained Fluglärm DUS/EMH and Ruhige Gebiete from the Essen and Bochum city layers (`73174c6`,
+  `2559a60`, queried concurrently, additive bbox selection in the Essen/Bochum overlap). New card
+  `ladesaeulen` (`cbcfda3`, public EV chargers within 1 km from the BNetzA Ladesäulenregister,
+  `redat/data/ladesaeulen.json.gz`, 2,603 chargers, Stand 2026-09-01). Two PDF-only figures: "Der Ort im Wandel"
+  (`33039a9`, `2288052`, four historic-map WMS panels 1840s/1900s/1950s/today on the Flurstück page,
+  fetched concurrently, 10 s timeout) and "Grün und Hitze" (`d4a815c`, RVR umon WMS canopy-cover and
+  surface-temperature panels with legends on the Nachbarschaft/Zensus page); a shared `title_font()`
+  TrueType helper landed in `noise_map.py` (`21858d4`) so umlauts render in map titles instead of boxing.
+  `cache_version` bumps: `bergbau` → 3, `starkregen` → 2, `noise` → 2 (`ladesaeulen` is new at the
+  default 1). Cards: 27. Suite: 654 tests.
+  - **RVR-WMS finding:** the RVR raster WMS (`services-rvr.geoportal.ruhr/umon`) answers GetFeatureInfo
+    with geometry only, no pixel values, and its legends are continuous colour ramps (146 colours in an
+    88×50 px legend) — pixel decoding would be guesswork. Dropped a planned "Grün und Hitze" *value* card
+    for this reason; the layers are used as GetMap images with their GetLegendGraphic PNGs instead
+    (`SLD_VERSION=1.1.0` is required on the legend call).
+  - **Data-gated items, now resolved or still open:** EGMS Bodenbewegung is now resolved — the tile
+    (`EGMS_L3_E41N31_100km_U_2020_2024_1.tif`) was downloaded via the CLMS insar-api and built into
+    `redat/data/egms_vertical_velocity.json.gz`; the card is live, not a "nicht installiert" placeholder.
+    Still open: **Altlasten Essen/Bochum** (e-mails to the two cities' Untere Bodenschutzbehörde drafted
+    for the site owner to send; unblocks once a reply with usable geodata/API access arrives) and
+    **Hebesätze** (current values need a registered Regionaldatenbank account for table 71231-03-01-5 —
+    the open Destatis workbook stops at the 2022 edition, before the 2025 Grundsteuer reform; unblocks
+    once someone registers and pulls the table).
 
 ## Open items
 
