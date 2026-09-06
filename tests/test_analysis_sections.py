@@ -417,16 +417,16 @@ BERGBAU_RAW = {"cell_id": "x", "cell_size_m": 500, "authority": "Geologischer Di
 
 def test_bergbau_merges_berechtigungen(monkeypatch):
     from redat.core import tiers
-    from redat.sources import bergbau, bergrechte
+    from redat.sources import bergbau, bergrechte, bodenbewegung
     monkeypatch.setattr(bergbau, "get_bergbau", lambda lat, lon: dict(BERGBAU_RAW))
     rows = [{"feld": "Neu Essen", "art": "aufrechterhaltenes Bergwerkseigentum", "kurz": "Bergwerkseigentum", "bodenschatz": "Eisenerz",
              "inhaber": "TRATON SE", "seit": "23.01.1791", "erloschen": False, "groesse": "1 m²"}]
     monkeypatch.setattr(bergrechte, "lookup", lambda lat, lon: rows)
+    monkeypatch.setattr(bodenbewegung, "lookup", lambda lat, lon: None)
     d = S._fetch_bergbau(CTX)
     assert d["berechtigungen"] == rows and d["berechtigungen_error"] is None and d["rating"] == "Unauffällig"
     assert tiers.SERVICE_TIER["bergbau"] == "area"
 
-    from redat.sources import bodenbewegung
     monkeypatch.setattr(bodenbewegung, "lookup", lambda lat, lon: {"mm_a": -6.0, "klasse": "deutliche Bewegung"})
     d = S._fetch_bergbau(CTX)
     assert d["bodenbewegung"]["mm_a"] == -6.0 and d["bodenbewegung_hinweis"] is None
@@ -437,9 +437,10 @@ def test_bergbau_merges_berechtigungen(monkeypatch):
 
 
 def test_bergbau_missing_grid_is_reported_not_fatal(monkeypatch):
-    from redat.sources import bergbau, bergrechte
+    from redat.sources import bergbau, bergrechte, bodenbewegung
     monkeypatch.setattr(bergbau, "get_bergbau", lambda lat, lon: dict(BERGBAU_RAW))
     monkeypatch.setattr(bergrechte, "lookup", lambda lat, lon: None)
+    monkeypatch.setattr(bodenbewegung, "lookup", lambda lat, lon: None)
     d = S._fetch_bergbau(CTX)
     assert d["berechtigungen"] is None and "bergbauberechtigungen.geojson.gz" in d["berechtigungen_error"]
 

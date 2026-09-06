@@ -58,7 +58,7 @@ def crop_cells(arr: np.ndarray, x0: float, y0: float, px: float, bbox3035: tuple
             v = float(arr[r, c])
             if not (xmin <= cx <= xmax) or v == nodata or not np.isfinite(v):
                 continue
-            out[f"{int(cx)}_{int(cy)}"] = round(v, 2)
+            out[f"{int(round(cx))}_{int(round(cy))}"] = round(v, 2)
     return out
 
 
