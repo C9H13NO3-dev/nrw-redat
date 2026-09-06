@@ -162,11 +162,22 @@ def _fetch_noise(ctx: Ctx) -> dict:
 
 
 def _fetch_bergbau(ctx: Ctx) -> dict:
+    from redat.sources import bergrechte
     from redat.sources.bergbau import get_bergbau
 
     b = get_bergbau(ctx.lat, ctx.lon)
     if b is None:
         raise Empty("Kein GDU-Planquadrat für diesen Ort (außerhalb NRW)")
+    b["berechtigungen"], b["berechtigungen_error"] = None, None
+    try:
+        rows = bergrechte.lookup(ctx.lat, ctx.lon)
+        if rows is None:
+            b["berechtigungen_error"] = "Bergbauberechtigungen nicht installiert (redat/data/bergbauberechtigungen.geojson.gz fehlt)"
+        else:
+            b["berechtigungen"] = rows
+    except Exception as exc:  # noqa: BLE001 — the rights lookup must not blank the GDU result
+        logger.warning("bergrechte: %s", exc)
+        b["berechtigungen_error"] = str(exc)
     return b
 
 
@@ -404,7 +415,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
             cache_version=2),
     Section("starkregen", "Starkregen", "🌧️", 25, "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz", _fetch_starkregen),
     Section("noise", "Lärm", "🔊", 20, "Land NRW, Umgebungslärmkartierung 2022 (WMS, Maximum im 25-m-Fenster)", _fetch_noise),
-    Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat)", _fetch_bergbau),
+    Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat) · Bergbauberechtigungen NRW (BezReg Arnsberg)", _fetch_bergbau, cache_version=2),
     Section("baugrund", "Baugrund & Versickerung (BK50)", "🪨", 25,
             "Geologischer Dienst NRW, Bodenkarte 1:50.000 (dl-de/by-2-0) · Stadt Essen, kf-Werte aus Bauanträgen", _fetch_baugrund),
     Section("radon", "Radon", "☢️", 20, "Bundesamt für Strahlenschutz — Radon in der Bodenluft (1 km-Prognose) und Radonpotenzial (dl-de/by-2-0)", _fetch_radon),

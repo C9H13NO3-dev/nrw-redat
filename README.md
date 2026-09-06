@@ -90,6 +90,7 @@ Small, gzipped JSON extracts that ship with the code (no download at deploy time
 | `eea_aq_grid_2023.json` | `scripts/build_eea_aq_grid.py` | EEA 1 km air-quality maps | yearly |
 | `schulen_nrw.json.gz` | `scripts/build_schulen.py --shape … --sozialindex …` | opengeodata Schulstandorte NRW + Schulministerium Schulliste (Sozialindex) | each Schuljahr (autumn) |
 | `unfallatlas_2020_2025.json.gz` | `scripts/build_unfallatlas.py --src …` | Unfallatlas CSV zips (opengeodata.nrw.de) | yearly (July), extend `YEARS` and rename the file |
+| `bergbauberechtigungen.geojson.gz` | `scripts/build_bergbauberechtigungen.py --shape …` | Bergbauberechtigungen NRW shapefile, Bezirksregierung Arnsberg (opengeodata.nrw.de) | a few times a year |
 
 The build scripts' module docstrings carry the download URLs and the exact commands.
 

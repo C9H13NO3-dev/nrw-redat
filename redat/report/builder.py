@@ -155,7 +155,11 @@ def _s_noise(d):
 def _s_bergbau(d):
     rating, color = _rated(d)
     n = len([i for i in (d.get("items") or []) if i.get("present")])
-    return rating, color, f"{n} Hinweise im 500 m-Planquadrat"
+    fig = f"{n} Hinweise im 500 m-Planquadrat"
+    own = [r for r in (d.get("berechtigungen") or []) if r.get("kurz") in ("Bergwerkseigentum", "Bewilligung") and not r.get("erloschen")]
+    if own:
+        fig += f" · Bergwerkseigentum: {own[0].get('feld')} ({own[0].get('bodenschatz')})"
+    return rating, color, fig
 
 
 def _s_baugrund(d):

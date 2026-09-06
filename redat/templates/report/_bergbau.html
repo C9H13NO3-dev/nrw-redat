@@ -26,4 +26,26 @@
 <p class="muted mt">Keine Einträge zu Bergbau, Tagesbrüchen, Erdfällen oder Methan in diesem Planquadrat.</p>
 {% endif %}
 
+{% set rights = d.get("berechtigungen") %}
+{% if rights %}
+<h3>Bergbauberechtigungen am Standort</h3>
+<table>
+  <thead><tr><th>Art</th><th>Feld</th><th>Bodenschatz</th><th>Inhaber</th><th>Seit</th></tr></thead>
+  <tbody>
+  {% for b in rights %}
+    <tr>
+      <td><span class="tag {{ 'tag-orange' if b.get('kurz') in ('Bergwerkseigentum', 'Bewilligung') else '' }}">{{ b.get("kurz") or "—" }}</span></td>
+      <td>{{ b.get("feld") or "—" }}{% if b.get("erloschen") %} (erloschen){% endif %}</td>
+      <td>{{ b.get("bodenschatz") or "—" }}</td>
+      <td class="xs">{{ b.get("inhaber") or "—" }}</td>
+      <td>{{ b.get("seit") or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="footnote">Ein Bergwerkseigentum ist ein Recht, kein Nachweis von Abbau; es zeigt, wer für Bergschäden in Anspruch genommen werden kann. Quelle: Bergbauberechtigungen NRW, Bezirksregierung Arnsberg (dl-de/by-2-0).</p>
+{% elif rights is not none %}
+<p class="muted">Keine Bergbauberechtigung am Standort.</p>
+{% endif %}
+
 <p class="footnote">Bürgerversion der GD-NRW-Karte: Angaben gelten für das 500 m-Planquadrat, nicht für das Grundstück. Für eine parzellenscharfe Bergbauauskunft (im Ruhrgebiet vor jedem Kauf üblich) an die Bezirksregierung Arnsberg wenden. Quelle: NRW von unten (GD NRW).</p>

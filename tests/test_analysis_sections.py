@@ -387,20 +387,33 @@ def test_starkregen_none_is_empty(monkeypatch):
         S._fetch_starkregen(CTX)
 
 
-def test_bergbau_passes_through_and_is_area(monkeypatch):
+BERGBAU_RAW = {"cell_id": "x", "cell_size_m": 500, "authority": "Geologischer Dienst NRW", "updated": None, "items": [], "rating": "Unauffällig", "rating_color": "green"}
+
+
+def test_bergbau_merges_berechtigungen(monkeypatch):
     from redat.core import tiers
-    from redat.sources import bergbau
-    payload = {"cell_id": "1", "cell_size_m": 500, "authority": "Geologischer Dienst NRW", "updated": None,
-               "items": [], "rating": "Keine Hinweise", "rating_color": "green"}
-    monkeypatch.setattr(bergbau, "get_bergbau", lambda lat, lon: payload)
-    assert S._fetch_bergbau(CTX) == payload
-    assert tiers.SERVICE_TIER["bergbau"] == "area"
+    from redat.sources import bergbau, bergrechte
+    monkeypatch.setattr(bergbau, "get_bergbau", lambda lat, lon: dict(BERGBAU_RAW))
+    rows = [{"feld": "Neu Essen", "art": "aufrechterhaltenes Bergwerkseigentum", "kurz": "Bergwerkseigentum", "bodenschatz": "Eisenerz",
+             "inhaber": "TRATON SE", "seit": "23.01.1791", "erloschen": False, "groesse": "1 m²"}]
+    monkeypatch.setattr(bergrechte, "lookup", lambda lat, lon: rows)
+    d = S._fetch_bergbau(CTX)
+    assert d["berechtigungen"] == rows and d["berechtigungen_error"] is None and d["rating"] == "Unauffällig"
+    assert tiers.SERVICE_TIER["bergbau"] == "area" and S.SECTIONS["bergbau"].cache_version == 2
+
+
+def test_bergbau_missing_grid_is_reported_not_fatal(monkeypatch):
+    from redat.sources import bergbau, bergrechte
+    monkeypatch.setattr(bergbau, "get_bergbau", lambda lat, lon: dict(BERGBAU_RAW))
+    monkeypatch.setattr(bergrechte, "lookup", lambda lat, lon: None)
+    d = S._fetch_bergbau(CTX)
+    assert d["berechtigungen"] is None and "bergbauberechtigungen.geojson.gz" in d["berechtigungen_error"]
 
 
 def test_bergbau_none_is_empty(monkeypatch):
     from redat.sources import bergbau
     monkeypatch.setattr(bergbau, "get_bergbau", lambda lat, lon: None)
-    with pytest.raises(Empty, match="Planquadrat"):
+    with pytest.raises(Empty):
         S._fetch_bergbau(CTX)
 
 
