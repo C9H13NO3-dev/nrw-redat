@@ -173,6 +173,12 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   only accepts TYPENAMES+BBOX(EPSG:25832) and answers GML — no JSON, no CQL. The BfS WFS bbox is lon,lat.
   The BK50 WMS is read as HTML because only the HTML carries readable class labels.
 
+- **Hotfix** (2026-09-06, `74358cd`) — `/a/khchav5vji` showed "numpy failed to import" on every geo card: the
+  first page load after a restart spawns ~26 section threads that raced on the *first* import of numpy/shapely,
+  CPython broke the import cycle and left numpy half-initialised in `sys.modules` for the life of the process.
+  `create_app()` now calls `core/warmup.warm_geo_stack()` in the main thread before serving (~0.4 s). Verified
+  with three fresh restarts × 26 concurrent `/section` requests: 0 errors.
+
 ## Open items
 
 - **Hunter cutover** (spec §11) is explicitly out of scope for this plan — a separate, later plan covers
