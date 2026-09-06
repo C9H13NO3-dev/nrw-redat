@@ -35,6 +35,9 @@ def test_rating_yellow_and_orange(monkeypatch):
 
 
 def test_outside_window_and_missing_grid(monkeypatch):
+    # Stub explicitly (rather than relying on the module-level `grid` autouse fixture) so this
+    # test is self-contained and never falls through to the committed grid file / its lru_cache.
+    monkeypatch.setattr(ls, "_load", lambda: GRID)  # bbox [6.85, 51.33, 7.40, 51.56] excludes (50.9, 6.9)
     assert ls.lookup(50.9, 6.9) is None
     monkeypatch.setattr(ls, "_load", lambda: None)
     assert ls.lookup(51.43, 7.0) is None

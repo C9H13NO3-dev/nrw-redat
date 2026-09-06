@@ -179,7 +179,7 @@ def _fetch_noise(ctx: Ctx) -> dict:
             n["extra_error"] = str(exc)
         return n
     finally:
-        pool.shutdown(wait=False)
+        pool.shutdown(wait=False, cancel_futures=True)
 
 
 def _fetch_bergbau(ctx: Ctx) -> dict:
@@ -403,7 +403,7 @@ def _fetch_starkregen(ctx: Ctx) -> dict:
             s["gelaende_error"] = str(exc)
         return s
     finally:
-        pool.shutdown(wait=False)
+        pool.shutdown(wait=False, cancel_futures=True)
 
 
 def _fetch_gfnp(ctx: Ctx) -> dict:

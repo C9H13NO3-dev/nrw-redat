@@ -1,4 +1,7 @@
 """Payload → PDF bytes. Shared by POST /report, GET /report and /run/{id}/report.pdf."""
+import logging
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import Response
 
 from redat.report.builder import build_report_context, slugify
@@ -9,17 +12,33 @@ from redat.report.pdf import html_to_pdf
 from redat.report.render import render_report_html
 from redat.report.svg import boris_trend_svg
 
+logger = logging.getLogger(__name__)
+
 
 def render_pdf(payload: dict) -> tuple[bytes, dict]:
     """Blocking: context → maps/SVG → HTML → Chromium PDF. Raises ReportPayloadError / RendererUnavailable."""
     ctx = build_report_context(payload)
     body_keys = {s["key"] for s in ctx["body"]}
+    jobs: dict[str, tuple] = {}
     if "noise" in body_keys:
-        ctx["noise_maps"] = render_noise_maps(ctx["lat"], ctx["lon"])
+        jobs["noise_maps"] = (render_noise_maps, (ctx["lat"], ctx["lon"]))
     if "flurstueck" in body_keys:
-        ctx["history_maps"] = render_history_maps(ctx["lat"], ctx["lon"])
+        jobs["history_maps"] = (render_history_maps, (ctx["lat"], ctx["lon"]))
     if "zensus" in body_keys:
-        ctx["climate_maps"] = render_climate_maps(ctx["lat"], ctx["lon"])
+        jobs["climate_maps"] = (render_climate_maps, (ctx["lat"], ctx["lon"]))
+    if jobs:
+        # The three figure renderers each block on their own HTTP calls + Pillow drawing;
+        # run them concurrently instead of one after another (worst case was ~36+10+10 s).
+        # A renderer is designed never to raise, but a failure here must still degrade to a
+        # missing figure rather than break the whole PDF.
+        with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+            futures = {key: pool.submit(fn, *args) for key, (fn, args) in jobs.items()}
+            for key, future in futures.items():
+                try:
+                    ctx[key] = future.result()
+                except Exception:
+                    logger.warning("report figure renderer %r failed", key, exc_info=True)
+                    ctx[key] = None
     if "boris_trend" in body_keys:
         data = next(s["data"] for s in ctx["body"] if s["key"] == "boris_trend")
         ctx["boris_trend_svg"] = boris_trend_svg(data.get("history") or [])

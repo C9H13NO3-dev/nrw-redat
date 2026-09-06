@@ -35,24 +35,44 @@ def _load() -> Optional[dict]:
         return None
 
 
+@lru_cache(maxsize=1)
+def _geoms() -> Optional[list[tuple]]:
+    """Parsed (shapely geometry, properties) pairs, built once from `_load()`'s dict.
+
+    Cached separately from `_load()` so the ~630 polygons are only ever shapely-parsed once per
+    process, not on every `lookup()` call. Tests that monkeypatch `_load` must also call
+    `_geoms.cache_clear()` so this cache is rebuilt from the new grid.
+    """
+    grid = _load()
+    if not grid:
+        return None
+    out = []
+    for f in grid.get("features") or []:
+        try:
+            geom = shape(f["geometry"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        out.append((geom, f.get("properties") or {}))
+    return out
+
+
 def kurz(art: Optional[str]) -> str:
     return _KURZ.get(art or "", art or "")
 
 
 def lookup(lat: float, lon: float) -> Optional[list[dict]]:
     """Berechtigungen whose field contains the point, ownership rights first; None when the file is missing."""
-    grid = _load()
-    if not grid:
+    geoms = _geoms()
+    if not geoms:
         return None
     pt = Point(lon, lat)
     out = []
-    for f in grid.get("features") or []:
+    for geom, p in geoms:
         try:
-            if not shape(f["geometry"]).contains(pt):
+            if not geom.contains(pt):
                 continue
-        except (KeyError, TypeError, ValueError):
+        except (TypeError, ValueError):
             continue
-        p = f.get("properties") or {}
         k = kurz(p.get("art"))
         out.append({"feld": p.get("feld"), "art": p.get("art"), "kurz": k, "bodenschatz": p.get("bodenschatz"),
                     "inhaber": p.get("inhaber"), "seit": p.get("seit"), "erloschen": bool(p.get("erloschen")), "groesse": p.get("groesse")})

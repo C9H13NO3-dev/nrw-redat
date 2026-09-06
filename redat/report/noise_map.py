@@ -88,10 +88,12 @@ def _fetch_image(url: str, params: dict) -> Image.Image:
 # face instead. Liberation Sans ships in the production container image (mcr.microsoft.com/playwright/
 # python:v1.58.0-noble — confirmed by pulling it and checking the path directly); DejaVu Sans is the
 # host-only fallback; ImageFont.load_default() is the last resort if neither font file is present.
-# lru_cache returns the same FreeTypeFont object on every call — fine as long as it's only ever read
-# from the calling (main) thread, which holds for all three decorate()s today; a future refactor that
-# moves decorate() into a worker thread would need to revisit this (Pillow doesn't document FreeTypeFont
-# as safe for concurrent use).
+# lru_cache returns the same FreeTypeFont object on every call. It is shared across threads —
+# render_pdf runs via run_in_threadpool, and the three decorate()s (here, history_maps, climate_maps)
+# are themselves submitted to their own ThreadPoolExecutor, so concurrent PDF requests and concurrent
+# figures within one request all call decorate() on different threads sharing this one font object.
+# That's fine: Pillow's C text-rendering path holds the GIL for the duration of each draw call, so
+# concurrent decorate() calls never touch the font's internal state at the same instant.
 _FONT_PATHS = (
     "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",

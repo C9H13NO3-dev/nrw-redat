@@ -3,6 +3,12 @@ import pytest
 from redat.sources import bergrechte
 
 
+@pytest.fixture(autouse=True)
+def _clear_geoms_cache():
+    yield
+    bergrechte._geoms.cache_clear()
+
+
 def feat(name, art, ring, **props):
     base = {"feld": name, "art": art, "bodenschatz": "Steinkohle", "inhaber": "RAG AKTIENGESELLSCHAFT", "seit": "01.01.1900", "bis": None,
             "erloschen": False, "groesse": "1 000 m²", "nummer": "1"}
@@ -28,6 +34,7 @@ def test_kurz_labels():
 
 def test_lookup_returns_containing_fields_ownership_first(monkeypatch):
     monkeypatch.setattr(bergrechte, "_load", lambda: GRID)
+    bergrechte._geoms.cache_clear()
     items = bergrechte.lookup(51.4300, 7.0050)
     assert [i["feld"] for i in items] == ["Neu Essen", "Metropole Ruhr"]
     assert items[0] == {"feld": "Neu Essen", "art": "aufrechterhaltenes Bergwerkseigentum", "kurz": "Bergwerkseigentum", "bodenschatz": "Eisenerz",
@@ -37,6 +44,26 @@ def test_lookup_returns_containing_fields_ownership_first(monkeypatch):
 
 def test_lookup_empty_list_when_nothing_contains_point_and_none_without_grid(monkeypatch):
     monkeypatch.setattr(bergrechte, "_load", lambda: GRID)
+    bergrechte._geoms.cache_clear()
     assert bergrechte.lookup(51.30, 6.90) == []
     monkeypatch.setattr(bergrechte, "_load", lambda: None)
+    bergrechte._geoms.cache_clear()
     assert bergrechte.lookup(51.43, 7.0) is None
+
+
+def test_geoms_are_parsed_once_across_two_lookups(monkeypatch):
+    """`shape()` must only run once per feature across repeated `lookup()` calls (Important 1)."""
+    monkeypatch.setattr(bergrechte, "_load", lambda: GRID)
+    bergrechte._geoms.cache_clear()
+    calls = []
+    real_shape = bergrechte.shape
+
+    def counting_shape(geom):
+        calls.append(geom)
+        return real_shape(geom)
+
+    monkeypatch.setattr(bergrechte, "shape", counting_shape)
+    bergrechte.lookup(51.4300, 7.0050)
+    bergrechte.lookup(51.4300, 7.0050)
+    bergrechte.lookup(51.30, 6.90)
+    assert len(calls) == len(GRID["features"])

@@ -142,7 +142,9 @@ The cache is **persistent** (a table in `redat.db`, survives restarts and redepl
 - An `ok` envelope whose `data` carries a truthy top-level `*_error` sibling (a secondary source merged
   onto an otherwise-successful card, e.g. `gelaende_error`, `berechtigungen_error`) is not cached either —
   `SectionCache.put` is the single choke point for this, so a transient secondary-source failure can never
-  be pinned in the cache for the card's full TTL.
+  be pinned in the cache for the card's full TTL. Corollary: a *permanent* gate/hint (one that is expected
+  to stay truthy forever for a given point, e.g. `bodenbewegung_hinweis` when EGMS has no cell nearby) must
+  not use the `_error` suffix, or the card would never be cacheable at all.
 - TTL per card: `settings.yaml` `cache_ttls` › the card's registry `cache_ttl_s` › the global
   `cache_ttl_s` (30 days). Registry defaults: `air_quality` 1 h (live sensor readings), `oepnv` 7 days
   (timetable); everything else is geodata that changes yearly at most and takes the 30 days. `0` disables
