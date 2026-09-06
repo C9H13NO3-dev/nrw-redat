@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
 from redat import __version__
+from redat.core.warmup import warm_geo_stack
 from redat.settings import get_settings
 
 log = logging.getLogger("redat")
@@ -69,6 +70,9 @@ def create_app() -> FastAPI:
     settings = get_settings()  # raises SettingsError → uvicorn exits: fail loudly
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    # Import numpy/shapely/pyproj/geopandas here, in the main thread, before any request can spawn the
+    # section worker threads that would otherwise race on the first import (see core/warmup.py).
+    warm_geo_stack()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
