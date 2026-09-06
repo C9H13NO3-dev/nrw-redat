@@ -14,21 +14,20 @@ def _png(color):
 
 
 def test_four_panels_with_titles_and_fallback_year(monkeypatch):
-    calls = []
+    seen_layers = set()  # stubbed _get_png now runs from worker threads: key by params, not call order
 
     def fake(url, params):
-        calls.append((url, params["LAYERS"]))
+        seen_layers.add(params["LAYERS"])  # set.add() is a single atomic op under the GIL
         if params["LAYERS"] == "nw_hist_dop_1952":
-            return _png((255, 255, 255))      # blank tile → fall back to 1951
+            return _png((255, 255, 255))      # blank tile → 1951 wins instead
         return _png((120, 120, 120))
     monkeypatch.setattr(hm, "_get_png", fake)
     out = hm.render_history_maps(51.43, 7.005)
     assert [p["key"] for p in out["panels"]] == ["uraufnahme", "neuaufnahme", "dop_alt", "dop"]
     assert [p["title"] for p in out["panels"]] == ["Preußische Uraufnahme (1836–1850)", "Preußische Neuaufnahme (1891–1912)", "Luftbild 1951", "Luftbild heute"]
     assert all(Image.open(io.BytesIO(base64.b64decode(p["image"]))).size == (WIDTH, HEIGHT) for p in out["panels"])
-    layers = [l for _, l in calls]
-    assert "nw_uraufnahme_rw" in layers and "nw_neuaufnahme" in layers and "nw_dop_rgb" in layers
-    assert layers.index("nw_hist_dop_1952") < layers.index("nw_hist_dop_1951")
+    # both 1952 (blank) and 1951 (the winner) must have been requested — all years are fetched concurrently
+    assert {"nw_uraufnahme_rw", "nw_neuaufnahme", "nw_dop_rgb", "nw_hist_dop_1952", "nw_hist_dop_1951"} <= seen_layers
     assert out["error"] is None and "Geobasis NRW" in out["attribution"]
 
 
@@ -52,3 +51,13 @@ def test_all_hist_dop_years_blank_gives_none_panel(monkeypatch):
 def test_is_blank():
     assert hm.is_blank(Image.new("RGBA", (10, 10), (255, 255, 255, 255)))
     assert not hm.is_blank(Image.new("RGBA", (10, 10), (100, 100, 100, 255)))
+
+
+def test_all_panels_fail_render_still_completes(monkeypatch):
+    def fake(url, params):
+        raise RuntimeError("WMS down")
+    monkeypatch.setattr(hm, "_get_png", fake)
+    out = hm.render_history_maps(51.43, 7.005)  # must not raise
+    assert [p["key"] for p in out["panels"]] == ["uraufnahme", "neuaufnahme", "dop_alt", "dop"]
+    assert [p["image"] for p in out["panels"]] == [None, None, None, None]
+    assert out["error"] is not None and "WMS down" in out["error"]
