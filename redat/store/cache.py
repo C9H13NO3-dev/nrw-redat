@@ -10,6 +10,13 @@ Semantics (README "Cache semantics"): only ok/empty envelopes are stored; TTL is
 (registry default, settings.yaml `cache_ttls` override, global `cache_ttl_s` fallback; 0 disables);
 the key carries the section's `cache_version` so a card can invalidate its own entries by bumping it;
 expiry is wall-clock. Eviction order when over a bound: expired rows first, then least recently used.
+
+`put` is also the single choke point for a second rule: an "ok" envelope whose `data` is a dict
+carrying any truthy top-level key ending in `_error` (a secondary-source failure merged onto an
+otherwise-successful card, e.g. `gelaende_error`, `berechtigungen_error`) is not stored either - that
+failure is not the card's `status`, so the plain ok/empty check above would otherwise cache a
+transient network hiccup for the section's full TTL. `empty` envelopes are unaffected (their `data`
+is always None).
 """
 from __future__ import annotations
 
@@ -98,6 +105,9 @@ class SectionCache:
 
     def put(self, k: tuple, envelope: dict) -> None:
         if envelope.get("status") not in _CACHEABLE:
+            return
+        data = envelope.get("data")
+        if isinstance(data, dict) and any(v for key, v in data.items() if key.endswith("_error")):
             return
         ttl = self.ttl_for(k[0])
         if ttl <= 0:

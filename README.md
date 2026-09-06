@@ -129,6 +129,10 @@ The cache is **persistent** (a table in `redat.db`, survives restarts and redepl
 - `ok`/`empty` envelopes are stored per `(key, lat₄, lon₄, plot, force, cache_version)` — by `/analyze`
   and `/section/{key}` alike; `error`/`gated` are never cached; a `destinations` param suppresses caching
   for the two sections it can affect (`commute`, `oepnv`) and nothing else.
+- An `ok` envelope whose `data` carries a truthy top-level `*_error` sibling (a secondary source merged
+  onto an otherwise-successful card, e.g. `gelaende_error`, `berechtigungen_error`) is not cached either —
+  `SectionCache.put` is the single choke point for this, so a transient secondary-source failure can never
+  be pinned in the cache for the card's full TTL.
 - TTL per card: `settings.yaml` `cache_ttls` › the card's registry `cache_ttl_s` › the global
   `cache_ttl_s` (30 days). Registry defaults: `air_quality` 1 h (live sensor readings), `oepnv` 7 days
   (timetable); everything else is geodata that changes yearly at most and takes the 30 days. `0` disables

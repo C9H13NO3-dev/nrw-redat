@@ -62,6 +62,20 @@ def test_center_nodata_raises():
         gelaende.analyse(arr)
 
 
+def test_slope_sample_nodata_falls_back_to_a_coarser_step():
+    arr = plane()
+    arr[100, 105] = -9999.0     # corrupts the default ±5 px east sample only
+    d = gelaende.analyse(arr)
+    assert d["neigung_pct"] == 0.0 and d["lage"] == "eben"
+
+
+def test_slope_unavailable_everywhere_is_omitted_not_garbage():
+    arr = np.full((200, 200), -9999.0, dtype=np.float32)
+    arr[100, 100] = 100.0       # only the centre pixel is valid; every slope sample step hits nodata
+    d = gelaende.analyse(arr)
+    assert d["neigung_pct"] is None and d["lage"] == "eben"
+
+
 def test_get_gelaende_requests_200m_box(monkeypatch):
     seen = {}
 

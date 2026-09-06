@@ -46,7 +46,7 @@
             <div><div class="text-gray-500">Lage</div><div class="font-medium" :class="{Tieflage: 'text-orange-700', Hanglage: 'text-yellow-700'}[d.gelaende.lage] || 'text-gray-900'" x-text="d.gelaende.lage"></div></div>
             <div><div class="text-gray-500">Höhe</div><div class="font-medium text-gray-900" x-text="d.gelaende.hoehe_m + ' m NHN'"></div></div>
             <div><div class="text-gray-500">Über dem tiefsten Punkt (100 m)</div><div class="font-medium text-gray-900" x-text="d.gelaende.ueber_tiefstem_100m + ' m'"></div></div>
-            <div><div class="text-gray-500">Neigung</div><div class="font-medium text-gray-900" x-text="d.gelaende.neigung_pct + ' %'"></div></div>
+            <div><div class="text-gray-500">Neigung</div><div class="font-medium text-gray-900" x-text="d.gelaende.neigung_pct !== null ? d.gelaende.neigung_pct + ' %' : '—'"></div></div>
         </div>
         <p class="mt-1 text-xs text-gray-500" x-show="d.gelaende.lage === 'Tieflage'">Tiefster Punkt der Umgebung: Oberflächenwasser sammelt sich hier — Rückstausicherung und Lichtschachtabdeckungen prüfen.</p>
         <p class="mt-1 text-xs text-gray-500" x-show="d.gelaende.lage === 'Hanglage'">Hanglage: Wasser fließt hangabwärts an oder über das Grundstück — Entwässerung oberhalb prüfen.</p>

@@ -10,6 +10,7 @@ SECTIONS == card order.
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -345,16 +346,26 @@ def _fetch_starkregen(ctx: Ctx) -> dict:
     from redat.sources import gelaende
     from redat.sources.starkregen import get_starkregen
 
-    s = get_starkregen(ctx.lat, ctx.lon)
-    if s is None:
-        raise Empty("Keine Starkregen-Daten für diesen Ort (außerhalb NRW oder vollständig überbaut)")
-    s["gelaende"], s["gelaende_error"] = None, None
+    # get_starkregen and the DGM lookup are independent HTTP round-trips, run concurrently so the
+    # combined worst case doesn't get close to the section's own run_section() timeout. When
+    # get_starkregen comes back None, the gelaende future's result is simply discarded — we don't
+    # wait around for it before raising Empty.
+    pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="starkregen-gelaende")
+    f_starkregen = pool.submit(get_starkregen, ctx.lat, ctx.lon)
+    f_gelaende = pool.submit(gelaende.get_gelaende, ctx.lat, ctx.lon)
     try:
-        s["gelaende"] = gelaende.get_gelaende(ctx.lat, ctx.lon)
-    except Exception as exc:  # noqa: BLE001 — the WCS must not blank the Starkregen result
-        logger.warning("gelaende: %s", exc)
-        s["gelaende_error"] = str(exc)
-    return s
+        s = f_starkregen.result()
+        if s is None:
+            raise Empty("Keine Starkregen-Daten für diesen Ort (außerhalb NRW oder vollständig überbaut)")
+        s["gelaende"], s["gelaende_error"] = None, None
+        try:
+            s["gelaende"] = f_gelaende.result()
+        except Exception as exc:  # noqa: BLE001 — the WCS must not blank the Starkregen result
+            logger.warning("gelaende: %s", exc)
+            s["gelaende_error"] = str(exc)
+        return s
+    finally:
+        pool.shutdown(wait=False)
 
 
 def _fetch_gfnp(ctx: Ctx) -> dict:

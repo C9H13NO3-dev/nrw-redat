@@ -9,6 +9,7 @@ Window: HALF_M = 100 → 200×200 px (~70 KB). `_get_coverage` is the single HTT
 from __future__ import annotations
 
 import io
+from typing import Optional
 
 import httpx
 import numpy as np
@@ -22,12 +23,12 @@ COVERAGE = "nw_dgm"
 HALF_M = 100
 _NEAR_M = 25
 _SLOPE_STEP_PX = 5
+_SLOPE_STEPS_PX = (_SLOPE_STEP_PX, 2 * _SLOPE_STEP_PX, _NEAR_M)  # widen the sample if a step hits nodata
 _NODATA_BELOW = -100.0
-# Kept well under the "starkregen" section's 25 s run_section() timeout: get_starkregen already
-# spends up to its own 20 s budget (concurrently) before this sequential call runs, so a 25 s DGM
-# timeout could make the whole card time out and blank the Starkregen result — exactly what the
-# gelaende_error path exists to avoid.
-_TIMEOUT_S = 8
+# _fetch_starkregen (redat/core/sections.py) runs this concurrently with get_starkregen's own up to
+# 20 s budget, both under the "starkregen" section's 25 s run_section() timeout — kept below both so
+# a slow WCS response can never by itself blank the whole card via the outer timeout.
+_TIMEOUT_S = 15
 _TO_25832 = Transformer.from_crs("EPSG:4326", "EPSG:25832", always_xy=True)
 
 
@@ -53,6 +54,21 @@ def _valid(a: np.ndarray) -> np.ndarray:
     return a[a > _NODATA_BELOW]
 
 
+def _slope_pct(arr: np.ndarray, cy: int, cx: int, h: int, w: int) -> Optional[float]:
+    """East/west/north/south difference quotient, widening the step when a sample hits nodata.
+
+    Returns None (never a garbage figure) when even the widest candidate step is blocked."""
+    for s in _SLOPE_STEPS_PX:
+        east, west = arr[cy, min(w - 1, cx + s)], arr[cy, max(0, cx - s)]
+        north, south = arr[max(0, cy - s), cx], arr[min(h - 1, cy + s), cx]
+        if min(east, west, north, south) <= _NODATA_BELOW:
+            continue
+        dzdx = (float(east) - float(west)) / (2 * s)
+        dzdy = (float(north) - float(south)) / (2 * s)
+        return round(100 * float(np.hypot(dzdx, dzdy)), 1)
+    return None
+
+
 def analyse(arr: np.ndarray) -> dict:
     """Terrain figures for a tile whose centre pixel is the point (row 0 = north)."""
     h, w = arr.shape
@@ -61,14 +77,11 @@ def analyse(arr: np.ndarray) -> dict:
     if hoehe <= _NODATA_BELOW:
         raise RuntimeError("Kein Höhenwert am Standort (Nodata im DGM)")
     near = arr[max(0, cy - _NEAR_M):cy + _NEAR_M, max(0, cx - _NEAR_M):cx + _NEAR_M]
-    s = _SLOPE_STEP_PX
-    dzdx = (float(arr[cy, min(w - 1, cx + s)]) - float(arr[cy, max(0, cx - s)])) / (2 * s)
-    dzdy = (float(arr[max(0, cy - s), cx]) - float(arr[min(h - 1, cy + s), cx])) / (2 * s)
-    neigung = round(100 * float(np.hypot(dzdx, dzdy)), 1)
+    neigung = _slope_pct(arr, cy, cx, h, w)
     all_v, near_v = _valid(arr), _valid(near)
     min100, max100 = float(all_v.min()), float(all_v.max())
     min25, max25 = float(near_v.min()), float(near_v.max())
-    if neigung >= 10:
+    if neigung is not None and neigung >= 10:
         lage = "Hanglage"
     elif hoehe - min25 <= 0.3 and max100 - hoehe >= 1.5:
         lage = "Tieflage"

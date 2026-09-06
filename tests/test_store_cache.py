@@ -40,6 +40,15 @@ def test_put_get_only_ok_and_empty():
     c.put(k, _env("ok")); assert c.get(k)["status"] == "ok"
 
 
+def test_put_skips_ok_envelope_with_a_truthy_top_level_error_sibling():
+    c = SectionCache(60)
+    k = c.key("starkregen", 51.3878, 7.0011, None, False)
+    c.put(k, {"key": "starkregen", "status": "ok", "data": {"gelaende_error": "timeout"}})
+    assert c.get(k) is None
+    c.put(k, {"key": "starkregen", "status": "ok", "data": {"gelaende_error": None, "gelaende": {}}})
+    assert c.get(k)["status"] == "ok"
+
+
 def test_get_returns_copy_marked_cached_with_timestamp(clock):
     c = SectionCache(60)
     k = c.key("noise", 1, 2, None, False)
