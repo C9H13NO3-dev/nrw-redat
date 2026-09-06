@@ -381,7 +381,17 @@
      "night": null
     }
    },
-   "below_threshold": false
+   "below_threshold": false,
+   "flug": {
+    "airport": "DUS",
+    "day": "ab 55 bis 59 dB(A)",
+    "night": null
+   },
+   "ruhiges_gebiet": {
+    "name": "Stadtwald",
+    "stadt": "Essen"
+   },
+   "extra_error": null
   },
   "message": null,
   "source": "Land NRW, Umgebungslärmkartierung 2022 (WMS GetFeatureInfo)",

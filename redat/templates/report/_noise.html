@@ -29,6 +29,11 @@
 </table>
 {% endif %}
 
+{% set fl = d.get("flug") %}
+{% if fl %}<p>Fluglärm {{ "Flughafen Düsseldorf" if fl.get("airport") == "DUS" else "Flughafen Essen/Mülheim" }}: Tag {{ fl.get("day") or "—" }}{% if fl.get("night") %}, Nacht {{ fl.night }}{% endif %} (Lärmkarte der Stadt Essen).</p>{% endif %}
+{% set rg = d.get("ruhiges_gebiet") %}
+{% if rg %}<p>Im „Ruhigen Gebiet“ <strong>{{ rg.get("name") or "—" }}</strong> (Lärmaktionsplan {{ rg.get("stadt") or "" }}) — vor Verlärmung besonders geschützt.</p>{% endif %}
+
 {% if noise_maps %}
 <div class="maps">
   {% for key, title in (("day", "Tag (L_DEN)"), ("night", "Nacht (L_Night)")) %}

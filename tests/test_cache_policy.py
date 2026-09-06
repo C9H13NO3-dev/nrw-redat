@@ -47,7 +47,7 @@ def test_cached_section_key_carries_the_section_version(monkeypatch):
     ctx = S.Ctx(lat=51.45, lon=7.01)
     A.cached_section("noise", ctx, precision="building", force=False, cache=cache)
     assert A.cached_section("noise", ctx, precision="building", force=False, cache=cache)["cached"] is True
-    monkeypatch.setitem(S.SECTIONS, "noise", dataclasses.replace(S.SECTIONS["noise"], cache_version=2))   # "card output changed"
+    monkeypatch.setitem(S.SECTIONS, "noise", dataclasses.replace(S.SECTIONS["noise"], cache_version=S.SECTIONS["noise"].cache_version + 1))   # "card output changed"
     out = A.cached_section("noise", ctx, precision="building", force=False, cache=cache)
     assert "cached" not in out and calls == ["noise", "noise"]
     cache.close()

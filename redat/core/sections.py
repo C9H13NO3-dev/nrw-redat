@@ -157,9 +157,29 @@ def _fetch_commute(ctx: Ctx) -> dict:
 
 
 def _fetch_noise(ctx: Ctx) -> dict:
+    from redat.sources import noise_extra
     from redat.sources.noise import get_noise_levels
 
-    return get_noise_levels(ctx.lat, ctx.lon)
+    # get_noise_levels (10 WMS tiles) and the city ArcGIS layers are independent HTTP round-trips;
+    # run them concurrently so a slow/hung Essen or Bochum server adds max(), not sum(), to the
+    # section's own run_section() timeout — see _fetch_starkregen for the identical pattern.
+    pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="noise-extra")
+    f_noise = pool.submit(get_noise_levels, ctx.lat, ctx.lon)
+    f_extra = pool.submit(noise_extra.get_noise_extra, ctx.lat, ctx.lon)
+    try:
+        n = f_noise.result()
+        n["flug"], n["ruhiges_gebiet"], n["extra_error"] = None, None, None
+        try:
+            extra = f_extra.result()
+            n["flug"], n["ruhiges_gebiet"] = extra.get("flug"), extra.get("ruhiges_gebiet")
+            if extra.get("errors"):
+                n["extra_error"] = ", ".join(f"{k}: {v}" for k, v in extra["errors"].items())
+        except Exception as exc:  # noqa: BLE001 — the city layers must not blank the state map
+            logger.warning("noise_extra: %s", exc)
+            n["extra_error"] = str(exc)
+        return n
+    finally:
+        pool.shutdown(wait=False)
 
 
 def _fetch_bergbau(ctx: Ctx) -> dict:
@@ -432,7 +452,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
             "Land NRW, Hochwassergefahrenkarten (HQhäufig / HQ100 / HQextrem) · Überschwemmungsgebiete NRW (§ 78 WHG)", _fetch_flood,
             cache_version=2),
     Section("starkregen", "Starkregen & Gelände", "🌧️", 25, "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz · Geobasis NRW DGM1 (WCS)", _fetch_starkregen, cache_version=2),
-    Section("noise", "Lärm", "🔊", 20, "Land NRW, Umgebungslärmkartierung 2022 (WMS, Maximum im 25-m-Fenster)", _fetch_noise),
+    Section("noise", "Lärm", "🔊", 20, "Land NRW, Umgebungslärmkartierung 2022 (WMS, Maximum im 25-m-Fenster) · Stadt Essen Fluglärm DUS/EMH · Ruhige Gebiete Essen/Bochum", _fetch_noise, cache_version=2),
     Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat) · Bergbauberechtigungen NRW (BezReg Arnsberg)", _fetch_bergbau, cache_version=2),
     Section("baugrund", "Baugrund & Versickerung (BK50)", "🪨", 25,
             "Geologischer Dienst NRW, Bodenkarte 1:50.000 (dl-de/by-2-0) · Stadt Essen, kf-Werte aus Bauanträgen", _fetch_baugrund),

@@ -30,3 +30,12 @@
         <p class="mt-3 text-xs text-gray-500">Lauteste kartierte Klasse im Umkreis von ca. <span x-text="Math.floor((d.window_m || 25) / 2)"></span> m um den Standort (Gebäudegrundrisse sind in der Kartierung ausgespart). Overlays „Lärm Tag/Nacht“ auf der Karte oben zuschaltbar.</p>
     </div>
 </template>
+<template x-if="d.flug">
+    <p class="mt-3 text-sm text-gray-800">✈️ Fluglärm <span x-text="d.flug.airport === 'DUS' ? 'Flughafen Düsseldorf' : 'Flughafen Essen/Mülheim'"></span>:
+        Tag <span class="font-medium" x-text="d.flug.day || '—'"></span><span x-show="d.flug.night" x-text="', Nacht ' + d.flug.night"></span>
+        <span class="text-xs text-gray-500">(Lärmkarte der Stadt Essen)</span></p>
+</template>
+<template x-if="d.ruhiges_gebiet">
+    <p class="mt-2 text-sm text-gray-800">🌳 Im „Ruhigen Gebiet“ <span class="font-medium" x-text="d.ruhiges_gebiet.name"></span> (Lärmaktionsplan <span x-text="d.ruhiges_gebiet.stadt"></span>) — vor Verlärmung besonders geschützt.</p>
+</template>
+<p class="mt-2 text-xs text-gray-500" x-show="d.extra_error">Städtische Lärmdaten teilweise nicht abrufbar.</p>

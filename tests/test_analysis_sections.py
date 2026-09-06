@@ -189,11 +189,28 @@ def test_oepnv_passes_fixed_stops_plus_custom_coords(monkeypatch):
                          ("Düsseldorf Hbf", ("stop", "de:05111:18235")), ("Büro", ("coord", 51.5, 7.1))]
 
 
-def test_noise_normalizer_passes_through(monkeypatch):
-    from redat.sources import noise
-    payload = {"day": None, "night": None, "sources": {}, "below_threshold": True}
-    monkeypatch.setattr(noise, "get_noise_levels", lambda lat, lon: payload)
-    assert S._fetch_noise(CTX) == payload
+def test_noise_merges_extra(monkeypatch):
+    from redat.sources import noise, noise_extra
+    payload = {"day": None, "night": None, "sources": {}, "below_threshold": True, "window_m": 25}
+    monkeypatch.setattr(noise, "get_noise_levels", lambda lat, lon: dict(payload))
+    extra = {"flug": {"airport": "DUS", "day": "ab 55 bis 59 dB(A)", "night": None}, "ruhiges_gebiet": None, "errors": {}}
+    monkeypatch.setattr(noise_extra, "get_noise_extra", lambda lat, lon: extra)
+    d = S._fetch_noise(CTX)
+    assert d["flug"] == extra["flug"] and d["ruhiges_gebiet"] is None and d["extra_error"] is None and d["below_threshold"] is True
+    assert S.SECTIONS["noise"].cache_version == 2
+
+    def boom(lat, lon):
+        raise RuntimeError("essen down")
+    monkeypatch.setattr(noise_extra, "get_noise_extra", boom)
+    d = S._fetch_noise(CTX)
+    assert d["flug"] is None and d["extra_error"] == "essen down"
+
+    # a per-layer failure inside get_noise_extra (not a whole-call exception) surfaces as a
+    # joined "<key>: <message>" string — the shape the cache layer's *_error suppression relies on.
+    partial = {"flug": None, "ruhiges_gebiet": {"name": "Stadtwald", "stadt": "Essen"}, "errors": {"flug_dus_day": "down"}}
+    monkeypatch.setattr(noise_extra, "get_noise_extra", lambda lat, lon: partial)
+    d = S._fetch_noise(CTX)
+    assert d["ruhiges_gebiet"] == partial["ruhiges_gebiet"] and d["extra_error"] == "flug_dus_day: down"
 
 # ---------------------------------------------------------------- parcel tier
 
