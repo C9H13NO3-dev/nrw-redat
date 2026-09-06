@@ -25,6 +25,7 @@ from PIL import Image, ImageDraw
 from pyproj import Transformer
 
 from redat.http import headers
+from redat.report.noise_map import title_font
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ def _b64(data: bytes) -> str:
 
 def decorate(im: Image.Image, title: str) -> Image.Image:
     draw = ImageDraw.Draw(im)
+    font = title_font()
     cx, cy = WIDTH // 2, HEIGHT // 2
     draw.ellipse((cx - 9, cy - 9, cx + 9, cy + 9), fill=(255, 255, 255, 255))
     draw.ellipse((cx - 6, cy - 6, cx + 6, cy + 6), fill=(220, 38, 38, 255))
@@ -68,10 +70,10 @@ def decorate(im: Image.Image, title: str) -> Image.Image:
     x0, y0 = 12, HEIGHT - 16
     draw.rectangle((x0 - 4, y0 - 16, x0 + bar + 44, y0 + 8), fill=(255, 255, 255, 220))
     draw.rectangle((x0, y0, x0 + bar, y0 + 4), fill=(17, 24, 39, 255))
-    draw.text((x0 + bar + 6, y0 - 7), "500 m", fill=(17, 24, 39, 255))
-    tw = int(draw.textlength(title)) if hasattr(draw, "textlength") else 8 * len(title)
+    draw.text((x0 + bar + 6, y0 - 7), "500 m", fill=(17, 24, 39, 255), font=font)
+    tw = int(draw.textlength(title, font=font)) if hasattr(draw, "textlength") else 8 * len(title)
     draw.rectangle((8, 8, 8 + tw + 12, 26), fill=(255, 255, 255, 230))
-    draw.text((14, 11), title, fill=(17, 24, 39, 255))
+    draw.text((14, 11), title, fill=(17, 24, 39, 255), font=font)
     return im
 
 

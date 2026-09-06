@@ -10,12 +10,13 @@ overlay on white — neither ever blocks the PDF.
 from __future__ import annotations
 
 import base64
+import functools
 import io
 import logging
 from typing import Optional
 
 import httpx
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from pyproj import Transformer
 
 from redat.http import headers
@@ -82,8 +83,34 @@ def _fetch_image(url: str, params: dict) -> Image.Image:
     return im.convert("RGBA").resize((WIDTH, HEIGHT))
 
 
+# Pillow's bundled default bitmap font has no umlauts ("ä" draws as a missing-glyph box), so every
+# decorate() (here, history_maps, climate_maps) draws titles and scale-bar labels with a real TrueType
+# face instead. Liberation Sans ships in the production container image (mcr.microsoft.com/playwright/
+# python:v1.58.0-noble — confirmed by pulling it and checking the path directly); DejaVu Sans is the
+# host-only fallback; ImageFont.load_default() is the last resort if neither font file is present.
+# lru_cache returns the same FreeTypeFont object on every call — fine as long as it's only ever read
+# from the calling (main) thread, which holds for all three decorate()s today; a future refactor that
+# moves decorate() into a worker thread would need to revisit this (Pillow doesn't document FreeTypeFont
+# as safe for concurrent use).
+_FONT_PATHS = (
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+)
+
+
+@functools.lru_cache(maxsize=None)
+def title_font(size: int = 13) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    for path in _FONT_PATHS:
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
 def _decorate(im: Image.Image, title: str) -> Image.Image:
     draw = ImageDraw.Draw(im)
+    font = title_font()
     cx, cy = WIDTH // 2, HEIGHT // 2
     # pin: white halo + red dot
     draw.ellipse((cx - 9, cy - 9, cx + 9, cy + 9), fill=(255, 255, 255, 255))
@@ -94,11 +121,11 @@ def _decorate(im: Image.Image, title: str) -> Image.Image:
     x0, y0 = 12, HEIGHT - 16
     draw.rectangle((x0 - 4, y0 - 16, x0 + bar + 44, y0 + 8), fill=(255, 255, 255, 220))
     draw.rectangle((x0, y0, x0 + bar, y0 + 4), fill=(17, 24, 39, 255))
-    draw.text((x0 + bar + 6, y0 - 7), "100 m", fill=(17, 24, 39, 255))
+    draw.text((x0 + bar + 6, y0 - 7), "100 m", fill=(17, 24, 39, 255), font=font)
     # title box top-left
-    tw = int(draw.textlength(title)) if hasattr(draw, "textlength") else 8 * len(title)
+    tw = int(draw.textlength(title, font=font)) if hasattr(draw, "textlength") else 8 * len(title)
     draw.rectangle((8, 8, 8 + tw + 12, 26), fill=(255, 255, 255, 230))
-    draw.text((14, 11), title, fill=(17, 24, 39, 255))
+    draw.text((14, 11), title, fill=(17, 24, 39, 255), font=font)
     return im
 
 
