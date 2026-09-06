@@ -139,6 +139,9 @@ def _s_starkregen(d):
     agw = ((sc.get("agw") or {}).get("max") or {}).get("label")
     ext = ((sc.get("extrem") or {}).get("max") or {}).get("label")
     fig = " · ".join(p for p in (f"selten {agw}" if agw else None, f"extrem {ext}" if ext else None) if p)
+    g = d.get("gelaende") or {}
+    if g.get("lage"):
+        fig = (fig + " · " if fig else "") + f"{g['lage']}, {fmt_num(g.get('hoehe_m') or 0, 0)} m NHN"
     return rating, color, fig or None
 
 

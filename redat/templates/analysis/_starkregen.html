@@ -39,6 +39,20 @@
     </template>
 </div>
 
+<template x-if="d.gelaende">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">⛰ Gelände</div>
+        <div class="mt-1 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div><div class="text-gray-500">Lage</div><div class="font-medium" :class="{Tieflage: 'text-orange-700', Hanglage: 'text-yellow-700'}[d.gelaende.lage] || 'text-gray-900'" x-text="d.gelaende.lage"></div></div>
+            <div><div class="text-gray-500">Höhe</div><div class="font-medium text-gray-900" x-text="d.gelaende.hoehe_m + ' m NHN'"></div></div>
+            <div><div class="text-gray-500">Über dem tiefsten Punkt (100 m)</div><div class="font-medium text-gray-900" x-text="d.gelaende.ueber_tiefstem_100m + ' m'"></div></div>
+            <div><div class="text-gray-500">Neigung</div><div class="font-medium text-gray-900" x-text="d.gelaende.neigung_pct + ' %'"></div></div>
+        </div>
+        <p class="mt-1 text-xs text-gray-500" x-show="d.gelaende.lage === 'Tieflage'">Tiefster Punkt der Umgebung: Oberflächenwasser sammelt sich hier — Rückstausicherung und Lichtschachtabdeckungen prüfen.</p>
+        <p class="mt-1 text-xs text-gray-500" x-show="d.gelaende.lage === 'Hanglage'">Hanglage: Wasser fließt hangabwärts an oder über das Grundstück — Entwässerung oberhalb prüfen.</p>
+    </div>
+</template>
+<p class="mt-2 text-xs text-gray-500" x-show="d.gelaende_error">Geländemodell derzeit nicht abrufbar.</p>
 <p class="mt-3 text-xs text-gray-500">
     Hinweiskarte, keine Prognose: 1 m-Oberflächenmodell ohne Kanalnetz, Gebäude sind ausgespart. Ausschlaggebend ist die Wassertiefe
     innerhalb <span x-text="d.radius_m"></span> m (Straße, Hof, Garten). Details im

@@ -325,7 +325,20 @@
    },
    "rating": "Erhöht",
    "rating_color": "orange",
-   "errors": {}
+   "errors": {},
+   "gelaende": {
+    "hoehe_m": 112.4,
+    "min_25m": 112.1,
+    "max_25m": 113.0,
+    "min_100m": 112.1,
+    "max_100m": 116.8,
+    "ueber_tiefstem_100m": 0.3,
+    "unter_hoechstem_100m": 4.4,
+    "neigung_pct": 1.1,
+    "lage": "Tieflage",
+    "radius_m": 100
+   },
+   "gelaende_error": null
   },
   "message": null,
   "source": "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz",

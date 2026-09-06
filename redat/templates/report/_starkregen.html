@@ -42,4 +42,13 @@
 {% endfor %}
 </div>
 
+{% set g = d.get("gelaende") %}
+{% if g %}
+<table class="mt">
+  <tbody>
+    <tr><td class="muted">Gelände</td><td><strong>{{ g.get("lage") or "—" }}</strong>{% if g.get("hoehe_m") is not none %} · {{ g.hoehe_m|fmt_num(1) }} m NHN{% endif %}{% if g.get("ueber_tiefstem_100m") is not none %} · {{ g.ueber_tiefstem_100m|fmt_num(1) }} m über dem tiefsten Punkt im Umkreis von {{ g.get("radius_m") or 100 }} m{% endif %}{% if g.get("neigung_pct") is not none %} · Neigung {{ g.neigung_pct|fmt_num(1) }} %{% endif %}</td></tr>
+  </tbody>
+</table>
+{% endif %}
+
 <p class="footnote">Hinweiskarte, keine Prognose: 1 m-Oberflächenmodell ohne Kanalnetz, Gebäude sind ausgespart. Ausschlaggebend ist die Wassertiefe innerhalb {{ d.get("radius_m") or 50 }} m (Straße, Hof, Garten). Quelle: BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) · Starkregen-Infos Essen.</p>

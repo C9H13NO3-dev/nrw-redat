@@ -370,14 +370,22 @@ def test_planning_bochum_cache_version_bumped():
 
 # ---------------------------------------------------------------- risk cards (2026-09-04)
 
-def test_starkregen_passes_through_and_is_parcel(monkeypatch):
+def test_starkregen_merges_gelaende(monkeypatch):
     from redat.core import tiers
-    from redat.sources import starkregen
-    payload = {"radius_m": 50, "building_share": 0.3, "scenarios": {"agw": None, "extrem": None},
-               "rating": "Gering", "rating_color": "green", "errors": {}}
-    monkeypatch.setattr(starkregen, "get_starkregen", lambda lat, lon: payload)
-    assert S._fetch_starkregen(CTX) == payload
-    assert tiers.SERVICE_TIER["starkregen"] == "parcel"
+    from redat.sources import gelaende, starkregen
+    payload = {"radius_m": 50, "building_share": 0.3, "scenarios": {}, "rating": "Gering", "rating_color": "green", "errors": {}}
+    monkeypatch.setattr(starkregen, "get_starkregen", lambda lat, lon: dict(payload))
+    g = {"hoehe_m": 110.2, "lage": "Tieflage", "neigung_pct": 1.1}
+    monkeypatch.setattr(gelaende, "get_gelaende", lambda lat, lon: g)
+    d = S._fetch_starkregen(CTX)
+    assert d["gelaende"] == g and d["gelaende_error"] is None and d["rating"] == "Gering"
+    assert tiers.SERVICE_TIER["starkregen"] == "parcel" and S.SECTIONS["starkregen"].cache_version == 2
+
+    def boom(lat, lon):
+        raise RuntimeError("wcs down")
+    monkeypatch.setattr(gelaende, "get_gelaende", boom)
+    d = S._fetch_starkregen(CTX)
+    assert d["gelaende"] is None and d["gelaende_error"] == "wcs down"
 
 
 def test_starkregen_none_is_empty(monkeypatch):

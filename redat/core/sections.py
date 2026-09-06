@@ -342,11 +342,18 @@ def _fetch_flood(ctx: Ctx) -> dict:
 
 
 def _fetch_starkregen(ctx: Ctx) -> dict:
+    from redat.sources import gelaende
     from redat.sources.starkregen import get_starkregen
 
     s = get_starkregen(ctx.lat, ctx.lon)
     if s is None:
         raise Empty("Keine Starkregen-Daten für diesen Ort (außerhalb NRW oder vollständig überbaut)")
+    s["gelaende"], s["gelaende_error"] = None, None
+    try:
+        s["gelaende"] = gelaende.get_gelaende(ctx.lat, ctx.lon)
+    except Exception as exc:  # noqa: BLE001 — the WCS must not blank the Starkregen result
+        logger.warning("gelaende: %s", exc)
+        s["gelaende_error"] = str(exc)
     return s
 
 
@@ -413,7 +420,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("flood", "Hochwasserrisiko", "🌊", 15,
             "Land NRW, Hochwassergefahrenkarten (HQhäufig / HQ100 / HQextrem) · Überschwemmungsgebiete NRW (§ 78 WHG)", _fetch_flood,
             cache_version=2),
-    Section("starkregen", "Starkregen", "🌧️", 25, "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz", _fetch_starkregen),
+    Section("starkregen", "Starkregen & Gelände", "🌧️", 25, "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz · Geobasis NRW DGM1 (WCS)", _fetch_starkregen, cache_version=2),
     Section("noise", "Lärm", "🔊", 20, "Land NRW, Umgebungslärmkartierung 2022 (WMS, Maximum im 25-m-Fenster)", _fetch_noise),
     Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat) · Bergbauberechtigungen NRW (BezReg Arnsberg)", _fetch_bergbau, cache_version=2),
     Section("baugrund", "Baugrund & Versickerung (BK50)", "🪨", 25,
