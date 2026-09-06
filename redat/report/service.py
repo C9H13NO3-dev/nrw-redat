@@ -2,6 +2,7 @@
 from fastapi import Response
 
 from redat.report.builder import build_report_context, slugify
+from redat.report.climate_maps import render_climate_maps
 from redat.report.history_maps import render_history_maps
 from redat.report.noise_map import render_noise_maps
 from redat.report.pdf import html_to_pdf
@@ -17,6 +18,8 @@ def render_pdf(payload: dict) -> tuple[bytes, dict]:
         ctx["noise_maps"] = render_noise_maps(ctx["lat"], ctx["lon"])
     if "flurstueck" in body_keys:
         ctx["history_maps"] = render_history_maps(ctx["lat"], ctx["lon"])
+    if "zensus" in body_keys:
+        ctx["climate_maps"] = render_climate_maps(ctx["lat"], ctx["lon"])
     if "boris_trend" in body_keys:
         data = next(s["data"] for s in ctx["body"] if s["key"] == "boris_trend")
         ctx["boris_trend_svg"] = boris_trend_svg(data.get("history") or [])

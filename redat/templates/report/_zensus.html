@@ -51,3 +51,16 @@
 </div>
 
 <p class="footnote">Kleine Zellen sind aus Datenschutzgründen oft geheim gehalten; Umfeld-Werte sind über die bewohnten Zellen gemittelt (Alter, Anteile und Haushaltsgröße einwohnergewichtet). Gebäudeanteile nur über Zellen mit veröffentlichten Zahlen.</p>
+
+{% if climate_maps %}
+<h3>Grün und Hitze</h3>
+<div class="maps">
+  {% for p in climate_maps.panels %}
+    <div>
+      {% if p.image %}<img src="data:image/png;base64,{{ p.image }}" alt="{{ p.title }}">{% else %}<div class="map-missing">Karte nicht verfügbar — {{ p.title }}</div>{% endif %}
+      {% if p.legend %}<img src="data:image/png;base64,{{ p.legend }}" alt="Legende {{ p.title }}" style="width: auto; max-height: 14mm; border: none; margin-top: 1mm">{% endif %}
+    </div>
+  {% endfor %}
+</div>
+<p class="footnote">Ausschnitt ca. 2 × 1,5 km, Punkt im Zentrum. Viel Baumkronen im Umfeld dämpfen Sommerhitze; die Oberflächentemperatur zeigt Hitzeinseln (1-km-Raster, kein Messwert am Haus). {{ climate_maps.attribution }}{% if climate_maps.error %} · Hinweis: {{ climate_maps.error }}{% endif %}</p>
+{% endif %}

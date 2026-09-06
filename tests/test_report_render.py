@@ -20,7 +20,8 @@ PAYLOAD = {
     "plot_size_m2": 450, "living_space_m2": 140, "sections": FIXTURES,
 }
 
-EXTRA = {"plot_size_m2": 450, "living_space_m2": 140, "noise_maps": None, "boris_trend_svg": None, "history_maps": None}
+EXTRA = {"plot_size_m2": 450, "living_space_m2": 140, "noise_maps": None, "boris_trend_svg": None, "history_maps": None,
+         "climate_maps": None}
 
 
 @pytest.mark.parametrize("key", list(SECTIONS))
@@ -76,14 +77,26 @@ def test_flurstueck_partial_renders_history_figure():
     assert "Der Ort im Wandel" in html and "data:image/png;base64,AAAA" in html and "Karte nicht verfügbar" in html and "Altlastenverdacht" in html
 
 
+def test_zensus_partial_renders_climate_figure():
+    fig = {"panels": [{"key": "beschirmung", "title": "Beschirmungsgrad", "image": "AAAA", "legend": "BBBB"},
+                      {"key": "oberflaechentemperatur", "title": "Oberflächentemperatur 13:30 Uhr (Sommer)", "image": None, "legend": None}],
+           "attribution": "© RVR", "error": "x"}
+    html = render_section_html("zensus", FIXTURES["zensus"]["data"], **{**EXTRA, "climate_maps": fig})
+    assert "Grün und Hitze" in html and "base64,AAAA" in html and "base64,BBBB" in html and "Karte nicht verfügbar" in html
+
+
 def test_full_report_renders_with_maps_and_svg():
     ctx = build_report_context(PAYLOAD)
     ctx["noise_maps"] = {"day": "AAAA", "night": None, "legend": LEGEND_BANDS, "attribution": "© test", "error": "Nacht fehlt"}
+    ctx["climate_maps"] = {"panels": [{"key": "beschirmung", "title": "Beschirmungsgrad", "image": "CCCC", "legend": "DDDD"}],
+                          "attribution": "© RVR", "error": None}
     ctx["boris_trend_svg"] = boris_trend_svg(FIXTURES["boris_trend"]["data"]["history"])
     html = htmlmod.unescape(render_report_html(ctx))
     for s in SECTIONS.values():
         assert s.title in html
     assert "data:image/png;base64,AAAA" in html
+    assert "data:image/png;base64,CCCC" in html
+    assert "Grün und Hitze" in html
     assert "Karte nicht verfügbar" in html
     assert "<svg" in html
     assert "Zusammenfassung" in html and "Quellen" in html
