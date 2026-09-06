@@ -20,7 +20,7 @@ PAYLOAD = {
     "plot_size_m2": 450, "living_space_m2": 140, "sections": FIXTURES,
 }
 
-EXTRA = {"plot_size_m2": 450, "living_space_m2": 140, "noise_maps": None, "boris_trend_svg": None}
+EXTRA = {"plot_size_m2": 450, "living_space_m2": 140, "noise_maps": None, "boris_trend_svg": None, "history_maps": None}
 
 
 @pytest.mark.parametrize("key", list(SECTIONS))
@@ -67,6 +67,13 @@ def test_fixture_content_is_present():
         html = htmlmod.unescape(render_section_html(key, FIXTURES[key]["data"], **EXTRA))
         for n in needles:
             assert n in html, f"{key}: expected {n!r} in rendered HTML"
+
+
+def test_flurstueck_partial_renders_history_figure():
+    fig = {"panels": [{"key": "uraufnahme", "title": "Preußische Uraufnahme (1836–1850)", "image": "AAAA"}, {"key": "dop", "title": "Luftbild heute", "image": None}],
+           "attribution": "© Geobasis NRW", "error": "Luftbild heute: down"}
+    html = render_section_html("flurstueck", FIXTURES["flurstueck"]["data"], **{**EXTRA, "history_maps": fig})
+    assert "Der Ort im Wandel" in html and "data:image/png;base64,AAAA" in html and "Karte nicht verfügbar" in html and "Altlastenverdacht" in html
 
 
 def test_full_report_renders_with_maps_and_svg():

@@ -426,5 +426,6 @@ def build_report_context(payload: dict, *, now: Optional[datetime] = None) -> di
         "sources": list(dict.fromkeys(s["source"] for s in body)),
         "map_attribution": MAP_ATTRIBUTION,
         "noise_maps": None,
+        "history_maps": None,
         "boris_trend_svg": None,
     }

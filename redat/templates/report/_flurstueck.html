@@ -53,3 +53,12 @@
 <p class="footnote">Baulastenauskunft online nur für Essen verfügbar.</p>
 {% endif %}
 <p class="footnote">Amtliches Liegenschaftskataster (ALKIS){% if fl.get("stand") %}, Stand {{ fl.stand|fmt_date }}{% endif %}; ohne Eigentümerangaben.</p>
+{% if history_maps %}
+<h3>Der Ort im Wandel</h3>
+<div class="maps">
+  {% for p in history_maps.panels %}
+    {% if p.image %}<img src="data:image/png;base64,{{ p.image }}" alt="{{ p.title }}">{% else %}<div class="map-missing">Karte nicht verfügbar — {{ p.title }}</div>{% endif %}
+  {% endfor %}
+</div>
+<p class="footnote">Ausschnitt ca. 600 × 450 m, Punkt im Zentrum. Zeche, Halde, Gleisanlage oder Fabrik auf einem alten Bild ist ein Altlastenverdacht — Auskunft bei der Unteren Bodenschutzbehörde. {{ history_maps.attribution }}{% if history_maps.error %} · Hinweis: {{ history_maps.error }}{% endif %}</p>
+{% endif %}
