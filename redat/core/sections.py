@@ -235,6 +235,15 @@ def _fetch_energie(ctx: Ctx) -> dict:
     return e
 
 
+def _fetch_ladesaeulen(ctx: Ctx) -> dict:
+    from redat.sources import ladesaeulen
+
+    d = ladesaeulen.lookup(ctx.lat, ctx.lon)
+    if d is None:
+        raise Empty("Keine Ladesäulen-Daten für diesen Ort (außerhalb Essen/Bochum oder Datei fehlt)")
+    return d
+
+
 def _fetch_breitband(ctx: Ctx) -> dict:
     from redat.sources.breitband import get_breitband
 
@@ -476,6 +485,8 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("zensus", "Nachbarschaft (Zensus 2022)", "🏘️", 5, "Destatis, Zensus 2022 — 100 m-Gitterdaten (dl-de/by-2-0)", _fetch_zensus),
     Section("energie", "Energie (Solar · Erdwärme · Wärmeplanung)", "☀️", 30,
             "LANUK Solarkataster NRW · GD NRW Geothermie · Kommunale Wärmeplanung Essen/Bochum", _fetch_energie),
+    Section("ladesaeulen", "E-Ladepunkte", "🔌", 10,
+            "Bundesnetzagentur, Ladesäulenregister (CC BY 4.0) — nur gemeldete Ladeeinrichtungen in Betrieb", _fetch_ladesaeulen),
     Section("breitband", "Breitband & Mobilfunk", "🌐", 30, "© BNetzA, Breitbandatlas — Datenstand 12.2025, 100 m-Raster", _fetch_breitband),
     Section("infrastruktur", "Hochspannung, Leitungen & Industrie", "⚡", 60,
             "OpenStreetMap (Overpass) · EEA Industrial Emissions Portal (IED/E-PRTR)", _fetch_infrastruktur),

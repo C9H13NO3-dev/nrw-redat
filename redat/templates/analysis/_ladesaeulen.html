@@ -1,0 +1,20 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm">
+        <div class="text-gray-500">Öffentliche Ladeeinrichtungen im Umkreis von 1 km</div>
+        <div class="font-medium text-gray-900"><span x-text="d.anzahl_1000m"></span> Standorte · <span x-text="d.ladepunkte_1000m"></span> Ladepunkte · <span x-text="d.schnell_1000m"></span> Schnelllader<span class="text-gray-500" x-text="' · ' + d.anzahl_500m + ' innerhalb 500 m'"></span></div>
+    </div>
+</div>
+<template x-if="d.naechste.length">
+    <ul class="mt-4 space-y-1 text-sm">
+        <template x-for="(n, i) in d.naechste" :key="i">
+            <li class="flex items-start gap-2">
+                <span class="text-gray-500 w-14 flex-shrink-0 text-right" x-text="$store.app.formatDistance(n.distance_m)"></span>
+                <span><span class="text-gray-900" x-text="n.betreiber"></span>
+                    <span class="text-gray-500" x-text="' · ' + n.punkte + ' Ladepunkte · ' + n.kw + ' kW' + (n.schnell ? ' · Schnellladen' : '')"></span>
+                    <span class="block text-xs text-gray-500" x-text="n.adresse"></span></span>
+            </li>
+        </template>
+    </ul>
+</template>
+<p class="mt-3 text-xs text-gray-500">Ladesäulenregister der Bundesnetzagentur, Stand <span x-text="d.stand"></span>; enthält nur Betreiber, die das Anzeigeverfahren abgeschlossen haben. Private Wallboxen und nicht gemeldete Anlagen fehlen.</p>

@@ -11,7 +11,7 @@ CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
         "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "baugrund", "radon", "gfnp", "schutzgebiete", "planning_essen",
-        "planning_bochum", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "breitband", "infrastruktur",
+        "planning_bochum", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "ladesaeulen", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
 
@@ -490,6 +490,15 @@ def test_energie_none_is_empty(monkeypatch):
     monkeypatch.setattr(energie, "get_energie", lambda lat, lon: None)
     with pytest.raises(S.Empty):
         S._fetch_energie(CTX)
+
+
+def test_ladesaeulen_passthrough_and_empty(monkeypatch):
+    from redat.sources import ladesaeulen
+    monkeypatch.setattr(ladesaeulen, "lookup", lambda lat, lon: {"anzahl_1000m": 3})
+    assert S._fetch_ladesaeulen(CTX) == {"anzahl_1000m": 3}
+    monkeypatch.setattr(ladesaeulen, "lookup", lambda lat, lon: None)
+    with pytest.raises(Empty):
+        S._fetch_ladesaeulen(CTX)
 
 
 def test_schutzgebiete_passes_through_and_is_area(monkeypatch):

@@ -56,6 +56,7 @@ def test_fixture_content_is_present():
         "oepnv": ["Werdener Markt", "SB19", "Essen Hbf"],
         "zensus": ["1.572", "vor 1919"],
         "energie": ["3.411", "Prüfgebiet Wärmenetze", "2,5 – 2,9"],
+        "ladesaeulen": ["Fastned", "300", "Gehweite"],
         "breitband": ["> 95 %", "5G-Roaming"],
         "infrastruktur": ["Medienhaus Ruhr GmbH", "Sendemast", "Seveso"],
         "air_quality": ["Essen Abteistraße", "18,8", "Sensor.Community"],

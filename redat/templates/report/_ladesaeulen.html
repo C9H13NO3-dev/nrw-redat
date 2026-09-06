@@ -1,0 +1,22 @@
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Öffentliche Ladeeinrichtungen ≤ 1 km</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+  <div class="kpi">
+    <div class="label">Standorte · Ladepunkte · Schnelllader</div>
+    <div class="value">{{ d.get("anzahl_1000m") if d.get("anzahl_1000m") is not none else "—" }} · {{ d.get("ladepunkte_1000m") if d.get("ladepunkte_1000m") is not none else "—" }} · {{ d.get("schnell_1000m") if d.get("schnell_1000m") is not none else "—" }}</div>
+  </div>
+</div>
+{% set n = d.get("naechste") or [] %}
+{% if n %}
+<table class="mt">
+  <thead><tr><th class="num">Abstand</th><th>Betreiber</th><th class="num">Ladepunkte</th><th class="num">kW</th><th>Adresse</th></tr></thead>
+  <tbody>
+  {% for x in n %}
+    <tr><td class="num">{{ (x.distance_m|fmt_m) if x.get("distance_m") is not none else "—" }}</td><td>{{ x.get("betreiber") or "—" }}{% if x.get("schnell") %} (Schnellladen){% endif %}</td><td class="num">{{ x.get("punkte") or "—" }}</td><td class="num">{{ x.kw|fmt_num(0) if x.get("kw") is not none else "—" }}</td><td class="xs">{{ x.get("adresse") or "" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+<p class="footnote">Ladesäulenregister der Bundesnetzagentur{% if d.get("stand") %}, Stand {{ d.stand|fmt_date }}{% endif %} (CC BY 4.0); nur gemeldete Ladeeinrichtungen in Betrieb.</p>

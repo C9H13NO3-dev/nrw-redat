@@ -282,6 +282,16 @@ def _s_energie(d):
     return None, "gray", " · ".join(parts) or None
 
 
+def _s_ladesaeulen(d):
+    rating, color = _rated(d)
+    if d.get("anzahl_1000m") is None:
+        return rating, color, None
+    fig = f"{d['anzahl_1000m']} Ladeeinrichtungen ≤ 1 km ({d.get('ladepunkte_1000m') or 0} Ladepunkte, {d.get('schnell_1000m') or 0} Schnelllader)"
+    if d.get("naechste"):
+        fig += f" · nächste {fmt_m(d['naechste'][0]['distance_m'])}"
+    return rating, color, fig
+
+
 def _s_breitband(d):
     rating, color = _rated(d)
     fixed = d.get("fixed") or {}
@@ -335,6 +345,7 @@ SUMMARY: dict[str, Callable[[dict], tuple[Optional[str], str, Optional[str]]]] =
     "noise": _s_noise, "bergbau": _s_bergbau, "baugrund": _s_baugrund, "radon": _s_radon, "gfnp": _s_gfnp, "schutzgebiete": _s_schutzgebiete,
     "planning_essen": _s_planning, "planning_bochum": _s_planning, "denkmal": _s_denkmal,
     "amenities": _s_amenities, "schulen": _s_schulen, "unfaelle": _s_unfaelle, "oepnv": _s_oepnv, "zensus": _s_zensus, "energie": _s_energie,
+    "ladesaeulen": _s_ladesaeulen,
     "breitband": _s_breitband, "infrastruktur": _s_infrastruktur, "air_quality": _s_air_quality,
     "btw": _s_btw, "commute": _s_commute,
 }

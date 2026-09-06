@@ -1323,6 +1323,42 @@
   "status": "ok",
   "took_ms": 4185
  },
+ "ladesaeulen": {
+  "key": "ladesaeulen",
+  "tier": "area",
+  "status": "ok",
+  "message": null,
+  "took_ms": 6,
+  "source": "Bundesnetzagentur, Ladesäulenregister (CC BY 4.0) — nur gemeldete Ladeeinrichtungen in Betrieb",
+  "data": {
+   "radius_m": 1000,
+   "stand": "2026-09-01",
+   "anzahl_500m": 2,
+   "anzahl_1000m": 3,
+   "ladepunkte_1000m": 8,
+   "schnell_1000m": 1,
+   "naechste": [
+    {
+     "betreiber": "E.ON Drive Germany GmbH",
+     "distance_m": 222,
+     "punkte": 2,
+     "kw": 22.0,
+     "schnell": false,
+     "adresse": "Rüttenscheider Str. 1, 45131 Essen"
+    },
+    {
+     "betreiber": "Fastned",
+     "distance_m": 416,
+     "punkte": 4,
+     "kw": 300.0,
+     "schnell": true,
+     "adresse": "A40, 45141 Essen"
+    }
+   ],
+   "rating": "Ladepunkt in Gehweite",
+   "rating_color": "green"
+  }
+ },
  "breitband": {
   "key": "breitband",
   "tier": "area",

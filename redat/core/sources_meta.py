@@ -55,6 +55,8 @@ SOURCES: tuple[SourceMeta, ...] = (
                "lokal: redat/data/zensus_2022_grid.json.gz", "area", "Zensus 2022 (einmalig), Datei-Import"),
     SourceMeta(("energie",), "Solarkataster · Geothermie · Kommunale Wärmeplanung", "LANUK NRW · GD NRW · Städte Essen/Bochum", "dl-de/by-2-0",
                "ArcGIS REST + GT WMS GetFeatureInfo", "parcel", "live"),
+    SourceMeta(("ladesaeulen",), "Ladesäulenregister", "Bundesnetzagentur", "CC BY 4.0",
+               "lokal: redat/data/ladesaeulen.json.gz (scripts/build_ladesaeulen.py)", "area", "monatlich, Datei-Import"),
     SourceMeta(("breitband",), "Breitbandatlas", "Bundesnetzagentur", "© BNetzA, dl-de/by-2-0",
                "WMS, 100 m-Raster (EPSG:3035)", "area", "halbjährlich — Datenstand 12.2025"),
     SourceMeta(("infrastruktur",), "OpenStreetMap (Overpass) + EEA Industrial Emissions Portal", "OSM-Mitwirkende · EEA", "ODbL · EEA Standard Re-use Policy",
