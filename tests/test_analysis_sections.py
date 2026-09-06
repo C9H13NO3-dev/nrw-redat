@@ -424,7 +424,16 @@ def test_bergbau_merges_berechtigungen(monkeypatch):
     monkeypatch.setattr(bergrechte, "lookup", lambda lat, lon: rows)
     d = S._fetch_bergbau(CTX)
     assert d["berechtigungen"] == rows and d["berechtigungen_error"] is None and d["rating"] == "Unauffällig"
-    assert tiers.SERVICE_TIER["bergbau"] == "area" and S.SECTIONS["bergbau"].cache_version == 2
+    assert tiers.SERVICE_TIER["bergbau"] == "area"
+
+    from redat.sources import bodenbewegung
+    monkeypatch.setattr(bodenbewegung, "lookup", lambda lat, lon: {"mm_a": -6.0, "klasse": "deutliche Bewegung"})
+    d = S._fetch_bergbau(CTX)
+    assert d["bodenbewegung"]["mm_a"] == -6.0 and d["bodenbewegung_hinweis"] is None
+    monkeypatch.setattr(bodenbewegung, "lookup", lambda lat, lon: None)
+    d = S._fetch_bergbau(CTX)
+    assert d["bodenbewegung"] is None and "EGMS" in d["bodenbewegung_hinweis"]
+    assert S.SECTIONS["bergbau"].cache_version == 3
 
 
 def test_bergbau_missing_grid_is_reported_not_fatal(monkeypatch):

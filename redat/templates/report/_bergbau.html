@@ -48,4 +48,9 @@
 <p class="muted">Keine Bergbauberechtigung am Standort.</p>
 {% endif %}
 
+{% set bw = d.get("bodenbewegung") %}
+{% if bw %}
+<p>Bodenbewegung (Copernicus EGMS{% if bw.get("years") %} {{ bw.years }}{% endif %}): <span class="chip {{ rating_class(bw.get('klasse_color')) }}">{{ bw.get("klasse") or "—" }}</span> {{ bw.mm_a|fmt_num(1) if bw.get("mm_a") is not none else "—" }} mm/Jahr {{ bw.get("richtung") or "" }}{% if bw.get("min_500m") is not none %}; Umkreis 500 m {{ bw.min_500m|fmt_num(1) }} bis {{ bw.max_500m|fmt_num(1) }} mm/Jahr{% endif %}.</p>
+{% endif %}
+
 <p class="footnote">Bürgerversion der GD-NRW-Karte: Angaben gelten für das 500 m-Planquadrat, nicht für das Grundstück. Für eine parzellenscharfe Bergbauauskunft (im Ruhrgebiet vor jedem Kauf üblich) an die Bezirksregierung Arnsberg wenden. Quelle: NRW von unten (GD NRW).</p>

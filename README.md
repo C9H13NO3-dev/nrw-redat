@@ -91,6 +91,7 @@ Small, gzipped JSON extracts that ship with the code (no download at deploy time
 | `schulen_nrw.json.gz` | `scripts/build_schulen.py --shape … --sozialindex …` | opengeodata Schulstandorte NRW + Schulministerium Schulliste (Sozialindex) | each Schuljahr (autumn) |
 | `unfallatlas_2020_2025.json.gz` | `scripts/build_unfallatlas.py --src …` | Unfallatlas CSV zips (opengeodata.nrw.de) | yearly (July), extend `YEARS` and rename the file |
 | `bergbauberechtigungen.geojson.gz` | `scripts/build_bergbauberechtigungen.py --shape …` | Bergbauberechtigungen NRW shapefile, Bezirksregierung Arnsberg (opengeodata.nrw.de) | a few times a year |
+| `egms_vertical_velocity.json.gz` | `scripts/build_egms.py --tif …` | Copernicus EGMS L3 Ortho vertical velocity tile E41N31 (EU-Login / insar-api) | yearly EGMS release |
 
 The build scripts' module docstrings carry the download URLs and the exact commands.
 

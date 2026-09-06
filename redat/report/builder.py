@@ -162,6 +162,9 @@ def _s_bergbau(d):
     own = [r for r in (d.get("berechtigungen") or []) if r.get("kurz") in ("Bergwerkseigentum", "Bewilligung") and not r.get("erloschen")]
     if own:
         fig += f" · Bergwerkseigentum: {own[0].get('feld')} ({own[0].get('bodenschatz')})"
+    bw = d.get("bodenbewegung") or {}
+    if bw.get("mm_a") is not None:
+        fig += f" · Bodenbewegung {fmt_num(bw['mm_a'], 1)} mm/a ({bw.get('richtung')})"
     return rating, color, fig
 
 

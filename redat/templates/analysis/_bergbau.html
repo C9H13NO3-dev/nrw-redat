@@ -41,6 +41,19 @@
 <p class="mt-4 text-sm text-gray-600" x-show="d.berechtigungen && !d.berechtigungen.length">Keine Bergbauberechtigung am Standort.</p>
 <p class="mt-4 text-xs text-gray-500" x-show="d.berechtigungen_error" x-text="'Bergbauberechtigungen: ' + d.berechtigungen_error"></p>
 
+<template x-if="d.bodenbewegung">
+    <div class="mt-4 text-sm">
+        <div class="font-semibold text-gray-900">📡 Bodenbewegung (Satellit, <span x-text="d.bodenbewegung.years"></span>)</div>
+        <div class="mt-1 flex items-center gap-3">
+            <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="$store.app.getAirQualityColor(d.bodenbewegung.klasse_color)" x-text="d.bodenbewegung.klasse"></span>
+            <span class="text-gray-900 font-medium" x-text="d.bodenbewegung.mm_a + ' mm/Jahr ' + d.bodenbewegung.richtung"></span>
+            <span class="text-gray-500 text-xs" x-text="'Umkreis 500 m: ' + d.bodenbewegung.min_500m + ' bis ' + d.bodenbewegung.max_500m + ' mm/Jahr'"></span>
+        </div>
+        <p class="mt-1 text-xs text-gray-500">Mittlere vertikale Geschwindigkeit der 100-m-Zelle (Copernicus EGMS, InSAR). Hebung ist im Ruhrgebiet oft Folge des Grubenwasseranstiegs; ungleichmäßige Bewegung im Umkreis ist das Warnsignal für Bergschäden.</p>
+    </div>
+</template>
+<p class="mt-2 text-xs text-gray-500" x-show="d.bodenbewegung_hinweis" x-text="d.bodenbewegung_hinweis"></p>
+
 <p class="mt-3 text-xs text-gray-500">
     Bürgerversion der GD-NRW-Karte: Angaben gelten für das 500 m-Raster, nicht für das Grundstück. Für eine parzellenscharfe
     Bergbauauskunft (im Ruhrgebiet vor jedem Kauf üblich) an die

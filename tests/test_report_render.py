@@ -44,7 +44,7 @@ def test_fixture_content_is_present():
         "flood": ["HQ100", "180 m", "Ermitteltes Überschwemmungsgebiet", "Ruhr"],
         "starkregen": ["30–50 cm", "Extremereignis", "Tieflage", "112"],
         "noise": ["Straße", "70 dB(A)", "Düsseldorf", "Stadtwald"],
-        "bergbau": ["Verlassene Tagesöffnungen", "500 m-Planquadrat", "Neu Essen", "Bergwerkseigentum"],
+        "bergbau": ["Verlassene Tagesöffnungen", "500 m-Planquadrat", "Neu Essen", "Bergwerkseigentum", "Senkung"],
         "baugrund": ["Parabraunerde", "ungeeignet", "Auffüllung"],
         "radon": ["57", "Karbon", "erhöht"],
         "gfnp": ["Flächen für die örtlichen Hauptverkehrszüge"],

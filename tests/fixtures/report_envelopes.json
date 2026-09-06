@@ -444,7 +444,9 @@
    "rating_color": "red",
    "berechtigungen": [{"feld": "Neu Essen", "art": "aufrechterhaltenes Bergwerkseigentum", "kurz": "Bergwerkseigentum", "bodenschatz": "Eisenerz", "inhaber": "TRATON SE", "seit": "23.01.1791", "erloschen": false, "groesse": "140 110 991 m²"},
                     {"feld": "Metropole Ruhr", "art": "Erlaubnis zu gewerblichen Zwecken", "kurz": "Erlaubnis (Aufsuchung)", "bodenschatz": "Erdwärme", "inhaber": "Deutsche ErdWärme GmbH & Co. KG; DMT GmbH & Co. KG", "seit": null, "erloschen": false, "groesse": "1 641 275 000 m²"}],
-   "berechtigungen_error": null
+   "berechtigungen_error": null,
+   "bodenbewegung": {"mm_a": -6.0, "mean_3x3": -4.2, "min_500m": -8.1, "max_500m": 1.2, "klasse": "deutliche Bewegung", "klasse_color": "orange", "richtung": "Senkung", "years": "2020-2024", "cell_m": 100},
+   "bodenbewegung_hinweis": null
   },
   "message": null,
   "source": "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat)",
