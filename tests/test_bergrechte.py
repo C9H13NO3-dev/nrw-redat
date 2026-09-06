@@ -51,6 +51,13 @@ def test_lookup_empty_list_when_nothing_contains_point_and_none_without_grid(mon
     assert bergrechte.lookup(51.43, 7.0) is None
 
 
+def test_lookup_empty_list_when_grid_has_no_features(monkeypatch):
+    """A present-but-empty grid is `[]` (no rights here), not None ("not installed") — see _geoms()."""
+    monkeypatch.setattr(bergrechte, "_load", lambda: {"type": "FeatureCollection", "features": []})
+    bergrechte._geoms.cache_clear()
+    assert bergrechte.lookup(51.43, 7.0) == []
+
+
 def test_geoms_are_parsed_once_across_two_lookups(monkeypatch):
     """`shape()` must only run once per feature across repeated `lookup()` calls (Important 1)."""
     monkeypatch.setattr(bergrechte, "_load", lambda: GRID)

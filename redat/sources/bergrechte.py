@@ -42,9 +42,12 @@ def _geoms() -> Optional[list[tuple]]:
     Cached separately from `_load()` so the ~630 polygons are only ever shapely-parsed once per
     process, not on every `lookup()` call. Tests that monkeypatch `_load` must also call
     `_geoms.cache_clear()` so this cache is rebuilt from the new grid.
+
+    None only when the grid file itself is missing/unparsable (`_load()` returns None) — a present
+    grid with zero features returns `[]`, which `lookup()` must tell apart from "no grid".
     """
     grid = _load()
-    if not grid:
+    if grid is None:
         return None
     out = []
     for f in grid.get("features") or []:
@@ -63,7 +66,7 @@ def kurz(art: Optional[str]) -> str:
 def lookup(lat: float, lon: float) -> Optional[list[dict]]:
     """Berechtigungen whose field contains the point, ownership rights first; None when the file is missing."""
     geoms = _geoms()
-    if not geoms:
+    if geoms is None:
         return None
     pt = Point(lon, lat)
     out = []
