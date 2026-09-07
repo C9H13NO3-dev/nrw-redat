@@ -88,6 +88,14 @@ def test_zensus_partial_renders_climate_figure():
     assert "Grün und Hitze" in html and "base64,AAAA" in html and "base64,BBBB" in html and "Karte nicht verfügbar" in html
 
 
+def test_zensus_partial_explains_the_statewide_climate_panels():
+    fig = {"variant": "nrw", "panels": [{"key": "baumkronen", "title": "Baumkronendichte 2018", "image": base64.b64encode(b"png").decode(), "legend": None},
+                                         {"key": "pet", "title": "PET", "image": None, "legend": None}],
+           "attribution": "© Copernicus · LANUV", "error": "PET: down"}
+    html = render_section_html("zensus", FIXTURES["zensus"]["data"], **{**EXTRA, "climate_maps": fig})
+    assert "Baumkronendichte" in html and "Copernicus" in html and "Karte nicht verfügbar" in html and "None" not in html
+
+
 def test_gfnp_partial_renders_regionalplan_figure():
     fig = {"image": base64.b64encode(b"png").decode(), "legend_url": "https://www.wms.nrw.de/legend", "error": None}
     html = render_section_html("gfnp", FIXTURES["gfnp"]["data"], **{**EXTRA, "regionalplan_map": fig})

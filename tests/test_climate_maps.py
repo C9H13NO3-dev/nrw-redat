@@ -1,9 +1,12 @@
 import base64
 import io
+import math
 
 from PIL import Image
 
 from redat.report import climate_maps as cm
+
+BONN = (50.7160, 7.0748)
 
 
 def _png(size, color):
@@ -50,3 +53,39 @@ def test_map_failure_is_none(monkeypatch):
     monkeypatch.setattr(cm, "_get_png", fake)
     out = cm.render_climate_maps(51.43, 7.005)
     assert out["panels"][0]["image"] is None and "down" in out["error"]
+
+
+def test_outside_rvr_uses_copernicus_and_klimaanalyse_panels(monkeypatch):
+    calls = []
+
+    def fake(url, params):
+        calls.append((url, params))
+        if params.get("REQUEST") == "GetLegendGraphic":
+            return _png((276, 126), (200, 50, 50))
+        return _png((cm.WIDTH, cm.HEIGHT), (120, 160, 120))
+    monkeypatch.setattr(cm, "_get_png", fake)
+    out = cm.render_climate_maps(*BONN)
+    assert out["variant"] == "nrw" and [p["key"] for p in out["panels"]] == ["baumkronen", "pet"]
+    assert "Copernicus" in out["attribution"] and "Klimaanalyse" in out["attribution"] and out["error"] is None
+    by_layer = {p["LAYERS"]: (u, p) for u, p in calls if p.get("REQUEST") == "GetMap"}
+    hrl_url, hrl = by_layer["HRL_TreeCoverDensity_2018:TCD_MosaicSymbology"]
+    assert hrl_url == cm.HRL_URL and hrl["CRS"] == "EPSG:3857"
+    xmin, ymin, xmax, ymax = (float(v) for v in hrl["BBOX"].split(","))
+    assert abs((xmax - xmin) - 2000 / math.cos(math.radians(BONN[0]))) < 1.0
+    pet_url, pet = by_layer["54"]
+    assert pet_url == cm.KLIMA_URL and pet["CRS"] == "EPSG:25832"
+    legends = [p for u, p in calls if p.get("REQUEST") == "GetLegendGraphic"]
+    assert [p["LAYER"] for p in legends] == ["54"]                       # the Copernicus ramp legend is skipped on purpose
+    assert out["panels"][0]["legend"] is None and out["panels"][1]["legend"]
+
+
+def test_inside_rvr_keeps_the_rvr_panels(monkeypatch):
+    monkeypatch.setattr(cm, "_get_png", lambda url, params: _png((cm.WIDTH, cm.HEIGHT), (1, 2, 3)))
+    out = cm.render_climate_maps(51.43, 7.005)
+    assert out["variant"] == "rvr" and [p["key"] for p in out["panels"]] == ["beschirmung", "oberflaechentemperatur"]
+
+
+def test_bbox_2km_3857_scales_with_latitude():
+    xmin, ymin, xmax, ymax = cm.bbox_2km_3857(*BONN)
+    assert abs((xmax - xmin) - 2000 / math.cos(math.radians(BONN[0]))) < 1.0
+    assert abs((ymax - ymin) - 1500 / math.cos(math.radians(BONN[0]))) < 1.0
