@@ -11,7 +11,7 @@ CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
         "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "baugrund", "radon", "gfnp", "schutzgebiete", "planning_essen",
-        "planning_bochum", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "ladesaeulen", "breitband", "infrastruktur",
+        "planning_bochum", "planning_nrw", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "ladesaeulen", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
 
@@ -383,6 +383,24 @@ def test_planning_bochum_not_ok_raises(monkeypatch):
 
 def test_planning_bochum_cache_version_bumped():
     assert S.SECTIONS["planning_bochum"].cache_version == 2
+
+
+def test_planning_nrw_same_shape_and_hinweis(monkeypatch):
+    from redat.sources import planning_nrw
+    monkeypatch.setattr(planning_nrw, "get_planning_nrw", lambda lat, lon: {
+        "ok": True, "found": True, "kommune": "Bonn",
+        "items": [{"category": "Flächennutzungsplan", "name": "FNP Bonn (in Kraft)", "link": "https://x", "kommune": "Bonn", "valid_from": "1900-01-01"}]})
+    d = S._fetch_planning_nrw(CTX)
+    assert d["found"] and d["items"] == [{"category": "Flächennutzungsplan", "name": "FNP Bonn (in Kraft)", "link": "https://x"}]
+    assert d["errors"] == {} and "freiwillig" in d["hinweis"]
+    assert S.SECTIONS["planning_nrw"].cache_version == 1
+
+
+def test_planning_nrw_not_ok_raises(monkeypatch):
+    from redat.sources import planning_nrw
+    monkeypatch.setattr(planning_nrw, "get_planning_nrw", lambda lat, lon: {"ok": False, "error": "502"})
+    with pytest.raises(RuntimeError, match="502"):
+        S._fetch_planning_nrw(CTX)
 
 
 # ---------------------------------------------------------------- risk cards (2026-09-04)

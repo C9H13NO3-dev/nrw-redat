@@ -632,6 +632,26 @@
   "status": "ok",
   "took_ms": 829
  },
+ "planning_nrw": {
+  "key": "planning_nrw",
+  "tier": "parcel",
+  "data": {
+   "found": true,
+   "items": [
+    {
+     "category": "Flächennutzungsplan",
+     "name": "Flächennutzungsplan der Bundesstadt Bonn (in Kraft)",
+     "link": "https://stadtplan.bonn.de/cms/cms.pl?Amt=Stadtplan&act=0&Thema=Planen-Bauen&Subthema=Bauen%20und%20Wohnen&layers=Hintergrundkarte,Fl%C3%A4chennutzungsplan&scale=5000"
+    }
+   ],
+   "errors": {},
+   "hinweis": "Landesweiter INSPIRE-Dienst (ogc-api.nrw.de); die Kommunen liefern ihre Bauleitpläne freiwillig — nicht flächendeckend, Änderungen und laufende Verfahren können fehlen."
+  },
+  "message": null,
+  "source": "Land NRW — INSPIRE Bauleitpläne (OGC API Features, ogc-api.nrw.de)",
+  "status": "ok",
+  "took_ms": 412
+ },
  "denkmal": {
   "key": "denkmal",
   "tier": "parcel",

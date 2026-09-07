@@ -50,6 +50,7 @@ def test_fixture_content_is_present():
         "gfnp": ["Flächen für die örtlichen Hauptverkehrszüge"],
         "schutzgebiete": ["LSG-Weinberg", "180 m"],
         "planning_bochum": ["Gestaltungssatzung Werden"],
+        "planning_nrw": ["Flächennutzungsplan der Bundesstadt Bonn", "freiwillig"],
         "denkmal": ["Wohnhaus Effmann", "Untere Denkmalbehörde Essen"],
         "amenities": ["EDEKA Diekmann", "65 m"],
         "schulen": ["Käthe-Kollwitz-Schule", "Stufe 3 von 9", "Goetheschule"],

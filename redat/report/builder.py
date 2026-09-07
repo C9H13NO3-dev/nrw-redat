@@ -346,7 +346,7 @@ SUMMARY: dict[str, Callable[[dict], tuple[Optional[str], str, Optional[str]]]] =
     "flurstueck": _s_flurstueck,
     "boris": _s_boris, "boris_trend": _s_boris_trend, "irw": _s_irw, "flood": _s_flood, "starkregen": _s_starkregen,
     "noise": _s_noise, "bergbau": _s_bergbau, "baugrund": _s_baugrund, "radon": _s_radon, "gfnp": _s_gfnp, "schutzgebiete": _s_schutzgebiete,
-    "planning_essen": _s_planning, "planning_bochum": _s_planning, "denkmal": _s_denkmal,
+    "planning_essen": _s_planning, "planning_bochum": _s_planning, "planning_nrw": _s_planning, "denkmal": _s_denkmal,
     "amenities": _s_amenities, "schulen": _s_schulen, "unfaelle": _s_unfaelle, "oepnv": _s_oepnv, "zensus": _s_zensus, "energie": _s_energie,
     "ladesaeulen": _s_ladesaeulen,
     "breitband": _s_breitband, "infrastruktur": _s_infrastruktur, "air_quality": _s_air_quality,

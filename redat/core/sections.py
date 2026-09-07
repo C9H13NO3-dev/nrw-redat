@@ -458,6 +458,16 @@ def _fetch_planning_bochum(ctx: Ctx) -> dict:
     return {"found": bool(items), "items": items, "errors": {str(k): v for k, v in (p.get("errors") or {}).items()}}
 
 
+def _fetch_planning_nrw(ctx: Ctx) -> dict:
+    from redat.sources.planning_nrw import HINWEIS, get_planning_nrw
+
+    p = get_planning_nrw(ctx.lat, ctx.lon)
+    if not p.get("ok"):
+        raise RuntimeError(p.get("error") or "Planungsabfrage NRW fehlgeschlagen")
+    items = [{"category": it["category"], "name": it["name"], "link": it.get("link")} for it in p.get("items") or []]
+    return {"found": bool(items), "items": items, "errors": {}, "hinweis": HINWEIS}
+
+
 # Insertion order == card order (spec §4: table order, noise after flood).
 SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("flurstueck", "Flurstück & Gebäude (ALKIS)", "📐", 30,
@@ -482,6 +492,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
             cache_version=2),
     Section("planning_bochum", "Bauleitplanung Bochum", "🏗️", 30, "RVR INSPIRE Bauleitplanung (WMS GetFeatureInfo) · Stadt Bochum, Stadterneuerung", _fetch_planning_bochum,
             cache_version=2),
+    Section("planning_nrw", "Bauleitplanung NRW", "🏗️", 30, "Land NRW — INSPIRE Bauleitpläne (OGC API Features, ogc-api.nrw.de)", _fetch_planning_nrw),
     Section("denkmal", "Denkmalschutz", "🏛️", 25,
             "RVR Geoportal Ruhr (INSPIRE WFS) im Ruhrgebiet · IT.NRW INSPIRE Denkmal-WFS landesweit · Untere Denkmalbehörden", _fetch_denkmal, cache_version=2),
     Section("amenities", "Entfernungen (POIs)", "📍", 25, "Geoapify Places", _fetch_amenities),

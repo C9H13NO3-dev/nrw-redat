@@ -15,3 +15,4 @@
 </table>
 {% endif %}
 {% if d.get("errors") %}<p class="footnote">Teile der Stadtplanungsdaten waren nicht abrufbar.</p>{% endif %}
+{% if d.get("hinweis") %}<p class="footnote">{{ d.hinweis }}</p>{% endif %}

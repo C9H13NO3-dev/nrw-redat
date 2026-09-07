@@ -42,6 +42,8 @@ SOURCES: tuple[SourceMeta, ...] = (
                "ArcGIS REST identify", "parcel", "live"),
     SourceMeta(("planning_bochum",), "Bauleitplanung Bochum", "RVR INSPIRE", "dl-de/by-2-0",
                "WMS GetFeatureInfo", "parcel", "live"),
+    SourceMeta(("planning_nrw",), "Bauleitpläne NRW (INSPIRE geplante Bodennutzung)", "Land NRW / IT.NRW (kommunale Lieferung, freiwillig)",
+               "Datenlizenz Deutschland (Kommune) — Anzeige unverbindlich", "OGC API Features: ogc-api.nrw.de/inspire-lu-bplan", "parcel", "live"),
     SourceMeta(("denkmal",), "Denkmalliste (INSPIRE Schutzgebiete)", "RVR / IT.NRW / Untere Denkmalbehörden", "dl-de/by-2-0",
                "WFS 2.0: geodaten.metropoleruhr.de (RVR) · wfs.nrw.de/wfs/wfs_nw_inspire-denkmal (Land)", "parcel", "live"),
     SourceMeta(("amenities",), "Geoapify Places", "Geoapify (OpenStreetMap-Daten)", "ODbL / Geoapify-Nutzungsbedingungen",
