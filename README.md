@@ -1,46 +1,70 @@
 # NRW-REDAT
 
 **Real Estate Data Aggregation Tool** — a standalone Standortanalyse ("location analysis") service for
-North Rhine-Westphalia (with Essen/Bochum-specific extras: Baulasten, kf-Werte, municipal Bauleitplanung,
-Ruhige Gebiete, Grundschulbezirke), built from public NRW/Bund geodata (Bodenrichtwert, Hochwasser, Lärm, Denkmalschutz, ÖPNV,
-Luftqualität, Bundestagswahl and more — 28 cards in total). It runs the same analysis engine that used
-to live inside the House Hunter project, extracted into its own FastAPI service so it can be used for
-any address, not just scraped listings. Given an address it geocodes it, runs every applicable data
-source concurrently, and renders the result as a website page, a JSON payload, or a formatted A4 PDF —
-each run gets a permanent, shareable permalink.
+North Rhine-Westphalia. Given any NRW address it geocodes it, runs 28 data cards concurrently against
+public open geodata (Land NRW, Bund, EU, RVR and the cities of Essen and Bochum), and renders the result as
+a website page, a JSON payload, or a formatted A4 PDF — each run gets a permanent, shareable permalink. It
+started as the analysis engine inside the House Hunter project and was extracted into its own FastAPI
+service so it can be used for any address, not just scraped listings.
 
-Card overview (20 original + six Tier-1 additions + one Tier-2 addition + one Tier-3 addition):
+## Cards
 
-| Card | What it shows |
-|---|---|
-| Flurstück & Gebäude | ALKIS parcel geometry/Flurstücksdaten (vereinfacht) plus Stadt Essen Baulasten. |
-| Immobilienrichtwerte | BORIS NRW `wms_nw_irw` — Teilmarkt richtwerte (Wohnen/Gewerbe/…) for the parcel. |
-| Baugrund & Versickerung (BK50) | GD NRW BK50 soil map (Bodentyp, Versickerungseignung) + Stadt Essen kf-Werte. |
-| Radon | BfS soil-air radon (`rn_max`, 90th percentile at 1 m depth, kBq/m³ — the headline figure, with the geological unit e.g. Karbon) plus the geogenic Radonpotenzial for the area. |
-| Schulen & Sozialindex | Nearest Grundschulen with the Schulministerium Sozialindex, plus Bochum Grundschulbezirke. |
-| Verkehrsunfälle (Unfallatlas) | Per-year accident counts from the Statistische Ämter Unfallatlas grid. |
-| E-Ladepunkte (Ladesäulen) | Public EV chargers within 1 km from the BNetzA Ladesäulenregister (count, nearest 5, rating). |
-| Bauleitplanung NRW | Statewide INSPIRE Bebauungs-/Flächennutzungs-/Regionalpläne (OGC API Features, ogc-api.nrw.de) at the point — voluntary municipal delivery, so an empty answer is not conclusive. |
+Tier `parcel` cards need a house-number-exact address (or `force=1`); `area` cards also run on a street or
+district. Every card fetches live except where a committed grid is named (see "Static grids in the repo").
 
-The `flood` card now also covers Überschwemmungsgebiete (§78 WHG); `planning_essen` covers Satzungen/
-Sanierung and `planning_bochum` covers Stadterneuerung, in addition to their existing content.
+**Grundstück, Wert & Planungsrecht**
 
-Tier-2 extended three existing cards: `bergbau` gained Bergbauberechtigungen (mining rights at the point,
-Bezirksregierung Arnsberg) and Copernicus EGMS Bodenbewegung (vertical ground velocity, InSAR);
-`starkregen` gained Gelände (DGM1 height, Hanglage/Tieflage, slope, from the NRW DGM1 WCS); `noise` gained
-Fluglärm DUS/EMH and Ruhige Gebiete from the Essen and Bochum city layers. Two PDF-only figures were added:
-"Der Ort im Wandel" (four historic map panels 1840s/1900s/1950s/today on the Flurstück page) and "Grün und
-Hitze" (RVR canopy-cover and surface-temperature panels on the Nachbarschaft/Zensus page).
+| Card | What it shows | Source |
+|---|---|---|
+| Flurstück & Gebäude (`flurstueck`, parcel) | Parcel geometry and Flurstück data; in Essen also Baulasten | Geobasis NRW ALKIS (WFS) · Stadt Essen Baulasteninformation |
+| Bodenrichtwert (`boris`, parcel) | Bodenrichtwert zone at the point, incl. the plot value | BORIS NRW, local GeoPackage (`data/source/boris`) |
+| Bodenrichtwert-Trend (`boris_trend`, parcel) | The same zone across all historic Stichtage 2011–2025 | BORIS NRW |
+| Immobilienrichtwerte (`irw`, parcel) | Sub-market values per m² Wohnfläche (Normobjekt) | BORIS NRW `wms_nw_irw` |
+| Flächennutzungsplan & Regionalplan (`gfnp`, parcel) | GFNP designation in the six Ruhr core cities; a Regionalplan 1:50.000 panel in the PDF everywhere | geo.essen.de GFNP · Regionalplan NRW WMS |
+| Bauleitplanung Essen (`planning_essen`, parcel) | B-Pläne, Satzungen, Sanierungsgebiete — Essen only | geo.essen.de ArcGIS |
+| Bauleitplanung Bochum (`planning_bochum`, parcel) | B-Pläne and Stadterneuerung — Bochum only | RVR INSPIRE WMS · Stadt Bochum |
+| Bauleitplanung NRW (`planning_nrw`, parcel) | Bebauungs-/Flächennutzungspläne containing the point, statewide; municipal delivery is voluntary, so an empty answer is not conclusive | Land NRW INSPIRE OGC API (`ogc-api.nrw.de`) |
+| Denkmalschutz (`denkmal`, parcel) | Listed monuments on and within 300 m of the plot, Umgebungsschutz rating | RVR Denkmal-WFS in the Ruhr · IT.NRW INSPIRE Denkmal-WFS statewide |
+| Energie (`energie`, parcel) | Roof PV potential, shallow geothermal suitability, Wärmeplanung (Essen/Bochum) | LANUK Solarkataster · GD NRW Geothermie · city Wärmeplanung |
 
-Tier 3 took the service statewide: `zensus`, `unfaelle`, `ladesaeulen`, `bergbau`'s Bergbauberechtigungen
-and EGMS Bodenbewegung, and `air_quality` are now backed by NRW-wide grids instead of an Essen/Bochum
-crop; `denkmal` falls back to the statewide INSPIRE Denkmal WFS (IT.NRW) outside the RVR area (the card's
-`data.source` is `"rvr"` or `"nrw"`); the renamed "Flächennutzungsplan (GFNP) & Regionalplan" card
-(`gfnp`) adds a Regionalplan WMS panel to the PDF everywhere and skips its RVR-only GFNP query outside
-the Ruhr (`data.rvr: false`); `planning_essen`/`planning_bochum` now say so ("nur für Adressen in
-Essen/Bochum verfügbar") outside their city instead of silently running; and the new `planning_nrw` card
-("Bauleitplanung NRW") covers the rest of the state from the same INSPIRE OGC API. `redat/core/nrw.py`
-holds the shared NRW/RVR/Essen/Bochum bounding boxes every statewide source and gate uses.
+**Risiken & Umwelt**
+
+| Card | What it shows | Source |
+|---|---|---|
+| Hochwasserrisiko (`flood`, parcel) | HQhäufig / HQ100 / HQextrem hits and distances, Überschwemmungsgebiete (§ 78 WHG) | Land NRW HWRM (local GeoPackage) · ÜSG WMS |
+| Starkregen & Gelände (`starkregen`, parcel) | Pluvial flood depth classes, plus terrain height, Hang-/Tieflage and slope from the DGM1 | BKG Hinweiskarte Starkregen · Geobasis NRW DGM1 WCS |
+| Lärm (`noise`, area) | Loudest L_DEN / L_Night band within 25 m for road, rail, industry and aircraft; Essen Fluglärm detail and Ruhige Gebiete (Essen/Bochum) | Umgebungslärmkartierung NRW 2022 (WMS) · city layers |
+| Bergbau & Untergrund (`bergbau`, area) | "NRW von unten" mining hazards per 500 m square, mining rights at the point, EGMS ground motion 2020–2024 (mm/a) | GD NRW · BezReg Arnsberg Bergbauberechtigungen (grid) · Copernicus EGMS (grid) |
+| Baugrund & Versickerung (`baugrund`, area) | Soil type, kf value, infiltration suitability, Erdwärme classes; Essen kf-Werte from building applications | GD NRW BK50 (WMS) · Stadt Essen |
+| Radon (`radon`, area) | Soil-air radon (kBq/m³, 1 km prognosis) and Radonpotenzial | Bundesamt für Strahlenschutz (WFS) |
+| Schutzgebiete (`schutzgebiete`, area) | NSG/LSG/FFH/VSG/Naturpark/Biotope within 500 m, Wasserschutzgebiete | LANUV LINFOS · WSG NRW |
+| Luftqualität (`air_quality`, area) | Annual-mean NO₂/PM/O₃ on the 1 km grid, nearest samplers, live station index | EEA 1 km grid 2023 (grid) · UBA/LANUV · Sensor.Community · CAMS |
+| Hochspannung, Leitungen & Industrie (`infrastruktur`, area) | Power lines, substations, wind turbines, masts, pipelines, IED sites nearby | OpenStreetMap (Overpass) · EEA Industrial Emissions Portal |
+
+**Nachbarschaft & Versorgung**
+
+| Card | What it shows | Source |
+|---|---|---|
+| Entfernungen (`amenities`, area) | Nearest supermarket, pharmacy, doctor, playground … with distances | Geoapify Places |
+| Schulen & Sozialindex (`schulen`, area) | Nearest schools per type with the Schulministerium Sozialindex; Bochum Grundschulbezirk | Schulministerium NRW · Geobasis NRW (grid) · Stadt Bochum |
+| Verkehrsunfälle (`unfaelle`, area) | Injury accidents within 300 m, 2020–2025, by year, severity, type and participants | Unfallatlas (grid, statewide) |
+| ÖPNV-Erreichbarkeit (`oepnv`, area) | Stops, lines, headways and trips to the Hauptbahnhöfe | VRR EFA |
+| Fahrzeiten (`commute`, area) | Car travel times to configured destinations | Geoapify Routing |
+| Nachbarschaft (`zensus`, area) | Population, age, ownership, vacancy, rent, building age/heating/energy mix for the 100 m cell and its 5×5 surroundings | Destatis Zensus 2022 (grid, statewide) |
+| E-Ladepunkte (`ladesaeulen`, area) | Public chargers within 1 km, nearest five, rating | BNetzA Ladesäulenregister (grid, statewide) |
+| Breitband & Mobilfunk (`breitband`, area) | Fixed-line bandwidth classes and 5G coverage for the 100 m cell | BNetzA Breitbandatlas |
+| Bundestagswahl (`btw`, area) | Zweitstimmen profile of the Wahlkreis | Die Bundeswahlleiterin (local shapes + live CSV) |
+
+Coverage: every card with a statewide source answers for any NRW address. The city-only extras (Baulasten
+and kf-Werte in Essen, the two municipal planning cards, Ruhige Gebiete and Essen Fluglärm detail,
+Bochum Grundschulbezirke, Wärmeplanung) either render nothing or say "nur für Adressen in Essen/Bochum
+verfügbar" elsewhere; the GFNP applies to the six Ruhr core cities and the RVR climate panels to the
+Ruhr. `redat/core/nrw.py` holds the NRW/RVR/Essen/Bochum bounding boxes every statewide source and gate
+uses.
+
+The PDF adds figures the website does not have: Lärm maps (day/night), "Der Ort im Wandel" (historic maps
+1840s/1900s/1950s/today on the Flurstück page), "Grün und Hitze" (RVR canopy and surface-temperature panels
+on the Nachbarschaft page), the Regionalplan panel on the GFNP page, and the Bodenrichtwert trend chart.
 
 Surfaces: a website (`/`, permalinks at `/a/{id}`, a source index at `/quellen`), a versioned JSON+PDF
 API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring/container health.
@@ -116,11 +140,9 @@ Gzipped JSON and NumPy `.npz` extracts that ship with the code (no download at d
 
 The build scripts' module docstrings carry the download URLs and the exact commands.
 
-Coverage: all seven grids are statewide (NRW bbox `redat/core/nrw.py`). Measured resident size once
-loaded: Zensus 75 MB, Unfallatlas 14 MB, EGMS 14 MB, Ladesäulen 11 MB, EEA-Luftqualität 11 MB, and
-Bergbauberechtigungen ~5 MB (tracemalloc, post-fix — was ~33 MB before `bergrechte._geoms()` released
-the raw GeoJSON it parses from; see Important 1 in the Tier-3 review) — roughly 130 MB total across
-all seven grids resident at once.
+Coverage: all seven grids are statewide (NRW bbox `redat/core/nrw.py`). They are loaded once at start-up
+(`redat/core/warmup.py`) and stay resident: Zensus 75 MB, Unfallatlas 14 MB, EGMS 14 MB, Ladesäulen 11 MB,
+EEA-Luftqualität 11 MB, Bergbauberechtigungen ~5 MB, Schulen ~1 MB — roughly 130 MB in total.
 
 ## API overview (`/api/v1`)
 
@@ -188,7 +210,7 @@ so it can be bookmarked or shared as a direct "run this address" link.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
-.venv/bin/python -m pytest -q       # 588 tests, hermetic, ~8s
+.venv/bin/python -m pytest -q       # 712 tests, hermetic, ~10s
 
 # manual, non-hermetic: drives a real browser against a running instance (Playwright + live
 # external services). Not collected by pytest. Point it at any running REDAT with --base-url.
@@ -207,4 +229,5 @@ npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/re
 
 - Design: [`docs/DESIGN.md`](docs/DESIGN.md)
 - Plan: [`docs/2026-09-05-nrw-redat-plan.md`](docs/2026-09-05-nrw-redat-plan.md)
+- Source tiers: [`docs/superpowers/specs/`](docs/superpowers/specs/) (Tier 1 sources, Tier 2 sources, Tier 3 NRW-weit) with their implementation plans in [`docs/superpowers/plans/`](docs/superpowers/plans/)
 - Status, deploy runbook, known limitations, work log: [`HANDOVER.md`](HANDOVER.md)
