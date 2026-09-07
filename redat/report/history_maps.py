@@ -2,13 +2,13 @@
 
 WMS (Geobasis NRW, dl-de/zero-2-0, verified 2026-09-06): Uraufnahme https://www.wms.nrw.de/geobasis/wms_nw_uraufnahme
 layer `nw_uraufnahme_rw` (1836–1850); Neuaufnahme .../wms_nw_neuaufnahme layer `nw_neuaufnahme` (1891–1912);
-historic orthophotos .../wms_nw_hist_dop layers `nw_hist_dop_<year>` — Essen/Bochum are covered 1951–1954 and
-the 1956–1998 tiles are blank there, so all four years (1952, 1951, 1953, 1954) are fetched and the first
-non-blank one in that order wins; current orthophoto .../wms_nw_dop layer `nw_dop_rgb`. Same 600 m window
+historic orthophotos .../wms_nw_hist_dop layers `nw_hist_dop_<year>` — every year 1951–2024 is advertised
+statewide but each year only covers where flights happened (Essen: 1952 only in the 1950s; Bonn: 1957 only,
+verified 2026-09-07), so all nine years 1951–1959 are fetched and the earliest non-blank one wins; current orthophoto .../wms_nw_dop layer `nw_dop_rgb`. Same 600 m window
 and decoration as noise_map. A Zeche, Halde, Gleisanlage or Fabrik on an old panel is the cheapest Altlasten
 hint a buyer can get.
 
-Every GetMap request (3 fixed panels + 4 hist-DOP year candidates = 7) runs concurrently in a small
+Every GetMap request (3 fixed panels + 9 hist-DOP year candidates = 12) runs concurrently in a small
 `ThreadPoolExecutor` so the whole figure costs about one `TIMEOUT_S` in the worst case instead of stacking
 up to seven sequential timeouts. `_get_png` is the HTTP/monkeypatch point — kept as this module's own
 function (rather than reusing `noise_map._fetch_image`, which calls noise_map's own `_get_png`) so tests
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 URAUFNAHME = ("https://www.wms.nrw.de/geobasis/wms_nw_uraufnahme", "nw_uraufnahme_rw")
 NEUAUFNAHME = ("https://www.wms.nrw.de/geobasis/wms_nw_neuaufnahme", "nw_neuaufnahme")
 HIST_DOP_URL = "https://www.wms.nrw.de/geobasis/wms_nw_hist_dop"
-HIST_DOP_YEARS = (1952, 1951, 1953, 1954)
+HIST_DOP_YEARS = (1951, 1952, 1953, 1954, 1955, 1956, 1957, 1958, 1959)
 DOP = ("https://www.wms.nrw.de/geobasis/wms_nw_dop", "nw_dop_rgb")
 ATTRIBUTION = "Karten und Luftbilder: © Geobasis NRW (dl-de/zero-2-0) — Preußische Uraufnahme, Neuaufnahme, historische und aktuelle Orthophotos"
 TIMEOUT_S = 10.0
@@ -103,7 +103,7 @@ def render_history_maps(lat: float, lon: float) -> dict:
             title = f"Luftbild {year_alt}"
             panels.append({"key": "dop_alt", "title": title, "image": _to_b64(_decorate(im_alt, title))})
         else:
-            err = last_err or "kein historisches Luftbild (1951–1954) für diesen Ausschnitt"
+            err = last_err or "kein historisches Luftbild (1951–1959) für diesen Ausschnitt"
             errors.append(f"Luftbild 1950er: {err}")
             panels.append({"key": "dop_alt", "title": "Luftbild 1950er", "image": None})
 

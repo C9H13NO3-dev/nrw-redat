@@ -27,7 +27,7 @@ def test_four_panels_with_titles_and_fallback_year(monkeypatch):
     assert [p["title"] for p in out["panels"]] == ["Preußische Uraufnahme (1836–1850)", "Preußische Neuaufnahme (1891–1912)", "Luftbild 1951", "Luftbild heute"]
     assert all(Image.open(io.BytesIO(base64.b64decode(p["image"]))).size == (WIDTH, HEIGHT) for p in out["panels"])
     # both 1952 (blank) and 1951 (the winner) must have been requested — all years are fetched concurrently
-    assert {"nw_uraufnahme_rw", "nw_neuaufnahme", "nw_dop_rgb", "nw_hist_dop_1952", "nw_hist_dop_1951"} <= seen_layers
+    assert {"nw_uraufnahme_rw", "nw_neuaufnahme", "nw_dop_rgb", "nw_hist_dop_1951", "nw_hist_dop_1952", "nw_hist_dop_1957", "nw_hist_dop_1959"} <= seen_layers
     assert out["error"] is None and "Geobasis NRW" in out["attribution"]
 
 
