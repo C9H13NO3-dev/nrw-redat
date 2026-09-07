@@ -48,9 +48,21 @@ def test_ordering_bplan_first_then_newest_and_unknown_date_omitted(monkeypatch):
 
 
 def test_link_falls_back_to_texturl_and_requires_http(monkeypatch):
-    monkeypatch.setattr(pn, "_items", lambda bbox: [feature("A", doc="", text="https://example.org/text.pdf"), feature("B", doc="n/a", text=None)])
+    monkeypatch.setattr(pn, "_items", lambda bbox: [feature("A", doc="", text="https://example.org/text.pdf"), feature("B", doc="n/a", text=None),
+                                                     feature("C", valid=1999)])
     items = pn.get_planning_nrw(LAT, LON)["items"]
     assert items[0]["link"] == "https://example.org/text.pdf" and items[1]["link"] is None
+    assert [i["name"] for i in items if i["name"].startswith("C")] == ["C (in Kraft)"]  # non-string validFrom: no crash, no "ab" part
+
+
+def test_null_or_unrecognized_geometry_is_skipped_not_fatal(monkeypatch):
+    null_geom = feature("Null-Geometrie")
+    null_geom["geometry"] = None
+    bad_type = feature("Unbekannter Geometrietyp")
+    bad_type["geometry"] = {"type": "Blob", "coordinates": []}
+    monkeypatch.setattr(pn, "_items", lambda bbox: [null_geom, bad_type, feature("Gültig")])
+    p = pn.get_planning_nrw(LAT, LON)
+    assert p["ok"] and [i["name"] for i in p["items"]] == ["Gültig (in Kraft, ab 25.06.1999)"]
 
 
 def test_no_features_is_not_found(monkeypatch):

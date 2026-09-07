@@ -15,6 +15,7 @@ from datetime import date
 from typing import Optional
 
 import httpx
+from shapely.errors import ShapelyError
 from shapely.geometry import Point, shape
 
 from redat.http import headers
@@ -45,32 +46,37 @@ def _http(v) -> Optional[str]:
     return v if v.startswith("http") else None
 
 
-def _short_status(step: Optional[str]) -> Optional[str]:
-    s = (step or "").lower()
+def _short_status(step) -> Optional[str]:
+    s = str(step or "").lower()
     if not s:
         return None
     if "in kraft" in s or "rechtsverbindlich" in s:
         return "in Kraft"
     if "verfahren" in s or "aufstellung" in s or "entwurf" in s:
         return "im Verfahren"
-    return (step or "").split("(")[0].strip()[:40] or None
+    return str(step or "").split("(")[0].strip()[:40] or None
 
 
-def _de_date(iso: Optional[str]) -> Optional[str]:
+def _de_date(iso) -> Optional[str]:
     try:
-        return date.fromisoformat((iso or "")[:10]).strftime("%d.%m.%Y")
+        return date.fromisoformat(str(iso or "")[:10]).strftime("%d.%m.%Y")
     except ValueError:
         return None
 
 
 def _name(p: dict) -> str:
     parts = [_short_status(p.get("processStepGeneral.title"))]
-    valid = p.get("validFrom") or ""
+    valid = str(p.get("validFrom") or "")
     if valid and not valid.startswith(_UNKNOWN_DATE) and _de_date(valid):
         parts.append(f"ab {_de_date(valid)}")
     extra = ", ".join(x for x in parts if x)
     title = (p.get("officialTitle") or "—").strip()
     return f"{title} ({extra})" if extra else title
+
+
+def _sort_year(valid_from) -> int:
+    s = str(valid_from or "")
+    return int(s[:4]) if s.startswith(("1", "2")) else 0
 
 
 def get_planning_nrw(lat: float, lon: float) -> dict:
@@ -83,9 +89,11 @@ def get_planning_nrw(lat: float, lon: float) -> dict:
     pt = Point(lon, lat)
     items = []
     for f in feats:
+        if not f.get("geometry"):
+            continue
         try:
             geom = shape(f["geometry"])
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, ValueError, AttributeError, ShapelyError):
             continue
         if not geom.contains(pt):
             continue
@@ -93,5 +101,5 @@ def get_planning_nrw(lat: float, lon: float) -> dict:
         items.append({"category": p.get("planTypeName.title") or "Bauleitplan", "name": _name(p),
                       "link": _http(p.get("officialDocument")) or _http(p.get("texturl")),
                       "kommune": p.get("kommune"), "valid_from": p.get("validFrom")})
-    items.sort(key=lambda i: (i["category"] != "Bebauungsplan", -(int((i["valid_from"] or "0000")[:4]) if (i["valid_from"] or "").startswith(("1", "2")) else 0), i["name"]))
+    items.sort(key=lambda i: (i["category"] != "Bebauungsplan", -_sort_year(i["valid_from"]), i["name"]))
     return {"ok": True, "found": bool(items), "items": items, "kommune": items[0]["kommune"] if items else None}
