@@ -1262,6 +1262,27 @@
   "status": "ok",
   "took_ms": 271
  },
+ "stadtklima": {
+  "key": "stadtklima",
+  "tier": "area",
+  "data": {
+   "klimatop": "Vorstadtklima",
+   "pet_typisch": 38.3,
+   "pet_extrem": 43.1,
+   "nacht_typisch": 16.2,
+   "nacht_extrem": 20.5,
+   "klasse_typisch": "starke Wärmebelastung",
+   "klasse_extrem": "extrem starke Wärmebelastung",
+   "rating": "starke Wärmebelastung",
+   "rating_color": "orange",
+   "errors": {},
+   "hinweis": "Modellwerte (FITNAH-3D, 2 m über Grund) für einen typischen bzw. extremen Sommertag — kein Messwert am Haus."
+  },
+  "message": null,
+  "source": "LANUV Klimaanalyse NRW 2026 — FITNAH-3D-Modell (WMS GetFeatureInfo)",
+  "status": "ok",
+  "took_ms": 812
+ },
  "energie": {
   "key": "energie",
   "tier": "parcel",

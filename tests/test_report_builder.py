@@ -113,6 +113,13 @@ def test_summary_rows_one_per_body_section_with_figures():
     assert rows["boris"]["rating"] is None and rows["boris"]["rating_color"] == "gray"
 
 
+def test_stadtklima_summary():
+    from redat.report.builder import _s_stadtklima
+    rating, color, fig = _s_stadtklima({"rating": "starke Wärmebelastung", "rating_color": "orange", "pet_typisch": 38.3, "nacht_typisch": 16.2, "klimatop": "Vorstadtklima"})
+    assert (rating, color) == ("starke Wärmebelastung", "orange") and fig == "PET 38 °C · Nacht 16 °C · Vorstadtklima"
+    assert _s_stadtklima({})[2] is None
+
+
 @pytest.mark.parametrize("key", list(SECTIONS))
 def test_summary_functions_never_raise(key):
     fn = builder.SUMMARY[key]

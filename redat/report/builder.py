@@ -273,6 +273,18 @@ def _s_zensus(d):
     return None, "gray", fig
 
 
+def _s_stadtklima(d):
+    rating, color = _rated(d)
+    parts = []
+    if d.get("pet_typisch") is not None:
+        parts.append(f"PET {d['pet_typisch']:.0f} °C")
+    if d.get("nacht_typisch") is not None:
+        parts.append(f"Nacht {d['nacht_typisch']:.0f} °C")
+    if d.get("klimatop"):
+        parts.append(d["klimatop"])
+    return rating, color, " · ".join(parts) or None
+
+
 def _s_energie(d):
     pv, ew, wp = d.get("pv") or {}, d.get("erdwaerme") or {}, d.get("waermeplanung") or {}
     parts = []
@@ -347,7 +359,7 @@ SUMMARY: dict[str, Callable[[dict], tuple[Optional[str], str, Optional[str]]]] =
     "boris": _s_boris, "boris_trend": _s_boris_trend, "irw": _s_irw, "flood": _s_flood, "starkregen": _s_starkregen,
     "noise": _s_noise, "bergbau": _s_bergbau, "baugrund": _s_baugrund, "radon": _s_radon, "gfnp": _s_gfnp, "schutzgebiete": _s_schutzgebiete,
     "planning_essen": _s_planning, "planning_bochum": _s_planning, "planning_nrw": _s_planning, "denkmal": _s_denkmal,
-    "amenities": _s_amenities, "schulen": _s_schulen, "unfaelle": _s_unfaelle, "oepnv": _s_oepnv, "zensus": _s_zensus, "energie": _s_energie,
+    "amenities": _s_amenities, "schulen": _s_schulen, "unfaelle": _s_unfaelle, "oepnv": _s_oepnv, "zensus": _s_zensus, "stadtklima": _s_stadtklima, "energie": _s_energie,
     "ladesaeulen": _s_ladesaeulen,
     "breitband": _s_breitband, "infrastruktur": _s_infrastruktur, "air_quality": _s_air_quality,
     "btw": _s_btw, "commute": _s_commute,

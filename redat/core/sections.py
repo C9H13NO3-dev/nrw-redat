@@ -297,6 +297,17 @@ def _fetch_zensus(ctx: Ctx) -> dict:
     return z
 
 
+def _fetch_stadtklima(ctx: Ctx) -> dict:
+    from redat.sources.stadtklima import get_stadtklima
+
+    d = get_stadtklima(ctx.lat, ctx.lon)
+    if d is None:
+        raise Empty("Keine Klimaanalyse-Daten für diesen Ort (außerhalb Nordrhein-Westfalens)")
+    if d["klimatop"] is None and d["pet_typisch"] is None and d["pet_extrem"] is None and not d["errors"]:
+        raise Empty("Keine Klimaanalyse-Daten für diesen Ort (keine Modellzelle, z. B. Gewässer)")
+    return d
+
+
 # --------------------------------------------------------------------------- parcel tier
 
 def _fetch_flurstueck(ctx: Ctx) -> dict:
@@ -520,6 +531,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("oepnv", "ÖPNV-Erreichbarkeit", "🚋", 45, "VRR EFA-Fahrplanauskunft (efa.vrr.de) — Fahrplan-Stichtag, kein Echtzeit", _fetch_oepnv,
             cache_ttl_s=7 * 86400),   # trips are normalised to "next Tuesday 08:00"; only timetable changes matter
     Section("zensus", "Nachbarschaft (Zensus 2022)", "🏘️", 5, "Destatis, Zensus 2022 — 100 m-Gitterdaten NRW (dl-de/by-2-0)", _fetch_zensus, cache_version=2),
+    Section("stadtklima", "Stadtklima (Klimaanalyse NRW)", "🌡️", 15, "LANUV Klimaanalyse NRW 2026 — FITNAH-3D-Modell (WMS GetFeatureInfo)", _fetch_stadtklima),
     Section("energie", "Energie (Solar · Erdwärme · Wärmeplanung)", "☀️", 30,
             "LANUK Solarkataster NRW · GD NRW Geothermie · Kommunale Wärmeplanung Essen/Bochum", _fetch_energie),
     Section("ladesaeulen", "E-Ladepunkte", "🔌", 10,

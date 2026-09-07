@@ -56,6 +56,8 @@ SOURCES: tuple[SourceMeta, ...] = (
                "https://efa.vrr.de/standard/ (rapidJSON)", "area", "live, Fahrplan-Stichtag nächster Dienstag 08:00"),
     SourceMeta(("zensus",), "Zensus 2022 — 100 m-Gitterdaten", "Statistische Ämter des Bundes und der Länder", "dl-de/by-2-0",
                "lokal: redat/data/zensus_2022_nrw.npz (scripts/build_zensus_grid.py)", "area", "Zensus 2022 (einmalig), Datei-Import"),
+    SourceMeta(("stadtklima",), "Klimaanalyse NRW 2026 (Stadtklima)", "LANUV / LANUK NRW", "dl-de/by-2-0",
+               "WMS GetFeatureInfo: wms.nrw.de/umwelt/klimaanpassung_klimaanalyse (Layer 59, 54, 52, 38, 29)", "area", "live"),
     SourceMeta(("energie",), "Solarkataster · Geothermie · Kommunale Wärmeplanung", "LANUK NRW · GD NRW · Städte Essen/Bochum", "dl-de/by-2-0",
                "ArcGIS REST + GT WMS GetFeatureInfo", "parcel", "live"),
     SourceMeta(("ladesaeulen",), "Ladesäulenregister", "Bundesnetzagentur", "CC BY 4.0",

@@ -5,7 +5,7 @@ from redat.core.tiers import SERVICE_TIER, enrichment_allowed
 
 def test_every_section_has_a_tier():
     for key in ("flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "baugrund", "radon", "gfnp", "schutzgebiete", "planning_essen",
-                "planning_bochum", "planning_nrw", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "ladesaeulen", "breitband", "infrastruktur",
+                "planning_bochum", "planning_nrw", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "stadtklima", "energie", "ladesaeulen", "breitband", "infrastruktur",
                 "air_quality", "btw", "commute"):
         assert SERVICE_TIER[key] in ("parcel", "area")
 

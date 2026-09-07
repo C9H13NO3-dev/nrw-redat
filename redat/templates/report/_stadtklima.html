@@ -1,0 +1,19 @@
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">Thermische Belastung, typischer Sommertag</div>
+    <div class="value"><span class="chip {{ rating_class(d.get('rating_color')) }}">{{ d.get("rating") or "—" }}</span></div>
+  </div>
+  <div class="kpi"><div class="label">Klimatop</div><div class="value">{{ d.get("klimatop") or "—" }}</div></div>
+</div>
+<table>
+  <thead><tr><th></th><th>Typischer Sommertag</th><th>Extremer Sommertag</th></tr></thead>
+  <tbody>
+    <tr><td>Gefühlte Temperatur (PET, tags)</td>
+      <td>{% if d.get("pet_typisch") is not none %}{{ d.pet_typisch|fmt_num(1) }} °C — {{ d.get("klasse_typisch") or "" }}{% else %}—{% endif %}</td>
+      <td>{% if d.get("pet_extrem") is not none %}{{ d.pet_extrem|fmt_num(1) }} °C — {{ d.get("klasse_extrem") or "" }}{% else %}—{% endif %}</td></tr>
+    <tr><td>Lufttemperatur nachts (4 Uhr)</td>
+      <td>{% if d.get("nacht_typisch") is not none %}{{ d.nacht_typisch|fmt_num(1) }} °C{% else %}—{% endif %}</td>
+      <td>{% if d.get("nacht_extrem") is not none %}{{ d.nacht_extrem|fmt_num(1) }} °C{% else %}—{% endif %}</td></tr>
+  </tbody>
+</table>
+<p class="footnote">{{ d.get("hinweis") or "" }} PET-Klassen (VDI 3787): ≤ 23 °C kein thermischer Stress · ≤ 29 leicht · ≤ 35 moderat · ≤ 41 stark · &gt; 41 extrem. Quelle: LANUV Klimaanalyse NRW 2026.{% if d.get("errors") %} Teile der Klimaanalyse waren nicht abrufbar.{% endif %}</p>

@@ -58,6 +58,7 @@ def test_fixture_content_is_present():
         "unfaelle": ["Getötete", "Überschreiten", "300 m"],
         "oepnv": ["Werdener Markt", "SB19", "Essen Hbf"],
         "zensus": ["1.572", "vor 1919"],
+        "stadtklima": ["Vorstadtklima", "38,3", "starke Wärmebelastung"],
         "energie": ["3.411", "Prüfgebiet Wärmenetze", "2,5 – 2,9"],
         "ladesaeulen": ["Fastned", "300", "Gehweite"],
         "breitband": ["> 95 %", "5G-Roaming"],

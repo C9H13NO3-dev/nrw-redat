@@ -13,7 +13,7 @@ BONN = S.Ctx(lat=50.7160, lon=7.0748, plot_size_m2=None, destinations=())
 def test_registry_keys_and_order():
     assert list(S.SECTIONS) == [
         "flurstueck", "boris", "boris_trend", "irw", "flood", "starkregen", "noise", "bergbau", "baugrund", "radon", "gfnp", "schutzgebiete", "planning_essen",
-        "planning_bochum", "planning_nrw", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "energie", "ladesaeulen", "breitband", "infrastruktur",
+        "planning_bochum", "planning_nrw", "denkmal", "amenities", "schulen", "unfaelle", "oepnv", "zensus", "stadtklima", "energie", "ladesaeulen", "breitband", "infrastruktur",
         "air_quality", "btw", "commute",
     ]
 
@@ -544,6 +544,31 @@ def test_zensus_none_is_empty(monkeypatch):
     monkeypatch.setattr(zensus, "lookup", lambda lat, lon: None)
     with pytest.raises(Empty, match="Zensus"):
         S._fetch_zensus(CTX)
+
+
+def test_stadtklima_passes_through_and_is_area(monkeypatch):
+    from redat.core import tiers
+    from redat.sources import stadtklima
+    payload = {"klimatop": "Vorstadtklima", "pet_typisch": 38.3, "pet_extrem": 43.1, "nacht_typisch": 16.2, "nacht_extrem": 20.5,
+               "klasse_typisch": "starke Wärmebelastung", "klasse_extrem": "extrem starke Wärmebelastung",
+               "rating": "starke Wärmebelastung", "rating_color": "orange", "errors": {}, "hinweis": "x"}
+    monkeypatch.setattr(stadtklima, "get_stadtklima", lambda lat, lon: payload)
+    assert S._fetch_stadtklima(CTX) == payload
+    assert tiers.SERVICE_TIER["stadtklima"] == "area" and S.SECTIONS["stadtklima"].cache_version == 1
+
+
+def test_stadtklima_none_and_all_empty_are_empty(monkeypatch):
+    from redat.sources import stadtklima
+    monkeypatch.setattr(stadtklima, "get_stadtklima", lambda lat, lon: None)
+    with pytest.raises(Empty, match="Nordrhein"):
+        S._fetch_stadtklima(CTX)
+    empty = {"klimatop": None, "pet_typisch": None, "pet_extrem": None, "nacht_typisch": None, "nacht_extrem": None,
+             "klasse_typisch": None, "klasse_extrem": None, "rating": "unbekannt", "rating_color": "gray", "errors": {}, "hinweis": "x"}
+    monkeypatch.setattr(stadtklima, "get_stadtklima", lambda lat, lon: empty)
+    with pytest.raises(Empty, match="Klimaanalyse"):
+        S._fetch_stadtklima(CTX)
+    monkeypatch.setattr(stadtklima, "get_stadtklima", lambda lat, lon: {**empty, "errors": {"pet_typisch": "503"}})
+    assert S._fetch_stadtklima(CTX)["errors"] == {"pet_typisch": "503"}      # an outage is an error state, not "no data"
 
 
 def test_energie_passes_through_and_is_parcel(monkeypatch):

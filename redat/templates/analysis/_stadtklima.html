@@ -1,0 +1,18 @@
+<div class="flex items-center gap-4">
+    <span class="px-3 py-1 rounded-full font-bold" :class="$store.app.getAirQualityColor(d.rating_color)" x-text="d.rating"></span>
+    <div class="text-sm text-gray-500">Thermische Belastung an einem typischen Sommertag · Klimatop: <span class="text-gray-900" x-text="d.klimatop || '—'"></span></div>
+</div>
+<table class="mt-4 w-full text-sm">
+    <thead><tr class="text-left text-xs text-gray-500"><th class="py-1"></th><th class="py-1">Typischer Sommertag</th><th class="py-1">Extremer Sommertag</th></tr></thead>
+    <tbody>
+        <tr><td class="py-1 text-gray-600">Gefühlte Temperatur (PET, tags)</td>
+            <td class="py-1" x-text="d.pet_typisch != null ? d.pet_typisch.toFixed(1).replace('.', ',') + ' °C — ' + (d.klasse_typisch || '') : '—'"></td>
+            <td class="py-1" x-text="d.pet_extrem != null ? d.pet_extrem.toFixed(1).replace('.', ',') + ' °C — ' + (d.klasse_extrem || '') : '—'"></td></tr>
+        <tr><td class="py-1 text-gray-600">Lufttemperatur nachts (4 Uhr)</td>
+            <td class="py-1" x-text="d.nacht_typisch != null ? d.nacht_typisch.toFixed(1).replace('.', ',') + ' °C' : '—'"></td>
+            <td class="py-1" x-text="d.nacht_extrem != null ? d.nacht_extrem.toFixed(1).replace('.', ',') + ' °C' : '—'"></td></tr>
+    </tbody>
+</table>
+<p class="mt-3 text-xs text-gray-500" x-text="d.hinweis"></p>
+<p class="mt-1 text-xs text-red-700" x-show="d.errors && Object.keys(d.errors).length">Teile der Klimaanalyse waren nicht abrufbar.</p>
+<p class="mt-1 text-xs text-gray-500">Quelle: <a class="underline" href="https://www.klimaatlas.nrw.de/" target="_blank" rel="noopener">LANUV Klimaanalyse NRW 2026</a> (FITNAH-3D, VDI 3787). PET-Klassen: ≤ 23 kein Stress · ≤ 29 leicht · ≤ 35 moderat · ≤ 41 stark · &gt; 41 extrem.</p>
