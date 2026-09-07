@@ -433,7 +433,7 @@ def test_bergbau_merges_berechtigungen(monkeypatch):
     monkeypatch.setattr(bodenbewegung, "lookup", lambda lat, lon: None)
     d = S._fetch_bergbau(CTX)
     assert d["bodenbewegung"] is None and "EGMS" in d["bodenbewegung_hinweis"]
-    assert S.SECTIONS["bergbau"].cache_version == 3
+    assert S.SECTIONS["bergbau"].cache_version == 4
 
 
 def test_bergbau_missing_grid_is_reported_not_fatal(monkeypatch):

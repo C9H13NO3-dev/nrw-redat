@@ -28,7 +28,7 @@ SOURCES: tuple[SourceMeta, ...] = (
     SourceMeta(("noise",), "Umgebungslärmkartierung 2022", "Land NRW, LANUV", "dl-de/zero-2-0",
                "https://www.wms.nrw.de/umwelt/laerm", "area", "live WMS, 5-Jahres-Runde"),
     SourceMeta(("bergbau",), "NRW von unten (Bürgerversion)", "Geologischer Dienst NRW / BezReg Arnsberg", "dl-de/by-2-0",
-               "ArcGIS REST, Layer 22 (500 m-Planquadrat)", "area", "live"),
+               "ArcGIS REST, Layer 22 (500 m-Planquadrat) · Copernicus EGMS 2020–2024 (lokal: redat/data/egms_vertical_velocity_nrw.npz)", "area", "live"),
     SourceMeta(("baugrund",), "IS BK50 Bodenkarte NRW · kf-Werte aus Bauanträgen (Essen)", "Geologischer Dienst NRW · Stadt Essen", "dl-de/by-2-0",
                "https://www.wms.nrw.de/gd/bk050 (WMS GetFeatureInfo text/html) · geo.essen.de Umwelt/0", "area", "live; BK50 fortlaufend"),
     SourceMeta(("radon",), "Radon in der Bodenluft · Radonpotenzial", "Bundesamt für Strahlenschutz (BfS)", "dl-de/by-2-0",

@@ -207,7 +207,7 @@ def _fetch_bergbau(ctx: Ctx) -> dict:
     except Exception as exc:  # noqa: BLE001
         logger.warning("bodenbewegung: %s", exc)
     if b["bodenbewegung"] is None:
-        b["bodenbewegung_hinweis"] = "EGMS-Bodenbewegungsdaten nicht installiert oder keine Messzelle im Umkreis (siehe scripts/build_egms.py)"
+        b["bodenbewegung_hinweis"] = "EGMS-Bodenbewegungsdaten nicht installiert oder keine Messzelle an diesem Punkt (siehe scripts/build_egms.py)"
     return b
 
 
@@ -471,7 +471,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
             cache_version=2),
     Section("starkregen", "Starkregen & Gelände", "🌧️", 25, "BKG Hinweiskarte Starkregengefahren (dl-de/by-2-0) — 1 m-Modell ohne Kanalnetz · Geobasis NRW DGM1 (WCS)", _fetch_starkregen, cache_version=2),
     Section("noise", "Lärm", "🔊", 20, "Land NRW, Umgebungslärmkartierung 2022 (WMS, Maximum im 25-m-Fenster) · Stadt Essen Fluglärm DUS/EMH · Ruhige Gebiete Essen/Bochum", _fetch_noise, cache_version=2),
-    Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat) · Bergbauberechtigungen NRW (BezReg Arnsberg) · Copernicus EGMS Bodenbewegung", _fetch_bergbau, cache_version=3),
+    Section("bergbau", "Bergbau & Untergrund", "⛏️", 20, "Geologischer Dienst NRW, „NRW von unten“ (Bürgerversion, 500 m-Planquadrat) · Bergbauberechtigungen NRW (BezReg Arnsberg) · Copernicus EGMS Bodenbewegung", _fetch_bergbau, cache_version=4),
     Section("baugrund", "Baugrund & Versickerung (BK50)", "🪨", 25,
             "Geologischer Dienst NRW, Bodenkarte 1:50.000 (dl-de/by-2-0) · Stadt Essen, kf-Werte aus Bauanträgen", _fetch_baugrund),
     Section("radon", "Radon", "☢️", 20, "Bundesamt für Strahlenschutz — Radon in der Bodenluft (1 km-Prognose) und Radonpotenzial (dl-de/by-2-0)", _fetch_radon),
