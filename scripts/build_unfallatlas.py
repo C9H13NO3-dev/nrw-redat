@@ -1,4 +1,4 @@
-"""Crop the Unfallatlas (Verkehrsunfälle mit Personenschaden) to the Essen/Bochum window.
+"""Crop the Unfallatlas (Verkehrsunfälle mit Personenschaden) to the NRW-wide window.
 
 Input: one zip per year from https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/
 `Unfallorte<YYYY>_EPSG25832_CSV.zip` (Statistische Ämter des Bundes und der Länder, dl-de/by-2-0). The
@@ -9,27 +9,33 @@ layout is ';'-separated with decimal comma and a BOM; columns used: UJAHR, UKATE
 4 Überschreiten, 5 ruhender Verkehr, 6 Längsverkehr, 7 sonstiger), ULICHTVERH (0 Tag, 1 Dämmerung,
 2 Dunkelheit), IstRad/IstPKW/IstFuss/IstKrad/IstGkfz (0/1), XGCSWGS84/YGCSWGS84 (lon/lat).
 
-Output: redat/data/unfallatlas_2020_2025.json.gz with compact rows in FIELDS order, read at runtime by
-redat/sources/unfaelle.py.
+Output: redat/data/unfallatlas_2020_2025_nrw.npz — `lat`/`lon` float64 sorted by latitude, `attrs` int16
+`[n, 9]` in FIELDS[2:] order, `fields`, `meta` (JSON: years, bbox). Statewide 2020–2025: 418,359 rows,
+2.6 MB.
 
 Usage:
-    .venv/bin/python scripts/build_unfallatlas.py --src /dir/with/Unfallorte*_EPSG25832_CSV.zip
+    .venv/bin/python scripts/build_unfallatlas.py --src ~/Downloads/nrw-redat-sources/unfall
 """
 from __future__ import annotations
 
 import argparse
 import csv
-import gzip
 import io
 import json
+import sys
 import zipfile
 from pathlib import Path
 from typing import IO
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "redat" / "data" / "unfallatlas_2020_2025.json.gz"
+sys.path.insert(0, str(ROOT))
+from redat.core.nrw import NRW_BBOX_WGS84  # noqa: E402
+
+OUT = ROOT / "redat" / "data" / "unfallatlas_2020_2025_nrw.npz"
 YEARS = list(range(2020, 2026))
-BBOX_WGS84 = (6.85, 51.33, 7.40, 51.56)   # lon_min, lat_min, lon_max, lat_max — same window as the Zensus grid
+BBOX_WGS84 = NRW_BBOX_WGS84
 FIELDS = ["lat", "lon", "jahr", "kat", "typ", "licht", "rad", "pkw", "fuss", "krad", "gkfz"]
 _INT_COLS = {"jahr": "UJAHR", "kat": "UKATEGORIE", "typ": "UTYP1", "licht": "ULICHTVERH",
              "rad": "IstRad", "pkw": "IstPKW", "fuss": "IstFuss", "krad": "IstKrad", "gkfz": "IstGkfz"}
@@ -73,6 +79,14 @@ def read_zip(path: Path, bbox: tuple[float, float, float, float]) -> list[list]:
             return parse_rows(io.TextIOWrapper(raw, encoding="utf-8-sig", errors="replace"), bbox)
 
 
+def to_arrays(rows: list[list]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """parse_rows() output → (lat, lon, attrs) sorted by latitude so lookups can bisect a band."""
+    arr = np.array(rows, dtype=np.float64).reshape(-1, len(FIELDS))
+    order = np.argsort(arr[:, 0], kind="stable")
+    arr = arr[order]
+    return arr[:, 0].copy(), arr[:, 1].copy(), arr[:, 2:].astype(np.int16)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--src", type=Path, required=True, help="directory holding Unfallorte<YYYY>_EPSG25832_CSV.zip")
@@ -88,10 +102,11 @@ def main() -> None:
         print(f"{y}: {len(got)} accidents in window")
         rows += got
         years.append(y)
+    lat, lon, attrs = to_arrays(rows)
     a.out.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(a.out, "wt", encoding="utf-8") as fh:
-        json.dump({"years": years, "bbox": list(BBOX_WGS84), "fields": FIELDS, "rows": rows}, fh, separators=(",", ":"))
-    print(f"wrote {a.out}: {len(rows)} rows, years {years}")
+    np.savez_compressed(a.out, lat=lat, lon=lon, attrs=attrs, fields=np.array(FIELDS),
+                        meta=np.array(json.dumps({"years": years, "bbox": list(BBOX_WGS84)})))
+    print(f"wrote {a.out}: {len(rows)} rows, years {years}, {a.out.stat().st_size / 1e6:.1f} MB")
 
 
 if __name__ == "__main__":

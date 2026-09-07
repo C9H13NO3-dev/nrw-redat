@@ -3,6 +3,7 @@ import io
 import zipfile
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 _spec = importlib.util.spec_from_file_location("build_unfallatlas", Path(__file__).resolve().parent.parent / "scripts" / "build_unfallatlas.py")
@@ -69,3 +70,13 @@ def test_read_zip_requires_unfallorte_name_in_zip(tmp_path):
         z.writestr("README.txt", "no accident data in here")
     with pytest.raises(FileNotFoundError):
         mod.read_zip(junk_only, mod.BBOX_WGS84)
+
+
+def test_to_arrays_sorts_by_latitude():
+    lat, lon, attrs = mod.to_arrays([[51.5, 7.1, 2021, 3, 6, 0, 0, 1, 0, 0, 0], [51.4, 7.2, 2020, 1, 1, 2, 1, 0, 0, 0, 0]])
+    assert lat.tolist() == [51.4, 51.5] and lon.tolist() == [7.2, 7.1]
+    assert attrs.dtype == np.int16 and attrs.tolist()[0] == [2020, 1, 1, 2, 1, 0, 0, 0, 0]
+
+
+def test_bbox_is_statewide():
+    assert mod.BBOX_WGS84 == (5.753, 50.242, 9.589, 52.619)

@@ -1,19 +1,23 @@
 """Verkehrsunfälle mit Personenschaden around the point — Unfallatlas der Statistischen Ämter.
 
-Data: redat/data/unfallatlas_2020_2025.json.gz (scripts/build_unfallatlas.py), compact rows in FIELDS
-order cropped to the Essen/Bochum window. Only accidents with injured persons are recorded; the location
-is the accident spot on the road, never an address. `_load` is the monkeypatch point.
+Data: redat/data/unfallatlas_2020_2025_nrw.npz (scripts/build_unfallatlas.py), statewide NRW, lat/lon
+float64 sorted by latitude plus an int16 attrs matrix so a lookup bisects a latitude band before scanning.
+Only accidents with injured persons are recorded; the location is the accident spot on the road, never
+an address. `_load` is the monkeypatch point.
 """
 from __future__ import annotations
 
-import gzip
 import json
 import math
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "unfallatlas_2020_2025.json.gz"
+import numpy as np
+
+from redat.core.nrw import in_bbox
+
+GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "unfallatlas_2020_2025_nrw.npz"
 RADIUS_M = 300
 SEVERITY = {1: "getoetete", 2: "schwerverletzte", 3: "leichtverletzte"}
 TYPES = {1: "Fahrunfall", 2: "Abbiegeunfall", 3: "Einbiegen/Kreuzen", 4: "Überschreiten", 5: "Ruhender Verkehr", 6: "Längsverkehr", 7: "Sonstiger"}
@@ -23,9 +27,11 @@ _NIGHT = 2
 @lru_cache(maxsize=1)
 def _load() -> Optional[dict]:
     try:
-        with gzip.open(GRID_PATH, "rt", encoding="utf-8") as fh:
-            return json.load(fh)
-    except (OSError, ValueError):
+        with np.load(GRID_PATH, allow_pickle=False) as z:
+            meta = json.loads(str(z["meta"]))
+            return {"years": [int(y) for y in meta["years"]], "bbox": tuple(meta["bbox"]),
+                    "fields": [str(f) for f in z["fields"]], "lat": z["lat"], "lon": z["lon"], "attrs": z["attrs"]}
+    except (OSError, ValueError, KeyError):
         return None
 
 
@@ -53,34 +59,34 @@ def lookup(lat: float, lon: float) -> Optional[dict]:
     grid = _load()
     if not grid:
         return None
-    lon_min, lat_min, lon_max, lat_max = grid["bbox"]
-    if not (lon_min <= lon <= lon_max and lat_min <= lat <= lat_max):
+    if not in_bbox(lat, lon, grid["bbox"]):
         return None
-    idx = {name: i for i, name in enumerate(grid["fields"])}
-    years = [int(y) for y in grid["years"]]
+    idx = {name: i for i, name in enumerate(grid["fields"][2:])}     # attrs columns: jahr … gkfz
+    years = grid["years"]
     per_year = {str(y): 0 for y in years}
     severity = {v: 0 for v in SEVERITY.values()}
     beteiligt = {"rad": 0, "fuss": 0, "pkw": 0, "krad": 0, "gkfz": 0}
     by_type: dict[str, int] = {}
     nachts, nearest = 0, None
+    lats, lons = grid["lat"], grid["lon"]
     dlat = RADIUS_M / 111_195 * 1.05
-    for r in grid["rows"]:
-        rlat, rlon = r[idx["lat"]], r[idx["lon"]]
-        if abs(rlat - lat) > dlat:
-            continue
-        dist = _dist_m(lat, lon, rlat, rlon)
+    i0, i1 = int(np.searchsorted(lats, lat - dlat)), int(np.searchsorted(lats, lat + dlat, side="right"))
+    for i in range(i0, i1):
+        dist = _dist_m(lat, lon, float(lats[i]), float(lons[i]))
         if dist > RADIUS_M:
             continue
+        r = grid["attrs"][i]
         nearest = dist if nearest is None else min(nearest, dist)
-        per_year[str(r[idx["jahr"]])] = per_year.get(str(r[idx["jahr"]]), 0) + 1
-        sev = SEVERITY.get(r[idx["kat"]])
+        jahr = str(int(r[idx["jahr"]]))
+        per_year[jahr] = per_year.get(jahr, 0) + 1
+        sev = SEVERITY.get(int(r[idx["kat"]]))
         if sev:
             severity[sev] += 1
         for k in beteiligt:
-            beteiligt[k] += 1 if r[idx[k]] else 0
-        t = TYPES.get(r[idx["typ"]], "Sonstiger")
+            beteiligt[k] += 1 if int(r[idx[k]]) else 0
+        t = TYPES.get(int(r[idx["typ"]]), "Sonstiger")
         by_type[t] = by_type.get(t, 0) + 1
-        if r[idx["licht"]] == _NIGHT:
+        if int(r[idx["licht"]]) == _NIGHT:
             nachts += 1
     total = sum(per_year.values())
     avg = round(total / len(years), 1) if years else 0.0
