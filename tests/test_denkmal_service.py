@@ -44,9 +44,17 @@ def stub(monkeypatch, by_type: dict):
     return calls
 
 
-def test_outside_rvr_returns_none_without_http(monkeypatch):
+def test_outside_rvr_inside_nrw_delegates_to_state_wfs(monkeypatch):
+    from redat.sources import denkmal_nrw
     calls = stub(monkeypatch, {})
-    assert dk.get_denkmal(52.52, 13.40) is None
+    monkeypatch.setattr(denkmal_nrw, "get_denkmal_nrw", lambda lat, lon: {"rating": "x", "source": "nrw"})
+    assert dk.get_denkmal(50.7350, 7.1000) == {"rating": "x", "source": "nrw"}   # Bonn
+    assert calls == []
+
+
+def test_outside_nrw_returns_none_without_http(monkeypatch):
+    calls = stub(monkeypatch, {})
+    assert dk.get_denkmal(52.52, 13.40) is None                                   # Berlin
     assert calls == []
 
 
@@ -56,6 +64,7 @@ def test_no_features_is_green_kein_denkmalschutz(monkeypatch):
     assert d["rating"] == "Kein Denkmalschutz" and d["rating_color"] == "green"
     assert d["items"] == [] and d["on_site"] == [] and d["authority"] is None
     assert d["counts"] == {"A": 0, "B": 0, "C": 0, "D": 0}
+    assert d["source"] == "rvr" and d["hinweis"] is None
     assert {t for t, _ in calls} == {POLY, POINT}
     xmin, ymin, xmax, ymax = calls[0][1]
     assert 590 < xmax - xmin < 610 and 590 < ymax - ymin < 610  # ±300 m in EPSG:25832

@@ -12,7 +12,8 @@ B Bodendenkmal, C bewegliches Denkmal, D Denkmalbereich; Bochum appends the
 coordinate, hence the dedupe on the first four parts), `bezeichnun`, `gemeinde`,
 `kategorie` (1000 Bau-/bewegliches Denkmal, 2000 Siedlung/Denkmalbereich,
 4000 Bodendenkmal), `datum`, `merkmale` (Essen: Denkmalliste .htm, Bochum: photo),
-`denkmal_ei` (Bochum: Begründung .pdf). Coverage is the RVR Verbandsgebiet only.
+`denkmal_ei` (Bochum: Begründung .pdf). Coverage is the RVR Verbandsgebiet; outside it, but still inside
+NRW, `get_denkmal` delegates to `redat.sources.denkmal_nrw` (the statewide INSPIRE Denkmal WFS).
 """
 from __future__ import annotations
 
@@ -124,10 +125,14 @@ def _rate(items: list[dict]) -> tuple[str, str]:
 
 
 def get_denkmal(lat: float, lon: float) -> Optional[dict]:
-    """Monuments within RADIUS_M, or None outside the RVR area (no data there, not "none")."""
-    lon_min, lat_min, lon_max, lat_max = RVR_BBOX
-    if not (lon_min <= lon <= lon_max and lat_min <= lat <= lat_max):
-        return None
+    """Monuments within RADIUS_M. Coverage: RVR WFS inside the Verbandsgebiet, the state INSPIRE WFS
+    (`denkmal_nrw`) elsewhere in NRW; None outside NRW."""
+    from redat.core.nrw import in_bbox
+    if not in_bbox(lat, lon, RVR_BBOX):
+        if not in_bbox(lat, lon):
+            return None
+        from redat.sources import denkmal_nrw   # lazy: denkmal_nrw imports this module
+        return denkmal_nrw.get_denkmal_nrw(lat, lon)
     bbox = _bbox_25832(lat, lon, RADIUS_M)
     point_m = Point(_TO_25832.transform(lon, lat))
     by_id: dict[str, dict] = {}
@@ -158,4 +163,5 @@ def get_denkmal(lat: float, lon: float) -> Optional[dict]:
         "on_site": [i for i in items if i["on_site"]],
         "authority": authority,
         "rating": rating, "rating_color": color,
+        "source": "rvr", "hinweis": None,
     }

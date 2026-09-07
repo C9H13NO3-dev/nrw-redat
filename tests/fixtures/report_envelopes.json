@@ -795,7 +795,9 @@
     "link": "https://www.essen.de/leben/planen_und_bauen/denkmalschutz.de.html"
    },
    "rating": "Denkmal in unmittelbarer Nachbarschaft",
-   "rating_color": "yellow"
+   "rating_color": "yellow",
+   "source": "rvr",
+   "hinweis": null
   },
   "message": null,
   "source": "RVR Geoportal Ruhr — Denkmäler (INSPIRE WFS) · Untere Denkmalbehörden Essen/Bochum",

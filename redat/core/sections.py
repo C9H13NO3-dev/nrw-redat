@@ -267,7 +267,7 @@ def _fetch_denkmal(ctx: Ctx) -> dict:
 
     d = get_denkmal(ctx.lat, ctx.lon)
     if d is None:
-        raise Empty("Kein Denkmal-Datensatz für diesen Ort (außerhalb des RVR-Verbandsgebiets)")
+        raise Empty("Kein Denkmal-Datensatz für diesen Ort (außerhalb Nordrhein-Westfalens)")
     return d
 
 
@@ -483,7 +483,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("planning_bochum", "Bauleitplanung Bochum", "🏗️", 30, "RVR INSPIRE Bauleitplanung (WMS GetFeatureInfo) · Stadt Bochum, Stadterneuerung", _fetch_planning_bochum,
             cache_version=2),
     Section("denkmal", "Denkmalschutz", "🏛️", 25,
-            "RVR Geoportal Ruhr — Denkmäler (INSPIRE WFS) · Untere Denkmalbehörden Essen/Bochum", _fetch_denkmal),
+            "RVR Geoportal Ruhr (INSPIRE WFS) im Ruhrgebiet · IT.NRW INSPIRE Denkmal-WFS landesweit · Untere Denkmalbehörden", _fetch_denkmal, cache_version=2),
     Section("amenities", "Entfernungen (POIs)", "📍", 25, "Geoapify Places", _fetch_amenities),
     Section("schulen", "Schulen & Sozialindex", "🎒", 20,
             "Schulministerium NRW, Schulliste 2025/26 mit Sozialindex · Geobasis NRW Schulstandorte (dl-de/by-2-0) · Stadt Bochum, Grundschulbezirke", _fetch_schulen),

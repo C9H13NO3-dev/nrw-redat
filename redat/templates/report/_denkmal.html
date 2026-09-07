@@ -64,4 +64,5 @@
 <p class="footnote">Umkreis: {{ (d.get("counts") or {}).get("A", 0) }} Baudenkmäler · {{ (d.get("counts") or {}).get("B", 0) }} Bodendenkmäler · {{ (d.get("counts") or {}).get("D", 0) }} Denkmalbereiche.
 Umgebungsschutz: auch Bauvorhaben neben einem Denkmal brauchen eine Erlaubnis, wenn sie sein Erscheinungsbild beeinträchtigen (§ 9 DSchG NRW).
 Zuständig: {{ (auth.get("name") if auth else None) or "Untere Denkmalbehörde der Stadt" }}.
-Quelle: RVR Geoportal Ruhr (Denkmallisten der Kommunen) — Bochumer Baudenkmäler sind als Punkte hinterlegt (Treffer ≤ 25 m = dieses Gebäude).</p>
+{% if d.get("source") == "nrw" %}Quelle: INSPIRE Denkmal-WFS des Landes NRW (IT.NRW) — Punkte sind Gebäudestandorte (Treffer ≤ 25 m = dieses Gebäude).{% else %}Quelle: RVR Geoportal Ruhr (Denkmallisten der Kommunen) — Bochumer Baudenkmäler sind als Punkte hinterlegt (Treffer ≤ 25 m = dieses Gebäude).{% endif %}</p>
+{% if d.get("hinweis") %}<p class="footnote">{{ d.hinweis }}</p>{% endif %}

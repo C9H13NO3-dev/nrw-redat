@@ -549,7 +549,7 @@ def test_denkmal_passes_through_and_is_parcel(monkeypatch):
 def test_denkmal_none_is_empty(monkeypatch):
     from redat.sources import denkmal
     monkeypatch.setattr(denkmal, "get_denkmal", lambda lat, lon: None)
-    with pytest.raises(S.Empty, match="RVR"):
+    with pytest.raises(S.Empty, match="Nordrhein"):
         S._fetch_denkmal(CTX)
 
 
