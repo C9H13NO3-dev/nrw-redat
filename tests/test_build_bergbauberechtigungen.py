@@ -29,3 +29,7 @@ def test_to_features_maps_fields_and_booleans():
     assert p == {"feld": "Neu Essen", "art": "aufrechterhaltenes Bergwerkseigentum", "bodenschatz": "Eisenerz", "inhaber": "TRATON SE",
                  "seit": "23.01.1791", "bis": None, "erloschen": False, "groesse": "140 110 991 m²", "nummer": "4000138701"}
     assert feats[0]["geometry"]["type"] in ("Polygon", "MultiPolygon")
+
+
+def test_bbox_is_statewide():
+    assert mod.BBOX_WGS84 == (5.753, 50.242, 9.589, 52.619)

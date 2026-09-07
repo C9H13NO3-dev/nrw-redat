@@ -1,10 +1,11 @@
-"""Öffentliche E-Ladepunkte im Umkreis — BNetzA Ladesäulenregister (CC BY 4.0), cropped to Essen/Bochum.
+"""Öffentliche E-Ladepunkte im Umkreis — BNetzA Ladesäulenregister (CC BY 4.0), statewide (NRW bbox).
 
-Data: redat/data/ladesaeulen.json.gz (scripts/build_ladesaeulen.py), rows in FIELDS order; only chargers
-"In Betrieb". `_load` is the monkeypatch point.
+Data: redat/data/ladesaeulen_nrw.json.gz (scripts/build_ladesaeulen.py), rows in FIELDS order, sorted by
+latitude; only chargers "In Betrieb". `_load` is the monkeypatch point.
 """
 from __future__ import annotations
 
+import bisect
 import gzip
 import json
 import math
@@ -12,11 +13,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "ladesaeulen.json.gz"
+from redat.core.nrw import in_bbox
+
+GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "ladesaeulen_nrw.json.gz"
 RADIUS_M = 1000
 _NEAR_M = 500
 _WALK_M = 300
 _MAX_NEAREST = 5
+_DLAT = RADIUS_M / 111_195 * 1.05
 
 
 @lru_cache(maxsize=1)
@@ -26,6 +30,16 @@ def _load() -> Optional[dict]:
             return json.load(fh)
     except (OSError, ValueError):
         return None
+
+
+@lru_cache(maxsize=1)
+def _lats() -> list[float]:
+    """Latitudes of the loaded rows — must be ascending (the build sorts); a bisect over them bounds the scan."""
+    grid = _load()
+    lats = [r[0] for r in (grid or {}).get("rows") or []]
+    if any(b < a for a, b in zip(lats, lats[1:])):
+        raise ValueError("ladesaeulen rows are not sorted by latitude — rebuild with scripts/build_ladesaeulen.py")
+    return lats
 
 
 def _dist_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -45,12 +59,13 @@ def lookup(lat: float, lon: float) -> Optional[dict]:
     grid = _load()
     if not grid:
         return None
-    lon_min, lat_min, lon_max, lat_max = grid["bbox"]
-    if not (lon_min <= lon <= lon_max and lat_min <= lat <= lat_max):
+    if not in_bbox(lat, lon, tuple(grid["bbox"])):
         return None
     idx = {n: i for i, n in enumerate(grid["fields"])}
+    lats = _lats()
+    i0, i1 = bisect.bisect_left(lats, lat - _DLAT), bisect.bisect_right(lats, lat + _DLAT)
     hits = []
-    for r in grid["rows"]:
+    for r in grid["rows"][i0:i1]:
         d = _dist_m(lat, lon, r[idx["lat"]], r[idx["lon"]])
         if d <= RADIUS_M:
             hits.append((d, r))

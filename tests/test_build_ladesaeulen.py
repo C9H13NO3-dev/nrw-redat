@@ -23,7 +23,13 @@ def test_parse_rows_crops_by_bbox_and_keeps_only_operating():
     rows = mod.parse_rows(io.StringIO(CSV), mod.BBOX_WGS84)
     assert rows == [[51.4305, 7.0055, "E.ON Drive Germany GmbH", 0, 2, 22.0, "Rüttenscheider Str. 1, 45131 Essen"],
                     [51.46, 7.01, "Fastned", 1, 4, 300.0, "A40, 45141 Essen"]]
+    mod.sort_rows(rows)
+    assert rows == sorted(rows, key=lambda r: r[0])
 
 
 def test_stand_is_read_from_the_preamble():
     assert mod.read_stand(io.StringIO(CSV)) == "2026-09-01"
+
+
+def test_bbox_is_statewide():
+    assert mod.BBOX_WGS84 == (5.753, 50.242, 9.589, 52.619)

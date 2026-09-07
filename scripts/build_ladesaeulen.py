@@ -1,4 +1,4 @@
-"""Crop the BNetzA Ladesäulenregister to the Essen/Bochum window → redat/data/ladesaeulen.json.gz.
+"""Crop the BNetzA Ladesäulenregister statewide (NRW bbox) → redat/data/ladesaeulen_nrw.json.gz.
 
 Input: the monthly CSV linked from https://www.bundesnetzagentur.de/DE/Fachthemen/ElektrizitaetundGas/E-Mobilitaet/Ladesaeulenkarte/start.html,
 e.g. https://data.bundesnetzagentur.de/Bundesnetzagentur/DE/Fachthemen/ElektrizitaetundGas/E-Mobilitaet/Ladesaeulenregister_BNetzA_2026-09-01.csv
@@ -7,7 +7,7 @@ e.g. https://data.bundesnetzagentur.de/Bundesnetzagentur/DE/Fachthemen/Elektrizi
 bbox, not by Ort: a Berlin charger carries Ort "Essen". Only Status "In Betrieb" is kept.
 
 Usage:
-    .venv/bin/python scripts/build_ladesaeulen.py --csv /tmp/Ladesaeulenregister_BNetzA_2026-09-01.csv
+    .venv/bin/python scripts/build_ladesaeulen.py --csv ~/Downloads/nrw-redat-sources/Ladesaeulenregister_BNetzA_2026-09-01.csv
 """
 from __future__ import annotations
 
@@ -16,12 +16,17 @@ import csv
 import gzip
 import json
 import re
+import sys
 from pathlib import Path
 from typing import IO, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "redat" / "data" / "ladesaeulen.json.gz"
-BBOX_WGS84 = (6.85, 51.33, 7.40, 51.56)
+sys.path.insert(0, str(ROOT))
+
+from redat.core.nrw import NRW_BBOX_WGS84  # noqa: E402
+
+OUT = ROOT / "redat" / "data" / "ladesaeulen_nrw.json.gz"
+BBOX_WGS84 = NRW_BBOX_WGS84
 FIELDS = ["lat", "lon", "betreiber", "schnell", "punkte", "kw", "adresse"]
 
 
@@ -70,6 +75,12 @@ def parse_rows(fh: IO[str], bbox: tuple[float, float, float, float]) -> list[lis
     return rows
 
 
+def sort_rows(rows: list[list]) -> list[list]:
+    """Latitude-sorted so the runtime lookup can bisect a ±1 km band instead of scanning ~25k rows."""
+    rows.sort(key=lambda r: r[0])
+    return rows
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--csv", type=Path, required=True)
@@ -78,7 +89,7 @@ def main() -> None:
     with open(a.csv, encoding="utf-8-sig", newline="") as fh:
         stand = read_stand(fh)
     with open(a.csv, encoding="utf-8-sig", newline="") as fh:
-        rows = parse_rows(fh, BBOX_WGS84)
+        rows = sort_rows(parse_rows(fh, BBOX_WGS84))
     a.out.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(a.out, "wt", encoding="utf-8") as fh:
         json.dump({"stand": stand, "bbox": list(BBOX_WGS84), "fields": FIELDS, "rows": rows}, fh, ensure_ascii=False, separators=(",", ":"))

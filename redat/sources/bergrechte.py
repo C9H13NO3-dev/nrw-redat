@@ -1,10 +1,10 @@
 """Bergbauberechtigungen — which mining rights (Bergwerkseigentum, Bewilligung, Erlaubnis) cover the point.
 
-Data: redat/data/bergbauberechtigungen.geojson.gz (scripts/build_bergbauberechtigungen.py) from the open
-Bezirksregierung Arnsberg dataset. A Berechtigung is a *right* to mine or explore, not evidence of workings —
-the GDU Planquadrat on the same card is the hazard signal; the right tells the buyer who may still claim
-Bergschäden liability (RAG, E.ON, …) and whether an Erlaubnis for Erdwärme/Kohlenwasserstoffe exists.
-`_load` is the monkeypatch point.
+Data: redat/data/bergbauberechtigungen_nrw.geojson.gz (scripts/build_bergbauberechtigungen.py) from the open
+Bezirksregierung Arnsberg dataset, statewide, 5,361 Berechtigungen. A Berechtigung is a *right* to mine or
+explore, not evidence of workings — the GDU Planquadrat on the same card is the hazard signal; the right
+tells the buyer who may still claim Bergschäden liability (RAG, E.ON, …) and whether an Erlaubnis for
+Erdwärme/Kohlenwasserstoffe exists. `_load` is the monkeypatch point.
 """
 from __future__ import annotations
 
@@ -14,9 +14,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+from shapely import STRtree
 from shapely.geometry import Point, shape
 
-GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "bergbauberechtigungen.geojson.gz"
+GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "bergbauberechtigungen_nrw.geojson.gz"
 _KURZ = {
     "aufrechterhaltenes Bergwerkseigentum": "Bergwerkseigentum",
     "Bewilligung": "Bewilligung",
@@ -59,6 +60,16 @@ def _geoms() -> Optional[list[tuple]]:
     return out
 
 
+@lru_cache(maxsize=1)
+def _tree() -> Optional[STRtree]:
+    """Spatial index over `_geoms()` — with 5,361 statewide polygons a linear `contains` scan per lookup is
+    too slow inside the shared card pool. Cleared together with `_geoms` in tests."""
+    geoms = _geoms()
+    if geoms is None:
+        return None
+    return STRtree([g for g, _ in geoms])
+
+
 def kurz(art: Optional[str]) -> str:
     return _KURZ.get(art or "", art or "")
 
@@ -68,9 +79,11 @@ def lookup(lat: float, lon: float) -> Optional[list[dict]]:
     geoms = _geoms()
     if geoms is None:
         return None
+    tree = _tree()
     pt = Point(lon, lat)
     out = []
-    for geom, p in geoms:
+    for i in (tree.query(pt) if tree is not None else []):
+        geom, p = geoms[int(i)]
         try:
             if not geom.contains(pt):
                 continue

@@ -1,4 +1,4 @@
-"""Crop the EEA 1 km interpolated air-quality rasters to the Essen/Bochum window.
+"""Crop the EEA 1 km interpolated air-quality rasters to the NRW bbox (statewide).
 
 Input: the four EEA GeoTIFFs (EPSG:3035, 1 km cells, float32, CC-BY 4.0) from
 https://sdi.eea.europa.eu/datastore/public/eea_r_3035_1_km_aq-interpolated-{no2,pm25,pm10,O3}_p_2023_v01_r00/
@@ -7,15 +7,16 @@ https://sdi.eea.europa.eu/datastore/public/eea_r_3035_1_km_aq-interpolated-{no2,
     pm10_avg_23.tif  annual mean PM10     (µg/m³)
     o3_peak_23.tif   peak-season mean of daily max 8h O3 (µg/m³, the WHO metric)
 
-Output: redat/data/eea_aq_grid_2023.json — a ~1500-cell window per layer that
+Output: redat/data/eea_aq_grid_2023_nrw.json.gz — 276 × 274 cells per layer (NRW bbox), 210 KB, that
 `redat/sources/airquality_grid.py` looks up at runtime without any raster library.
 
 Usage:
-    .venv/bin/python scripts/build_eea_aq_grid.py --src /path/to/dir/with/tifs [--year 2023]
+    .venv/bin/python scripts/build_eea_aq_grid.py --src ~/Downloads/nrw-redat-sources/eea [--year 2023]
 """
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import sys
 from pathlib import Path
@@ -25,10 +26,14 @@ from PIL import Image
 from pyproj import Transformer
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "redat" / "data" / "eea_aq_grid_2023.json"
+sys.path.insert(0, str(ROOT))
 
-# Essen + Bochum with a margin (WGS84: lon_min, lat_min, lon_max, lat_max).
-BBOX_WGS84 = (6.80, 51.30, 7.45, 51.60)
+from redat.core.nrw import NRW_BBOX_WGS84  # noqa: E402
+
+OUT = ROOT / "redat" / "data" / "eea_aq_grid_2023_nrw.json.gz"
+
+# Statewide NRW bbox (WGS84: lon_min, lat_min, lon_max, lat_max).
+BBOX_WGS84 = NRW_BBOX_WGS84
 
 LAYERS = {
     "no2": "no2_avg_{yy}.tif",
@@ -94,7 +99,8 @@ def main() -> None:
     args = ap.parse_args()
     data = build(args.src, args.year)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+    with gzip.open(args.out, "wt", encoding="utf-8") as fh:
+        json.dump(data, fh, separators=(",", ":"))
     print(f"wrote {args.out} ({args.out.stat().st_size // 1024} KB)")
 
 

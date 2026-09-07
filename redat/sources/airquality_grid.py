@@ -1,9 +1,8 @@
 """Long-term air-quality exposure from the EEA 1 km interpolated annual maps.
 
-`redat/data/eea_aq_grid_2023.json` is a window of the EEA rasters cropped to
-Essen/Bochum by `scripts/build_eea_aq_grid.py` (EPSG:3035, 1 km cells, values in
-µg/m³, `None` for NoData). Looking a point up is a projection plus one array
-index — no raster library, no network.
+`redat/data/eea_aq_grid_2023_nrw.json.gz` is a statewide (NRW bbox) window of the EEA rasters cropped
+by `scripts/build_eea_aq_grid.py` (EPSG:3035, 1 km cells, values in µg/m³, `None` for NoData). Looking
+a point up is a projection plus one array index — no raster library, no network.
 
 Reference lines: WHO Air Quality Guidelines 2021 (annual PM2.5 5, PM10 15, NO2 10;
 O3 peak-season 60) and the EU Ambient Air Quality Directive 2024/2881 limit values
@@ -11,6 +10,7 @@ that apply from 2030 (annual PM2.5 10, PM10 20, NO2 20; no peak-season O3 limit)
 """
 from __future__ import annotations
 
+import gzip
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -18,7 +18,7 @@ from typing import Optional
 
 from pyproj import Transformer
 
-GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "eea_aq_grid_2023.json"
+GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "eea_aq_grid_2023_nrw.json.gz"
 
 # layer key -> (display name, WHO AQG 2021, EU limit value from 2030)
 _LAYERS = {
@@ -43,7 +43,8 @@ def _from_3035(x: float, y: float) -> tuple[float, float]:
 @lru_cache(maxsize=1)
 def _load() -> Optional[dict]:
     try:
-        return json.loads(GRID_PATH.read_text(encoding="utf-8"))
+        with gzip.open(GRID_PATH, "rt", encoding="utf-8") as fh:
+            return json.load(fh)
     except (OSError, ValueError):
         return None
 

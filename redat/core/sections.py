@@ -193,7 +193,7 @@ def _fetch_bergbau(ctx: Ctx) -> dict:
     try:
         rows = bergrechte.lookup(ctx.lat, ctx.lon)
         if rows is None:
-            b["berechtigungen_error"] = "Bergbauberechtigungen nicht installiert (redat/data/bergbauberechtigungen.geojson.gz fehlt)"
+            b["berechtigungen_error"] = "Bergbauberechtigungen nicht installiert (redat/data/bergbauberechtigungen_nrw.geojson.gz fehlt)"
         else:
             b["berechtigungen"] = rows
     except Exception as exc:  # noqa: BLE001 — the rights lookup must not blank the GDU result
@@ -249,7 +249,7 @@ def _fetch_ladesaeulen(ctx: Ctx) -> dict:
 
     d = ladesaeulen.lookup(ctx.lat, ctx.lon)
     if d is None:
-        raise Empty("Keine Ladesäulen-Daten für diesen Ort (außerhalb Essen/Bochum oder Datei fehlt)")
+        raise Empty("Keine Ladesäulen-Daten für diesen Ort (außerhalb Nordrhein-Westfalens oder Datei fehlt)")
     return d
 
 
@@ -496,12 +496,12 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("energie", "Energie (Solar · Erdwärme · Wärmeplanung)", "☀️", 30,
             "LANUK Solarkataster NRW · GD NRW Geothermie · Kommunale Wärmeplanung Essen/Bochum", _fetch_energie),
     Section("ladesaeulen", "E-Ladepunkte", "🔌", 10,
-            "Bundesnetzagentur, Ladesäulenregister (CC BY 4.0) — nur gemeldete Ladeeinrichtungen in Betrieb", _fetch_ladesaeulen),
+            "Bundesnetzagentur, Ladesäulenregister (CC BY 4.0) — nur gemeldete Ladeeinrichtungen in Betrieb", _fetch_ladesaeulen, cache_version=2),
     Section("breitband", "Breitband & Mobilfunk", "🌐", 30, "© BNetzA, Breitbandatlas — Datenstand 12.2025, 100 m-Raster", _fetch_breitband),
     Section("infrastruktur", "Hochspannung, Leitungen & Industrie", "⚡", 60,
             "OpenStreetMap (Overpass) · EEA Industrial Emissions Portal (IED/E-PRTR)", _fetch_infrastruktur),
     Section("air_quality", "Luftqualität", "🌬️", 25, "EEA 1 km-Raster 2023 · UBA/LANUV Messstationen · Sensor.Community · CAMS", _fetch_air_quality,
-            cache_ttl_s=3600),        # "aktuell" comes from live station/sensor readings
+            cache_ttl_s=3600, cache_version=2),        # "aktuell" comes from live station/sensor readings
     Section("btw", "Bundestagswahl", "🗳️", 30, "Die Bundeswahlleiterin (kerg2.csv, Zweitstimmen, Wahlkreis)", _fetch_btw),
     Section("commute", "Fahrzeiten (Auto)", "🚗", 30, "Geoapify Routing", _fetch_commute),
 ]}

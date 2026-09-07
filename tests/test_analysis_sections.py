@@ -442,7 +442,7 @@ def test_bergbau_missing_grid_is_reported_not_fatal(monkeypatch):
     monkeypatch.setattr(bergrechte, "lookup", lambda lat, lon: None)
     monkeypatch.setattr(bodenbewegung, "lookup", lambda lat, lon: None)
     d = S._fetch_bergbau(CTX)
-    assert d["berechtigungen"] is None and "bergbauberechtigungen.geojson.gz" in d["berechtigungen_error"]
+    assert d["berechtigungen"] is None and "bergbauberechtigungen_nrw.geojson.gz" in d["berechtigungen_error"]
 
 
 def test_bergbau_none_is_empty(monkeypatch):

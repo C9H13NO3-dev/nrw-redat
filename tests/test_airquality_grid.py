@@ -1,3 +1,4 @@
+import gzip
 import json
 
 import pytest
@@ -17,8 +18,9 @@ def tiny_grid(tmp_path, monkeypatch):
         "layers": {"no2": [[20.0, 21.0], [22.0, None]], "pm25": [[9.0, 9.5], [10.0, 10.5]],
                    "pm10": [[15.0, 15.5], [16.0, 16.5]], "o3_peak": [[85.0, 86.0], [87.0, 88.0]]},
     }
-    p = tmp_path / "grid.json"
-    p.write_text(json.dumps(data))
+    p = tmp_path / "grid.json.gz"
+    with gzip.open(p, "wt", encoding="utf-8") as fh:
+        json.dump(data, fh)
     monkeypatch.setattr(G, "GRID_PATH", p)
     G._load.cache_clear()
     yield data
@@ -49,20 +51,21 @@ def test_lookup_skips_nodata_cells(tiny_grid):
 def test_lookup_all_nodata_is_none(tiny_grid):
     data = dict(tiny_grid)
     data["layers"] = {k: [[None, None], [None, None]] for k in tiny_grid["layers"]}
-    G.GRID_PATH.write_text(json.dumps(data))
+    with gzip.open(G.GRID_PATH, "wt", encoding="utf-8") as fh:
+        json.dump(data, fh)
     G._load.cache_clear()
     assert G.lookup(51.45, 7.0) is None
 
 
 def test_missing_grid_file_is_none(tmp_path, monkeypatch):
-    monkeypatch.setattr(G, "GRID_PATH", tmp_path / "nope.json")
+    monkeypatch.setattr(G, "GRID_PATH", tmp_path / "nope.json.gz")
     G._load.cache_clear()
     assert G.lookup(51.45, 7.0) is None
     G._load.cache_clear()
 
 
-def test_real_grid_covers_essen_and_bochum():
+def test_real_grid_covers_essen_bochum_and_bonn():
     G._load.cache_clear()
-    for lat, lon in ((51.4378, 7.0053), (51.4818, 7.2162)):
+    for lat, lon in ((51.4378, 7.0053), (51.4818, 7.2162), (50.7160, 7.0748)):
         r = G.lookup(lat, lon)
         assert r and 5 < r["values"]["NO2"]["value"] < 40 and 5 < r["values"]["PM2.5"]["value"] < 15
