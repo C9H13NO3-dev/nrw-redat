@@ -152,7 +152,10 @@ def render_climate_maps(lat: float, lon: float) -> dict:
             try:
                 im = futures[p.key, "map"].result()
                 buf = io.BytesIO()
-                decorate(im, p.title).convert("RGB").save(buf, format="PNG", optimize=True)
+                # WMS layers are transparent where they have no data (Copernicus outside tree cover); flatten onto
+                # white so the print shows "no trees" as white, not black.
+                white = Image.new("RGBA", im.size, (255, 255, 255, 255))
+                Image.alpha_composite(white, decorate(im, p.title)).convert("RGB").save(buf, format="PNG", optimize=True)
                 image = _b64(buf.getvalue())
             except Exception as e:  # noqa: BLE001 — a missing panel is a placeholder, never a failed PDF
                 logger.warning("climate map %s failed: %s", p.key, e)

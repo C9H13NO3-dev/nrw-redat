@@ -89,3 +89,16 @@ def test_bbox_2km_3857_scales_with_latitude():
     xmin, ymin, xmax, ymax = cm.bbox_2km_3857(*BONN)
     assert abs((xmax - xmin) - 2000 / math.cos(math.radians(BONN[0]))) < 1.0
     assert abs((ymax - ymin) - 1500 / math.cos(math.radians(BONN[0]))) < 1.0
+
+
+def test_transparent_pixels_are_flattened_onto_white(monkeypatch):
+    def fake(url, params):
+        if params.get("REQUEST") == "GetLegendGraphic":
+            return _png((276, 126), (200, 50, 50))
+        buf = io.BytesIO()
+        Image.new("RGBA", (cm.WIDTH, cm.HEIGHT), (0, 0, 0, 0)).save(buf, format="PNG")   # fully transparent tile
+        return buf.getvalue()
+    monkeypatch.setattr(cm, "_get_png", fake)
+    out = cm.render_climate_maps(*BONN)
+    im = Image.open(io.BytesIO(base64.b64decode(out["panels"][0]["image"]))).convert("RGB")
+    assert im.getpixel((cm.WIDTH - 5, cm.HEIGHT // 2)) == (255, 255, 255)
