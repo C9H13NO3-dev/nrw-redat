@@ -431,5 +431,6 @@ def build_report_context(payload: dict, *, now: Optional[datetime] = None) -> di
         "noise_maps": None,
         "history_maps": None,
         "climate_maps": None,
+        "regionalplan_map": None,
         "boris_trend_svg": None,
     }

@@ -52,7 +52,14 @@ def _arcgis_query(layer: int, lat: float, lon: float, out_fields: str) -> dict:
 
 
 def get_gfnp_designation(lat: float, lon: float) -> dict[str, Any]:
-    """Return the GFNP land-use designation + relevant overlays for a coordinate."""
+    """Return the GFNP land-use designation + relevant overlays for a coordinate.
+
+    Outside the RVR bbox the service is not queried (`rvr: False`).
+    """
+    from redat.core.nrw import RVR_BBOX_WGS84, in_bbox
+    if not in_bbox(lat, lon, RVR_BBOX_WGS84):
+        return {"ok": True, "found": False, "rvr": False, "designation": None, "city": None, "date": None, "overlays": [],
+                "source": "geo.essen.de ArcGIS GFNP (nicht abgefragt: außerhalb des RVR-Gebiets)"}
 
     def _date_to_iso(v: Any) -> Optional[str]:
         try:
@@ -109,6 +116,7 @@ def get_gfnp_designation(lat: float, lon: float) -> dict[str, Any]:
         return {
             "ok": True,
             "found": found,
+            "rvr": True,
             "designation": designation,
             "city": city,
             "date": date_iso,

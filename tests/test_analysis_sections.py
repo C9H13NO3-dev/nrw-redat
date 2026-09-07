@@ -307,8 +307,8 @@ def test_flood_cache_version_bumped():
 def test_gfnp_normalizer(monkeypatch):
     from redat.sources import gfnp
     monkeypatch.setattr(gfnp, "get_gfnp_designation", lambda lat, lon: {
-        "ok": True, "found": True, "designation": "Wohnbaufläche", "city": "Essen", "date": "2023-05-01", "overlays": [], "source": "x"})
-    assert S._fetch_gfnp(CTX) == {"found": True, "designation": "Wohnbaufläche", "city": "Essen", "date": "2023-05-01"}
+        "ok": True, "found": True, "designation": "Wohnbaufläche", "city": "Essen", "date": "2023-05-01", "rvr": True, "overlays": [], "source": "x"})
+    assert S._fetch_gfnp(CTX) == {"found": True, "designation": "Wohnbaufläche", "city": "Essen", "date": "2023-05-01", "rvr": True, "hinweis": None}
 
 
 def test_gfnp_not_ok_raises(monkeypatch):
@@ -316,6 +316,17 @@ def test_gfnp_not_ok_raises(monkeypatch):
     monkeypatch.setattr(gfnp, "get_gfnp_designation", lambda lat, lon: {"ok": False, "error": "ArcGIS 503"})
     with pytest.raises(RuntimeError, match="ArcGIS 503"):
         S._fetch_gfnp(CTX)
+
+
+def test_gfnp_outside_rvr_skips_arcgis_and_explains(monkeypatch):
+    from redat.sources import gfnp
+    called = []
+    monkeypatch.setattr(gfnp, "_arcgis_query", lambda *a, **k: called.append(a) or {"features": []})
+    g = gfnp.get_gfnp_designation(50.7160, 7.0748)                    # Bonn
+    assert g["ok"] and g["found"] is False and g["rvr"] is False and called == []
+    d = S._fetch_gfnp(S.Ctx(lat=50.7160, lon=7.0748, plot_size_m2=None, destinations=()))
+    assert d["rvr"] is False and "Regionalplan" in d["hinweis"]
+    assert S.SECTIONS["gfnp"].cache_version == 2
 
 
 def test_planning_essen_flattens_lists(monkeypatch):

@@ -526,7 +526,9 @@
    "found": true,
    "designation": "Flächen für die örtlichen Hauptverkehrszüge",
    "city": "E",
-   "date": "2007-05-10"
+   "date": "2007-05-10",
+   "rvr": true,
+   "hinweis": null
   },
   "message": null,
   "source": "geo.essen.de — Gemeinsamer Flächennutzungsplan",

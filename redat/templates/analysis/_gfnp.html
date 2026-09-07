@@ -6,6 +6,9 @@
         </div>
     </template>
     <template x-if="!d.found">
-        <p class="text-gray-500">Keine GFNP-Zuordnung für diese Koordinaten.</p>
+        <div>
+            <p class="text-gray-500" x-show="d.rvr !== false">Keine GFNP-Zuordnung für diese Koordinaten.</p>
+            <p class="text-gray-600" x-show="d.rvr === false" x-text="d.hinweis"></p>
+        </div>
     </template>
 </div>

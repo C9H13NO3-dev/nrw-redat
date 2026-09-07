@@ -9,6 +9,7 @@ from redat.report.climate_maps import render_climate_maps
 from redat.report.history_maps import render_history_maps
 from redat.report.noise_map import render_noise_maps
 from redat.report.pdf import html_to_pdf
+from redat.report.regionalplan_map import render_regionalplan_map
 from redat.report.render import render_report_html
 from redat.report.svg import boris_trend_svg
 
@@ -26,8 +27,10 @@ def render_pdf(payload: dict) -> tuple[bytes, dict]:
         jobs["history_maps"] = (render_history_maps, (ctx["lat"], ctx["lon"]))
     if "zensus" in body_keys:
         jobs["climate_maps"] = (render_climate_maps, (ctx["lat"], ctx["lon"]))
+    if "gfnp" in body_keys:
+        jobs["regionalplan_map"] = (render_regionalplan_map, (ctx["lat"], ctx["lon"]))
     if jobs:
-        # The three figure renderers each block on their own HTTP calls + Pillow drawing;
+        # The four figure renderers each block on their own HTTP calls + Pillow drawing;
         # run them concurrently instead of one after another (worst case was ~36+10+10 s).
         # A renderer is designed never to raise, but a failure here must still degrade to a
         # missing figure rather than break the whole PDF.

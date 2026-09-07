@@ -1,6 +1,17 @@
 {% if d.get("found") %}
 <p class="strong">{{ d.get("designation") or "—" }}</p>
 <p class="muted small">{{ d.get("city") or "" }}{% if d.get("date") %} (Stand: {{ d.date|fmt_date }}){% endif %}</p>
+{% elif d.get("rvr") is sameas false %}
+<p class="muted">{{ d.get("hinweis") or "Der GFNP gilt nur im Ruhrgebiet." }}</p>
 {% else %}
 <p class="muted">Keine GFNP-Zuordnung für diese Koordinaten.</p>
+{% endif %}
+{% if regionalplan_map %}
+<h3>Regionalplan</h3>
+<div class="maps">
+  <div>
+    {% if regionalplan_map.image %}<img src="data:image/png;base64,{{ regionalplan_map.image }}" alt="Regionalplan">{% else %}<div class="map-missing">{{ regionalplan_map.error or "Regionalplan-Ausschnitt nicht verfügbar" }}</div>{% endif %}
+  </div>
+</div>
+<p class="footnote">Ausschnitt ca. 2 × 1,5 km, Punkt im Zentrum; Regionalplan der Bezirksregierung bzw. RFNP (Maßstab 1:50.000, nicht parzellenscharf, unverbindlich). Legende: <a href="{{ regionalplan_map.legend_url }}">wms.nrw.de</a>. Verbindlich ist nur die vom Regionalrat beschlossene zeichnerische Darstellung.</p>
 {% endif %}

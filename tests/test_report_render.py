@@ -1,4 +1,5 @@
 """Render tests for the report templates: every partial on its live fixture and on an empty dict."""
+import base64
 import html as htmlmod
 import json
 from pathlib import Path
@@ -21,7 +22,7 @@ PAYLOAD = {
 }
 
 EXTRA = {"plot_size_m2": 450, "living_space_m2": 140, "noise_maps": None, "boris_trend_svg": None, "history_maps": None,
-         "climate_maps": None}
+         "climate_maps": None, "regionalplan_map": None}
 
 
 @pytest.mark.parametrize("key", list(SECTIONS))
@@ -84,6 +85,14 @@ def test_zensus_partial_renders_climate_figure():
            "attribution": "© RVR", "error": "x"}
     html = render_section_html("zensus", FIXTURES["zensus"]["data"], **{**EXTRA, "climate_maps": fig})
     assert "Grün und Hitze" in html and "base64,AAAA" in html and "base64,BBBB" in html and "Karte nicht verfügbar" in html
+
+
+def test_gfnp_partial_renders_regionalplan_figure():
+    fig = {"image": base64.b64encode(b"png").decode(), "legend_url": "https://www.wms.nrw.de/legend", "error": None}
+    html = render_section_html("gfnp", FIXTURES["gfnp"]["data"], **{**EXTRA, "regionalplan_map": fig})
+    assert "Regionalplan" in html and "data:image/png;base64," in html and "https://www.wms.nrw.de/legend" in html
+    html = render_section_html("gfnp", {"found": False, "rvr": False, "hinweis": "Der GFNP gilt nur im Ruhrgebiet."}, **EXTRA)
+    assert "nur im Ruhrgebiet" in html and "None" not in html
 
 
 def test_full_report_renders_with_maps_and_svg():

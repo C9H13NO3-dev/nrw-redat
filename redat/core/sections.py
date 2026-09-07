@@ -406,13 +406,19 @@ def _fetch_starkregen(ctx: Ctx) -> dict:
         pool.shutdown(wait=False, cancel_futures=True)
 
 
+_GFNP_HINWEIS = ("Der Gemeinsame Flächennutzungsplan gilt nur für Bochum, Essen, Gelsenkirchen, Herne, Mülheim an der Ruhr "
+                 "und Oberhausen. Für andere Orte zeigt der PDF-Bericht den Regionalplan-Ausschnitt (1:50.000).")
+
+
 def _fetch_gfnp(ctx: Ctx) -> dict:
     from redat.sources.gfnp import get_gfnp_designation
 
     g = get_gfnp_designation(ctx.lat, ctx.lon)
     if not g.get("ok"):
         raise RuntimeError(g.get("error") or "GFNP-Abfrage fehlgeschlagen")
-    return {"found": bool(g.get("found")), "designation": g.get("designation"), "city": g.get("city"), "date": g.get("date")}
+    rvr = bool(g.get("rvr", True))
+    return {"found": bool(g.get("found")), "designation": g.get("designation"), "city": g.get("city"), "date": g.get("date"),
+            "rvr": rvr, "hinweis": None if rvr else _GFNP_HINWEIS}
 
 
 _ESSEN_LISTS = (
@@ -485,7 +491,8 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
     Section("baugrund", "Baugrund & Versickerung (BK50)", "🪨", 25,
             "Geologischer Dienst NRW, Bodenkarte 1:50.000 (dl-de/by-2-0) · Stadt Essen, kf-Werte aus Bauanträgen", _fetch_baugrund),
     Section("radon", "Radon", "☢️", 20, "Bundesamt für Strahlenschutz — Radon in der Bodenluft (1 km-Prognose) und Radonpotenzial (dl-de/by-2-0)", _fetch_radon),
-    Section("gfnp", "Flächennutzungsplan (GFNP)", "🗺️", 30, "geo.essen.de — Gemeinsamer Flächennutzungsplan", _fetch_gfnp),
+    Section("gfnp", "Flächennutzungsplan (GFNP) & Regionalplan", "🗺️", 30,
+            "geo.essen.de — Gemeinsamer Flächennutzungsplan (Ruhrgebiet) · Regionalplan NRW (WMS, im PDF)", _fetch_gfnp, cache_version=2),
     Section("schutzgebiete", "Schutzgebiete", "🌳", 25,
             "LANUV LINFOS (NSG/LSG/FFH/VSG/Naturpark/Biotope) · Wasserschutzgebiete NRW", _fetch_schutzgebiete),
     Section("planning_essen", "Bauleitplanung Essen", "🏗️", 30, "geo.essen.de — Planen und Bauen · Satzungen · Sanierungsgebiete", _fetch_planning_essen,

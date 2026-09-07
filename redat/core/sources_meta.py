@@ -35,7 +35,7 @@ SOURCES: tuple[SourceMeta, ...] = (
     SourceMeta(("radon",), "Radon in der Bodenluft · Radonpotenzial", "Bundesamt für Strahlenschutz (BfS)", "dl-de/by-2-0",
                "https://www.imis.bfs.de/ogc/opendata/ows (WFS 2.0, GeoJSON)", "area", "live, Karten 2023 (statisch)"),
     SourceMeta(("gfnp",), "Gemeinsamer Flächennutzungsplan", "Stadt Essen (geo.essen.de)", "dl-de/by-2-0",
-               "ArcGIS REST identify", "parcel", "live"),
+               "ArcGIS REST identify (RVR-Städte) · WMS wms_nw_regionalplan (Bild im PDF)", "parcel", "live"),
     SourceMeta(("schutzgebiete",), "LINFOS Schutzgebiete + Wasserschutzgebiete", "LANUV NRW", "dl-de/by-2-0",
                "WFS 2.0 (EPSG:25832) + WSG WMS GetFeatureInfo", "area", "live"),
     SourceMeta(("planning_essen",), "Bauleitplanung Essen", "Stadt Essen (geo.essen.de)", "dl-de/by-2-0",
