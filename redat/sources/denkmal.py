@@ -27,13 +27,13 @@ from pyproj import Transformer
 from shapely.geometry import Point, shape
 from shapely.ops import transform as shp_transform
 
+from redat.core.nrw import RVR_BBOX_WGS84 as RVR_BBOX
 from redat.http import headers
 
 logger = logging.getLogger(__name__)
 
 RVR_WFS_URL = "https://geodaten.metropoleruhr.de/inspire/schutzgebiete/metropoleruhr"
 RVR_TYPES = ("ms:denkmal_polygon", "ms:denkmal_point_unclustered")
-RVR_BBOX = (6.35, 51.25, 7.85, 51.85)  # lon_min, lat_min, lon_max, lat_max — RVR Verbandsgebiet (coarse)
 RADIUS_M = 300
 _POINT_HIT_M = 25     # Bochum points are building centroids: this close means "this building"
 _NEIGHBOUR_M = 50     # Umgebungsschutz distance

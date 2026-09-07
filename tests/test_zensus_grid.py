@@ -1,5 +1,6 @@
 """Zensus 2022 100 m grid lookup — hermetic: `_load` is monkeypatched with a tiny
 in-memory grid built around one Essen point."""
+import numpy as np
 import pytest
 
 from redat.sources import zensus as zg
@@ -12,11 +13,13 @@ def row(**vals) -> list:
 
 
 def grid_around(lat, lon, cells: dict) -> dict:
-    """cells: {(dcol, drow): {field: value}} offsets in 100 m steps from the point's cell."""
+    """cells: {(dcol, drow): {field: value}} offsets in 100 m steps from the point's cell → the `_load()` shape."""
     cx, cy = zg._cell_centre(*zg._to_3035(lon, lat))
+    items = sorted((zg.cell_key(cx + dc * 100, cy + dr * 100), row(**v)) for (dc, dr), v in cells.items())
     return {
-        "source": "test", "year": 2022, "crs": "EPSG:3035", "cell_m": 100, "fields": list(zg.FIELDS),
-        "cells": {f"{cx + dc * 100}_{cy + dr * 100}": row(**v) for (dc, dr), v in cells.items()},
+        "year": 2022, "cell_m": 100, "fields": list(zg.FIELDS), "scales": zg.scales_for(zg.FIELDS),
+        "keys": np.array([k for k, _ in items], dtype=np.int64),
+        "values": zg.encode_values([r for _, r in items], zg.FIELDS),
     }
 
 
@@ -87,3 +90,25 @@ def test_shares_ignore_all_suppressed(monkeypatch):
     monkeypatch.setattr(zg, "_load", lambda: g)
     c = zg.lookup(LAT, LON)["cell"]
     assert c["gebaeude"] == 1 and c["baujahr"] == {} and c["heizung"] == {}
+
+
+def test_cell_key_is_monotone_and_unique():
+    assert zg.cell_key(4110150, 3150250) == 41101 * 1_000_000 + 31502
+    assert zg.cell_key(4110150, 3150250) < zg.cell_key(4110250, 3150250)
+    assert zg.cell_key(4110150, 3150250) < zg.cell_key(4110150, 3150350)
+
+
+def test_encode_values_scales_and_marks_missing():
+    vals = zg.encode_values([[None, 40.25, 7.5]], ["einwohner", "alter", "miete_qm"])
+    assert vals.dtype == np.int16 and vals.tolist() == [[zg.NODATA, 402, 750]]
+    assert zg.scales_for(["einwohner", "alter", "miete_qm"]) == [1, 10, 100]
+
+
+def test_real_grid_covers_essen_and_bonn():
+    zg._load.cache_clear()
+    try:
+        for lat, lon in ((51.4378, 7.0053), (50.7160, 7.0748)):
+            r = zg.lookup(lat, lon)
+            assert r and r["area"]["einwohner"] and r["area"]["einwohner"] > 0
+    finally:
+        zg._load.cache_clear()

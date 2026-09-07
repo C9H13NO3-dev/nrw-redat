@@ -31,6 +31,7 @@ from typing import Optional
 import httpx
 from PIL import Image
 
+from redat.core.nrw import NRW_BBOX_WGS84 as NRW_BBOX
 from redat.http import headers
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,6 @@ VELOCITY_CLASSES = [
 BUILDING_RGB = (0, 0, 0)
 # Outside the NRW layer extent the WMS answers transparent white, i.e. "dry" — guard by the
 # layer's EX_GeographicBoundingBox (GetCapabilities 2026-09-04) so Berlin is None, not "Gering".
-NRW_BBOX = (5.753, 50.242, 9.589, 52.619)  # west, south, east, north
 # A depth class counts towards `max` only if at least this share of the open (non-building)
 # area lies at that depth or deeper (~200 m² of a 100 m tile) — otherwise a single gully or
 # kerb pocket would set the rating. Calibrated on seven Essen/Bochum points 2026-09-04.

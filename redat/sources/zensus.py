@@ -1,28 +1,34 @@
 """Neighbourhood figures from the Zensus 2022 100 m grid (Destatis Gitterdaten,
 licence dl-de/by-2-0, https://www.zensus2022.de/ → Gitterdaten).
 
-`redat/data/zensus_2022_grid.json.gz` is a sparse window cropped to Essen/Bochum by
-`scripts/build_zensus_grid.py`: `cells` maps `"{x}_{y}"` (EPSG:3035 cell
-centre, metres) to a list of values in `FIELDS` order, `None` where Destatis
-suppressed the value (`–`) for confidentiality. Percentages are stored as
-percent (0–100), building categories as counts.
+`redat/data/zensus_2022_nrw.npz` is a statewide sparse grid built by
+`scripts/build_zensus_grid.py`: sorted int64 `keys` (`zensus.cell_key`, EPSG:3035
+cell centre) and an int16 `values` matrix in `FIELDS` order, scaled per `SCALES`
+and `NODATA` (-32768) where Destatis suppressed the value (`–`) for
+confidentiality. Percentages are stored as percent (0–100) before scaling,
+building categories as counts.
 
 `lookup()` returns the 100 m cell **and** a 5×5-cell (500 m × 500 m) aggregate,
 because single cells are often suppressed or hold a handful of people.
 """
 from __future__ import annotations
 
-import gzip
 import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 from pyproj import Transformer
 
-GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "zensus_2022_grid.json.gz"
+GRID_PATH = Path(__file__).resolve().parent.parent / "data" / "zensus_2022_nrw.npz"
 CELL_M = 100
 _WINDOW = 2  # cells on each side → 5×5
+NODATA = -32768                                   # int16 sentinel for a suppressed / absent value
+# int16 storage keeps the decimals the source has: percentages and ages ×10, Haushaltsgröße and Miete ×100.
+SCALES = {"alter": 10, "u18": 10, "ab65": 10, "hh_groesse": 100, "wohnfl_je_bew": 10,
+          "eigentuemer": 10, "leerstand": 10, "miete_qm": 100}
+_KEY_STRIDE = 1_000_000                           # x-cell index × stride + y-cell index (y < 40 000 cells in EPSG:3035)
 
 SCALARS = ("einwohner", "alter", "u18", "ab65", "hh_groesse", "wohnfl_je_bew", "eigentuemer", "leerstand", "miete_qm")
 POP_WEIGHTED = ("alter", "u18", "ab65", "hh_groesse", "wohnfl_je_bew")   # mean weighted by einwohner
@@ -54,13 +60,52 @@ def _cell_centre(x: float, y: float) -> tuple[int, int]:
     return int(x // CELL_M) * CELL_M + CELL_M // 2, int(y // CELL_M) * CELL_M + CELL_M // 2
 
 
+def cell_key(cx: int, cy: int) -> int:
+    """Sort key of the 100 m cell whose centre is (cx, cy) in EPSG:3035 metres."""
+    return (int(cx) // CELL_M) * _KEY_STRIDE + int(cy) // CELL_M
+
+
+def scales_for(fields) -> list[int]:
+    return [SCALES.get(f, 1) for f in fields]
+
+
+def encode_values(rows: list[list], fields) -> np.ndarray:
+    """Rows of raw values (None = missing) → int16 matrix in `fields` order, scaled per SCALES."""
+    scales = scales_for(fields)
+    out = np.full((len(rows), len(fields)), NODATA, dtype=np.int16)
+    for i, row in enumerate(rows):
+        for j, (v, s) in enumerate(zip(row, scales)):
+            if v is not None:
+                out[i, j] = int(round(float(v) * s))
+    return out
+
+
 @lru_cache(maxsize=1)
 def _load() -> Optional[dict]:
     try:
-        with gzip.open(GRID_PATH, "rt", encoding="utf-8") as fh:
-            return json.load(fh)
-    except (OSError, ValueError):
+        with np.load(GRID_PATH, allow_pickle=False) as z:
+            meta = json.loads(str(z["meta"]))
+            return {"year": meta.get("year"), "cell_m": int(meta.get("cell_m", CELL_M)),
+                    "fields": [str(f) for f in z["fields"]], "scales": [int(s) for s in z["scales"]],
+                    "keys": z["keys"], "values": z["values"]}
+    except (OSError, ValueError, KeyError):
         return None
+
+
+def _decode(grid: dict, i: int) -> dict:
+    out = {}
+    for f, s, v in zip(grid["fields"], grid["scales"], grid["values"][i]):
+        v = int(v)
+        out[f] = None if v == NODATA else (v if s == 1 else round(v / s, 2))
+    return out
+
+
+def _row(grid: dict, key: int) -> Optional[dict]:
+    keys = grid["keys"]
+    i = int(np.searchsorted(keys, key))
+    if i >= len(keys) or int(keys[i]) != key:
+        return None
+    return _decode(grid, i)
 
 
 def _shares(cells: list[dict]) -> dict:
@@ -95,13 +140,11 @@ def lookup(lat: float, lon: float) -> Optional[dict]:
     grid = _load()
     if not grid:
         return None
-    fields = grid["fields"]
-    cx, cy = _cell_centre(*_to_3035(lon, lat))
     cell_m = grid.get("cell_m", CELL_M)
+    cx, cy = _cell_centre(*_to_3035(lon, lat))
 
     def get(x: int, y: int) -> Optional[dict]:
-        vals = grid["cells"].get(f"{x}_{y}")
-        return dict(zip(fields, vals)) if vals else None
+        return _row(grid, cell_key(x, y))
 
     centre = get(cx, cy)
     window = [c for dx in range(-_WINDOW, _WINDOW + 1) for dy in range(-_WINDOW, _WINDOW + 1)

@@ -1,4 +1,4 @@
-"""Crop the Zensus 2022 100 m grid CSVs to the Essen/Bochum window.
+"""Build the statewide Zensus 2022 100 m grid from the Destatis CSVs.
 
 Input: the Destatis "Gitterdaten" zips (licence dl-de/by-2-0), downloaded from
 https://www.destatis.de/static/DE/zensus/gitterdaten/{name}.zip — one zip per
@@ -8,17 +8,18 @@ centres in `x_mp_100m`/`y_mp_100m`, decimal comma, `–` for a suppressed value,
 kept). Most files are UTF-8, a few (Energieträger, Heizungsart) are cp1252 — we
 only ever need ASCII digits, so anything non-numeric becomes None either way.
 
-Output: redat/data/zensus_2022_grid.json.gz — a sparse dict `cells["x_y"] ->
-[values in FIELDS order]` that `redat/sources/zensus.py` looks up at runtime.
+Output: redat/data/zensus_2022_nrw.npz — `keys` (int64, sorted, `zensus.cell_key`),
+`values` (int16 `[n, len(FIELDS)]`, scaled per `zensus.SCALES`, −32768 = missing),
+`fields`, `scales`, `meta` (JSON: year, cell_m, bbox_wgs84). Statewide: 796,280
+cells, 16.9 MB.
 
 Usage:
-    .venv/bin/python scripts/build_zensus_grid.py --src /path/to/dir/with/zips
+    .venv/bin/python scripts/build_zensus_grid.py --src ~/Downloads/nrw-redat-sources/zensus
 """
 from __future__ import annotations
 
 import argparse
 import csv
-import gzip
 import io
 import json
 import sys
@@ -26,16 +27,20 @@ import zipfile
 from pathlib import Path
 from typing import IO, Optional
 
-from pyproj import Transformer
+import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from redat.sources.zensus import FIELDS  # noqa: E402
+from redat.core.nrw import NRW_BBOX_WGS84, bbox_3035 as _bbox_3035  # noqa: E402
+from redat.sources.zensus import FIELDS, cell_key, encode_values, scales_for  # noqa: E402
 
-OUT = ROOT / "redat" / "data" / "zensus_2022_grid.json.gz"
+OUT = ROOT / "redat" / "data" / "zensus_2022_nrw.npz"
+BBOX_WGS84 = NRW_BBOX_WGS84
 
-# Essen + Bochum with a margin (WGS84: lon_min, lat_min, lon_max, lat_max).
-BBOX_WGS84 = (6.85, 51.33, 7.40, 51.56)
+
+def bbox_3035() -> tuple[float, float, float, float]:
+    return _bbox_3035(BBOX_WGS84)
+
 
 # (zip file name, {csv column: FIELDS key})
 SOURCES = [
@@ -77,14 +82,6 @@ def parse_value(s: str) -> Optional[float | int]:
     return int(f) if f.is_integer() and "." not in s else f
 
 
-def bbox_3035() -> tuple[float, float, float, float]:
-    tr = Transformer.from_crs("EPSG:4326", "EPSG:3035", always_xy=True)
-    lon_min, lat_min, lon_max, lat_max = BBOX_WGS84
-    xs, ys = zip(*(tr.transform(lon, lat) for lon, lat in
-                   ((lon_min, lat_min), (lon_min, lat_max), (lon_max, lat_min), (lon_max, lat_max))))
-    return min(xs), min(ys), max(xs), max(ys)
-
-
 def ingest(fh: IO[str], colmap: dict[str, str], bbox: tuple[float, float, float, float], cells: dict) -> int:
     """Stream one CSV, merging the mapped columns of every in-bbox row into `cells`. Returns rows kept."""
     x_min, y_min, x_max, y_max = bbox
@@ -114,6 +111,19 @@ def to_rows(cells: dict, fields: list[str]) -> dict[str, list]:
     return out
 
 
+def to_arrays(rows: dict[str, list], fields: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """`to_rows()` output → (sorted int64 keys, int16 value matrix) in the same order."""
+    items = sorted((cell_key(*(int(v) for v in key.split("_"))), row) for key, row in rows.items())
+    keys = np.array([k for k, _ in items], dtype=np.int64)
+    values = encode_values([r for _, r in items], fields)
+    for j, f in enumerate(fields):
+        col = values[:, j]
+        mx = int(col[col != -32768].max()) if (col != -32768).any() else 0
+        if mx >= 32767:
+            raise SystemExit(f"{f}: max scaled value {mx} does not fit int16")
+    return keys, values
+
+
 def build(src: Path) -> dict:
     bbox = bbox_3035()
     cells: dict = {}
@@ -123,24 +133,22 @@ def build(src: Path) -> dict:
             member = next(n for n in zf.namelist() if n.endswith("100m-Gitter.csv"))
             with zf.open(member) as raw:
                 n = ingest(io.TextIOWrapper(raw, encoding="utf-8", errors="replace", newline=""), colmap, bbox, cells)
-        print(f"{zip_name}: {n} cells in window", file=sys.stderr)
-    rows = to_rows(cells, FIELDS)
-    return {
-        "source": "Destatis, Zensus 2022 — Gitterdaten 100 m (dl-de/by-2-0)",
-        "year": 2022, "crs": "EPSG:3035", "cell_m": 100,
-        "bbox_wgs84": list(BBOX_WGS84), "fields": FIELDS, "cells": rows,
-    }
+        print(f"{zip_name}: {n} cells in NRW", file=sys.stderr)
+    keys, values = to_arrays(to_rows(cells, FIELDS), FIELDS)
+    return {"keys": keys, "values": values, "fields": np.array(FIELDS), "scales": np.array(scales_for(FIELDS), dtype=np.int16),
+            "meta": np.array(json.dumps({"source": "Destatis, Zensus 2022 — Gitterdaten 100 m (dl-de/by-2-0)", "year": 2022,
+                                          "crs": "EPSG:3035", "cell_m": 100, "bbox_wgs84": list(BBOX_WGS84)}))}
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--src", type=Path, required=True, help="directory holding the Destatis zips")
     ap.add_argument("--out", type=Path, default=OUT)
-    args = ap.parse_args()
-    grid = build(args.src)
-    with gzip.open(args.out, "wt", encoding="utf-8") as fh:
-        json.dump(grid, fh, ensure_ascii=False, separators=(",", ":"))
-    print(f"wrote {args.out} — {len(grid['cells'])} cells, {args.out.stat().st_size / 1e6:.1f} MB", file=sys.stderr)
+    a = ap.parse_args()
+    data = build(a.src)
+    a.out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(a.out, **data)
+    print(f"wrote {a.out}: {len(data['keys'])} cells, {a.out.stat().st_size / 1e6:.1f} MB")
 
 
 if __name__ == "__main__":

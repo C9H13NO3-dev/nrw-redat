@@ -55,3 +55,15 @@ def test_sources_cover_every_field():
     from redat.sources import zensus as zg
     mapped = {f for _, cols in mod.SOURCES for f in cols.values()}
     assert mapped == set(zg.FIELDS)
+
+
+def test_to_arrays_sorts_keys_and_encodes():
+    rows = {"4110250_3150250": [12, 40.0, None], "4110150_3150250": [3, None, 7.5]}
+    keys, values = mod.to_arrays(rows, ["einwohner", "alter", "miete_qm"])
+    assert keys.tolist() == [41101 * 1_000_000 + 31502, 41102 * 1_000_000 + 31502]
+    assert values.tolist() == [[3, -32768, 750], [12, 400, -32768]]
+
+
+def test_build_bbox_is_statewide():
+    xmin, ymin, xmax, ymax = mod.bbox_3035()
+    assert xmax - xmin > 250_000 and ymax - ymin > 250_000   # NRW, not the 40 km Essen/Bochum window

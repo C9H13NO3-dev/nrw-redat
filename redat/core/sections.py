@@ -293,7 +293,7 @@ def _fetch_zensus(ctx: Ctx) -> dict:
 
     z = lookup(ctx.lat, ctx.lon)
     if z is None:
-        raise Empty("Keine Zensus-Gitterzelle mit Daten im Umkreis von 250 m (unbewohnt oder außerhalb Essen/Bochum)")
+        raise Empty("Keine Zensus-Gitterzelle mit Daten im Umkreis von 250 m (unbewohnt oder außerhalb Nordrhein-Westfalens)")
     return z
 
 
@@ -491,7 +491,7 @@ SECTIONS: dict[str, Section] = {s.key: s for s in [
             "Statistische Ämter des Bundes und der Länder, Unfallatlas 2020–2025 (dl-de/by-2-0) — nur Unfälle mit Personenschaden", _fetch_unfaelle),
     Section("oepnv", "ÖPNV-Erreichbarkeit", "🚋", 45, "VRR EFA-Fahrplanauskunft (efa.vrr.de) — Fahrplan-Stichtag, kein Echtzeit", _fetch_oepnv,
             cache_ttl_s=7 * 86400),   # trips are normalised to "next Tuesday 08:00"; only timetable changes matter
-    Section("zensus", "Nachbarschaft (Zensus 2022)", "🏘️", 5, "Destatis, Zensus 2022 — 100 m-Gitterdaten (dl-de/by-2-0)", _fetch_zensus),
+    Section("zensus", "Nachbarschaft (Zensus 2022)", "🏘️", 5, "Destatis, Zensus 2022 — 100 m-Gitterdaten NRW (dl-de/by-2-0)", _fetch_zensus, cache_version=2),
     Section("energie", "Energie (Solar · Erdwärme · Wärmeplanung)", "☀️", 30,
             "LANUK Solarkataster NRW · GD NRW Geothermie · Kommunale Wärmeplanung Essen/Bochum", _fetch_energie),
     Section("ladesaeulen", "E-Ladepunkte", "🔌", 10,
