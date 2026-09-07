@@ -4,7 +4,7 @@
 
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
 (`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`). LAN-open by default (`REDAT_API_KEY`
-unset). 27 cards, 654 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
+unset). 28 cards, 704 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
 and refuses to produce an image on a red run.
 
 ## Deploy runbook
@@ -45,9 +45,9 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   the script's `YEARS`, re-run the script, `scripts/cache_admin.py purge --section boris`.
 - **`.env`** — holds `GEOAPIFY_API_KEY` (required) and the optional `REDAT_API_KEY`. Git-ignored; never
   commit it.
-- `redat/data/{eea_aq_grid_2023.json, zensus_2022_grid.json.gz, schulen_nrw.json.gz,
-  unfallatlas_2020_2025.json.gz, bergbauberechtigungen.geojson.gz, ladesaeulen.json.gz,
-  egms_vertical_velocity.json.gz, certs/lencr_ye_chain.pem}` are, by contrast, committed package files and
+- `redat/data/{eea_aq_grid_2023_nrw.json.gz, zensus_2022_nrw.npz, schulen_nrw.json.gz,
+  unfallatlas_2020_2025_nrw.npz, bergbauberechtigungen_nrw.geojson.gz, ladesaeulen_nrw.json.gz,
+  egms_vertical_velocity_nrw.npz, certs/lencr_ye_chain.pem}` are, by contrast, committed package files and
   ship inside the image — do not confuse these with the `data/` bind mount above; README "Static grids in
   the repo" lists build script and source per file. `.dockerignore`'s `data` pattern is root-anchored and only excludes the top-level
   `./data` directory.
@@ -211,6 +211,63 @@ overwritten by `docker compose build`, so there is no separate image rollback �
     **Hebesätze** (current values need a registered Regionaldatenbank account for table 71231-03-01-5 —
     the open Destatis workbook stops at the 2022 edition, before the 2025 Grundsteuer reform; unblocks
     once someone registers and pulls the table).
+
+- **Tier 3 — NRW-weit** (2026-09-07, plan `.superpowers/sdd/2026-09-07-nrw-wide/`, commits `f55cd98`,
+  `0412b4d`, `2eecaa9`, `b8e8413`, `0bb3ece`, `1804d95`, `bc07f7f`, `bf3b49f`, `bca96ab`) — took the
+  service statewide instead of Essen/Bochum-only. New `redat/core/nrw.py` holds the shared NRW/RVR/Essen/
+  Bochum bounding boxes every statewide build script, source module and gate now uses instead of a
+  hand-rolled window.
+  - **Task 1** — Zensus 2022 grid rebuilt statewide as `redat/data/zensus_2022_nrw.npz` (796,280 cells,
+    16.9 MB on disk, ~70 MB resident: sorted int64 cell keys + an int16 value matrix, replacing the old
+    gzipped-JSON crop).
+  - **Task 2** — Unfallatlas rebuilt statewide as `redat/data/unfallatlas_2020_2025_nrw.npz` (418,359
+    rows, 5.1 MB, ~17 MB resident, latitude-sorted for a binary-search window lookup).
+  - **Task 3** — new Copernicus EGMS vertical-ground-velocity raster, `redat/data/
+    egms_vertical_velocity_nrw.npz`, mosaicked from the nine EGMS L3 Ortho tiles covering NRW (each
+    downloaded via `~/.config/nrw-redat/egms_download.py`, the CLMS insar-api client kept outside the
+    repo) — 2728 × 2750 cells, 1,717,178 measured, 3.3 MB, ~15 MB resident.
+  - **Task 4** — three more statewide grids: `redat/data/ladesaeulen_nrw.json.gz` (28,659 chargers, Stand
+    2026-09-01, 450 KB), `redat/data/bergbauberechtigungen_nrw.geojson.gz` (5,361 fields, 1.4 MB, looked
+    up via an STRtree instead of a linear scan) and `redat/data/eea_aq_grid_2023_nrw.json.gz` (276 × 274
+    cells, 210 KB).
+  - **Task 5** — `redat/sources/denkmal_nrw.py`: the statewide INSPIRE Denkmal WFS
+    (`wfs_nw_inspire-denkmal`) backs the `denkmal` card outside the RVR bbox. **Verified service fact:**
+    the WFS advertises EPSG:4258 in its capabilities but only accepts a working `BBOX` filter in
+    EPSG:25832 (`BBOX=xmin,ymin,xmax,ymax,urn:ogc:def:crs:EPSG::25832`) — a WGS84 bbox silently matches
+    nothing — and only answers GML 3.2 (`outputFormat=json` is rejected). `denkmal`'s `data` gained
+    `source` (`"rvr"` or `"nrw"`) and `hinweis` (delivery is voluntary per municipality; Bonn is complete,
+    Essen ships surfaces only, Köln nothing).
+  - **Task 6** — new card `planning_nrw` ("Bauleitplanung NRW", parcel tier) from the statewide INSPIRE
+    "geplante Bodennutzung" OGC API Features service. **Verified service fact:** the endpoint is
+    `https://ogc-api.nrw.de/inspire-lu-bplan/v1/collections/spatialplan/items` — the un-versioned path
+    307-redirects, so the client needs `follow_redirects=True`, and delivery is voluntary per
+    municipality (Essen 21 plans in a 1 km bbox, Bochum 52, Bonn only its FNP — verified 2026-09-07), so
+    an empty answer never means "kein Bebauungsplan". A follow-up commit (`bc07f7f`) guards null/
+    unrecognized geometry and coerces non-string properties, found while exercising real data statewide.
+  - **Task 7** — `redat/report/regionalplan_map.py`: a Regionalplan WMS panel on the GFNP page of the
+    PDF. **Verified service fact:** `wms_nw_regionalplan`'s one layer has no GetFeatureInfo and its
+    legend is a 959 × 1918 px poster with ~120 entries, so the figure is image-only (GetMap) with the
+    legend linked, not decoded into structured data. `gfnp`'s `data` gained `rvr` (bool) and `hinweis`,
+    and the card skips its Essen ArcGIS GFNP query outside the RVR bbox; the card title is now
+    "Flächennutzungsplan (GFNP) & Regionalplan".
+  - **Task 8** — `planning_essen`/`planning_bochum` now raise `Empty` ("nur für Adressen in Essen/Bochum
+    verfügbar") outside their city's bbox instead of silently running a query that could never match; all
+    four planning source modules import the shared city boxes from `nrw.py`.
+  - **`cache_version` bumps:** `bergbau` → 4, `zensus` → 2, `unfaelle` → 2, `ladesaeulen` → 2,
+    `air_quality` → 2, `denkmal` → 2, `gfnp` → 2; `planning_nrw` is new at the default 1. Cards: 28
+    (was 27). Suite: 704 tests (was 654).
+  - **Storage change:** the three large grids (Zensus, Unfallatlas, EGMS) moved from gzipped JSON to
+    NumPy `.npz` — sorted/searchable arrays instead of a Python dict walk, needed once the crop went from
+    an Essen/Bochum window to the full state. The four smaller grids stayed gzipped JSON/GeoJSON; see
+    README "Static grids in the repo" for the exact file/build-script/refresh table.
+  - **Still open (unchanged by this tier):** **Altlasten Essen/Bochum** — e-mails to the two cities'
+    Untere Bodenschutzbehörde are drafted for the site owner to send; unblocks once a reply with usable
+    geodata/API access arrives. **Hebesätze** — current values need a registered Regionaldatenbank
+    account for table 71231-03-01-5; the open Destatis workbook stops at the 2022 edition, before the
+    2025 Grundsteuer reform. **Köln's own Denkmal WFS is not integrated** — the statewide INSPIRE Denkmal
+    WFS (Task 5) returns nothing for Köln (the city doesn't deliver into it), and Köln publishes its own
+    Denkmalliste separately; wiring that up as a fourth source (after RVR, statewide INSPIRE, and the
+    existing city sources) is future work, not done here.
 
 ## Open items
 

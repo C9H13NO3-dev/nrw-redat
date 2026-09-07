@@ -11,7 +11,7 @@ layout is ';'-separated with decimal comma and a BOM; columns used: UJAHR, UKATE
 
 Output: redat/data/unfallatlas_2020_2025_nrw.npz — `lat`/`lon` float64 sorted by latitude, `attrs` int16
 `[n, 9]` in FIELDS[2:] order, `fields`, `meta` (JSON: years, bbox). Statewide 2020–2025: 418,359 rows,
-2.6 MB.
+5.1 MB.
 
 Usage:
     .venv/bin/python scripts/build_unfallatlas.py --src ~/Downloads/nrw-redat-sources/unfall

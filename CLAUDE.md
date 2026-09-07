@@ -9,7 +9,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/python -m pytest -q                     # 654 tests, hermetic, ~8s
+.venv/bin/python -m pytest -q                     # 704 tests, hermetic, ~10s
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
 docker compose up -d --build                      # build gate: the test stage runs `pytest -q` and aborts the image on a red suite
 npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/redat.css --minify
@@ -20,7 +20,7 @@ npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/re
 Package `redat`. Config precedence (`redat/settings.py`): env > `config/settings.yaml` > code defaults;
 `Destination`/`get_settings()` live here. `redat/sources/` wraps each external geodata source (BORIS,
 flood, Lärm, Zensus, Denkmal, ÖPNV, …), one module per source. `redat/core/sections.py` declares the
-27-card `SECTIONS` registry (`Section(key, title, icon, tier, timeout_s, source, fetch)`); `core/envelope.py`'s
+28-card `SECTIONS` registry (`Section(key, title, icon, tier, timeout_s, source, fetch)`); `core/envelope.py`'s
 `run_section()` runs one card under its timeout and returns the fixed `{key, tier, status, data, message,
 source, took_ms}` envelope, gating parcel-tier cards unless precision is house-number/coordinates/`force`;
 `core/analyze.py` orchestrates geocode + all cards concurrently and the payload shapes shared by the API
@@ -43,7 +43,8 @@ detail has drifted).
 - All UI copy (website + PDF report) is German.
 - Website partials (`redat/templates/analysis/_*.html`) keep the store name `app` — an intentional carry-over from the house-hunter partials' Alpine store contract; do not rename it.
 - `data_dir()` (in each `sources/*.py` module) is always a function, never a module-level constant — it must re-read `REDAT_DATA_DIR` per call so tests can monkeypatch it.
-- New static data lives in `redat/data/` and is committed (like `zensus_2022_grid.json.gz`); `schulen_nrw.json.gz` and `unfallatlas_2020_2025.json.gz` are the two Tier-1 additions and `bergbauberechtigungen.geojson.gz`, `ladesaeulen.json.gz`, `egms_vertical_velocity.json.gz` are the three Tier-2 additions (five committed grids added on top of the original `zensus_2022_grid.json.gz`/`eea_aq_grid_2023.json`) — see README "Static grids in the repo" for the build script and refresh cadence per file.
+- New static data lives in `redat/data/` and is committed: seven statewide grids in total (three of them NumPy `.npz`) — `zensus_2022_nrw.npz`, `eea_aq_grid_2023_nrw.json.gz`, `schulen_nrw.json.gz`, `unfallatlas_2020_2025_nrw.npz`, `bergbauberechtigungen_nrw.geojson.gz`, `ladesaeulen_nrw.json.gz`, `egms_vertical_velocity_nrw.npz` — see README "Static grids in the repo" for the build script and refresh cadence per file.
 - Cache contract (README "Cache semantics"): `ok`/`empty` envelopes only, key `(key, lat₄, lon₄, plot, force, cache_version)`, TTL per card (`cache_ttls` yaml › `Section.cache_ttl_s` › `cache_ttl_s` 30 d), `error`/`gated` never cached, `destinations` suppresses caching for `commute`/`oepnv` only, `?fresh=1` is the cache bypass (`force` is the parcel-gate override, not a cache flag). Bump `Section.cache_version` when a card's `data` shape or meaning changes. An `ok` envelope whose `data` carries a truthy top-level `*_error` value is never cached either, so a permanent gate/hint must not use the `_error` suffix (see `bodenbewegung_hinweis`, not `bodenbewegung_error`).
 - WFS/WMS quirks that cost a day each: the ALKIS WFS proxy accepts only `TYPENAMES` + `BBOX` in EPSG:25832 and returns GML (no JSON/CQL/SRSNAME); LINFOS wants an EPSG:25832 bbox; the BfS WFS wants `bbox` in lon,lat; wms.nrw.de GetFeatureInfo uses lat,lon (WMS 1.3.0) — reuse `redat/sources/esri_wms.py`.
 - WCS `wcs_nw_dgm` returns float32 GeoTIFF (row 0 = north); the RVR umon WMS answers GetFeatureInfo without values — use GetMap images.
+- Statewide grids: `redat/core/nrw.py` holds the NRW/RVR/Essen/Bochum boxes — never hard-code a window in a build script; the INSPIRE Denkmal WFS only filters with an EPSG:25832 BBOX; `ogc-api.nrw.de` needs the `/v1/` path and `follow_redirects`.

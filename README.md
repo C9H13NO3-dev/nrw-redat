@@ -2,13 +2,13 @@
 
 **Real Estate Data Aggregation Tool** — a standalone Standortanalyse ("location analysis") service for
 Essen/Bochum, built from public NRW/Bund geodata (Bodenrichtwert, Hochwasser, Lärm, Denkmalschutz, ÖPNV,
-Luftqualität, Bundestagswahl and more — 27 cards in total). It runs the same analysis engine that used
+Luftqualität, Bundestagswahl and more — 28 cards in total). It runs the same analysis engine that used
 to live inside the House Hunter project, extracted into its own FastAPI service so it can be used for
 any address, not just scraped listings. Given an address it geocodes it, runs every applicable data
 source concurrently, and renders the result as a website page, a JSON payload, or a formatted A4 PDF —
 each run gets a permanent, shareable permalink.
 
-Card overview (20 original + six Tier-1 additions + one Tier-2 addition):
+Card overview (20 original + six Tier-1 additions + one Tier-2 addition + one Tier-3 addition):
 
 | Card | What it shows |
 |---|---|
@@ -19,6 +19,7 @@ Card overview (20 original + six Tier-1 additions + one Tier-2 addition):
 | Schulen & Sozialindex | Nearest Grundschulen with the Schulministerium Sozialindex, plus Bochum Grundschulbezirke. |
 | Verkehrsunfälle (Unfallatlas) | Per-year accident counts from the Statistische Ämter Unfallatlas grid. |
 | E-Ladepunkte (Ladesäulen) | Public EV chargers within 1 km from the BNetzA Ladesäulenregister (count, nearest 5, rating). |
+| Bauleitplanung NRW | Statewide INSPIRE Bebauungs-/Flächennutzungs-/Regionalpläne (OGC API Features, ogc-api.nrw.de) at the point — voluntary municipal delivery, so an empty answer is not conclusive. |
 
 The `flood` card now also covers Überschwemmungsgebiete (§78 WHG); `planning_essen` covers Satzungen/
 Sanierung and `planning_bochum` covers Stadterneuerung, in addition to their existing content.
@@ -30,6 +31,16 @@ Fluglärm DUS/EMH and Ruhige Gebiete from the Essen and Bochum city layers. Two 
 "Der Ort im Wandel" (four historic map panels 1840s/1900s/1950s/today on the Flurstück page) and "Grün und
 Hitze" (RVR canopy-cover and surface-temperature panels on the Nachbarschaft/Zensus page).
 
+Tier 3 took the service statewide: `zensus`, `unfaelle`, `ladesaeulen`, `bergbau`'s Bergbauberechtigungen
+and EGMS Bodenbewegung, and `air_quality` are now backed by NRW-wide grids instead of an Essen/Bochum
+crop; `denkmal` falls back to the statewide INSPIRE Denkmal WFS (IT.NRW) outside the RVR area (the card's
+`data.source` is `"rvr"` or `"nrw"`); the renamed "Flächennutzungsplan (GFNP) & Regionalplan" card
+(`gfnp`) adds a Regionalplan WMS panel to the PDF everywhere and skips its RVR-only GFNP query outside
+the Ruhr (`data.rvr: false`); `planning_essen`/`planning_bochum` now say so ("nur für Adressen in
+Essen/Bochum verfügbar") outside their city instead of silently running; and the new `planning_nrw` card
+("Bauleitplanung NRW") covers the rest of the state from the same INSPIRE OGC API. `redat/core/nrw.py`
+holds the shared NRW/RVR/Essen/Bochum bounding boxes every statewide source and gate uses.
+
 Surfaces: a website (`/`, permalinks at `/a/{id}`, a source index at `/quellen`), a versioned JSON+PDF
 API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring/container health.
 
@@ -39,7 +50,7 @@ API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring
 git clone <this repo> nrw-redat && cd nrw-redat
 cp .env.example .env            # fill in GEOAPIFY_API_KEY (see below)
 docker compose up -d --build    # builds on :8200 — the build stage runs pytest; a red suite aborts the build
-curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":27,"cache":{"entries":…,"bytes":…,"expired":…}}
+curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":28,"cache":{"entries":…,"bytes":…,"expired":…}}
 ```
 
 `.env` (git-ignored, copy from `.env.example`):
@@ -90,25 +101,28 @@ bind mount above.
 
 ### Static grids in the repo (`redat/data/`)
 
-Small, gzipped JSON extracts that ship with the code (no download at deploy time):
+Gzipped JSON and NumPy `.npz` extracts that ship with the code (no download at deploy time):
 
 | File | Built by | Source | Refresh |
 |---|---|---|---|
-| `zensus_2022_grid.json.gz` | `scripts/build_zensus_grid.py` | Destatis Zensus 2022 Gitterdaten | one-off |
-| `eea_aq_grid_2023.json` | `scripts/build_eea_aq_grid.py` | EEA 1 km air-quality maps | yearly |
+| `zensus_2022_nrw.npz` | `scripts/build_zensus_grid.py --src …` | Destatis Zensus 2022 Gitterdaten | one-off |
+| `eea_aq_grid_2023_nrw.json.gz` | `scripts/build_eea_aq_grid.py --src …` | EEA 1 km air-quality maps | yearly |
 | `schulen_nrw.json.gz` | `scripts/build_schulen.py --shape … --sozialindex …` | opengeodata Schulstandorte NRW + Schulministerium Schulliste (Sozialindex) | each Schuljahr (autumn) |
-| `unfallatlas_2020_2025.json.gz` | `scripts/build_unfallatlas.py --src …` | Unfallatlas CSV zips (opengeodata.nrw.de) | yearly (July), extend `YEARS` and rename the file |
-| `bergbauberechtigungen.geojson.gz` | `scripts/build_bergbauberechtigungen.py --shape …` | Bergbauberechtigungen NRW shapefile, Bezirksregierung Arnsberg (opengeodata.nrw.de) | a few times a year |
-| `ladesaeulen.json.gz` | `scripts/build_ladesaeulen.py --csv …` | BNetzA Ladesäulenregister CSV (CC BY 4.0) | monthly |
-| `egms_vertical_velocity.json.gz` | `scripts/build_egms.py --tif …` | Copernicus EGMS L3 Ortho vertical velocity tile E41N31 (EU-Login / insar-api) | yearly EGMS release |
+| `unfallatlas_2020_2025_nrw.npz` | `scripts/build_unfallatlas.py --src …` | Unfallatlas CSV zips (opengeodata.nrw.de) | yearly (July), extend `YEARS` |
+| `bergbauberechtigungen_nrw.geojson.gz` | `scripts/build_bergbauberechtigungen.py --shape …` | Bergbauberechtigungen NRW shapefile, Bezirksregierung Arnsberg (opengeodata.nrw.de) | a few times a year |
+| `ladesaeulen_nrw.json.gz` | `scripts/build_ladesaeulen.py --csv …` | BNetzA Ladesäulenregister CSV (CC BY 4.0) | monthly |
+| `egms_vertical_velocity_nrw.npz` | `scripts/build_egms.py --src …` (nine tiles, each downloaded via `~/.config/nrw-redat/egms_download.py`, mosaicked) | Copernicus EGMS L3 Ortho vertical velocity (EU-Login / insar-api) | yearly EGMS release |
 
 The build scripts' module docstrings carry the download URLs and the exact commands.
+
+Coverage: all grids are statewide (NRW bbox `redat/core/nrw.py`); the three large ones are NumPy arrays
+(Zensus 70 MB resident, EGMS 15 MB, Unfallatlas 17 MB).
 
 ## API overview (`/api/v1`)
 
 | Method & path | What it does |
 |---|---|
-| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 27 entries. |
+| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 28 entries. |
 | `GET /api/v1/geocode?address=` | Geocode an address → `{address, formatted_address, latitude, longitude, precision}`, 422 if unresolvable. |
 | `GET /api/v1/autocomplete?text=&limit=` | Address autocomplete suggestions. |
 | `GET /api/v1/section/{key}?lat&lon&precision&plot_size_m2&force&destinations` | Run one card in isolation; 404 for an unknown key. |
