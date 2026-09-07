@@ -471,8 +471,11 @@ def _fetch_planning_bochum(ctx: Ctx) -> dict:
 
 
 def _fetch_planning_nrw(ctx: Ctx) -> dict:
+    from redat.core.nrw import in_bbox
     from redat.sources.planning_nrw import HINWEIS, get_planning_nrw
 
+    if not in_bbox(ctx.lat, ctx.lon):
+        raise Empty("Keine Bauleitplan-Daten für diesen Ort (außerhalb Nordrhein-Westfalens)")
     p = get_planning_nrw(ctx.lat, ctx.lon)
     if not p.get("ok"):
         raise RuntimeError(p.get("error") or "Planungsabfrage NRW fehlgeschlagen")

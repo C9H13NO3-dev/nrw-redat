@@ -40,12 +40,16 @@ def _load() -> Optional[dict]:
 def _geoms() -> Optional[list[tuple]]:
     """Parsed (shapely geometry, properties) pairs, built once from `_load()`'s dict.
 
-    Cached separately from `_load()` so the ~630 polygons are only ever shapely-parsed once per
-    process, not on every `lookup()` call. Tests that monkeypatch `_load` must also call
+    Cached separately from `_load()` so the 5,361 polygons statewide are only ever shapely-parsed
+    once per process, not on every `lookup()` call. Tests that monkeypatch `_load` must also call
     `_geoms.cache_clear()` so this cache is rebuilt from the new grid.
 
     None only when the grid file itself is missing/unparsable (`_load()` returns None) — a present
     grid with zero features returns `[]`, which `lookup()` must tell apart from "no grid".
+
+    The raw GeoJSON dict `_load()` cached is ~5x the size of the parsed geometries and is never
+    read again once this cache is built, so we release it here (`_load.cache_clear()`) — guarded
+    by `hasattr` because tests monkeypatch `_load` with a plain lambda that has no `cache_clear`.
     """
     grid = _load()
     if grid is None:
@@ -57,6 +61,8 @@ def _geoms() -> Optional[list[tuple]]:
         except (KeyError, TypeError, ValueError):
             continue
         out.append((geom, f.get("properties") or {}))
+    if hasattr(_load, "cache_clear"):
+        _load.cache_clear()
     return out
 
 

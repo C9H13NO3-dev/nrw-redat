@@ -31,7 +31,8 @@ def _get_png(url: str, params: dict) -> bytes:
     resp = httpx.get(url, params=params, timeout=TIMEOUT_S, headers=headers())
     resp.raise_for_status()
     if not resp.headers.get("content-type", "").startswith("image"):
-        raise ValueError(f"WMS did not return an image: {resp.text[:120]!r}")
+        logger.warning("regionalplan WMS returned %s: %r", resp.headers.get("content-type"), resp.text[:120])
+        raise ValueError("WMS lieferte kein Bild")
     return resp.content
 
 

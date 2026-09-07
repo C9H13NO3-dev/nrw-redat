@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
 from redat import __version__
-from redat.core.warmup import warm_geo_stack
+from redat.core.warmup import warm_geo_stack, warm_grids
 from redat.settings import get_settings
 
 log = logging.getLogger("redat")
@@ -73,6 +73,9 @@ def create_app() -> FastAPI:
     # Import numpy/shapely/pyproj/geopandas here, in the main thread, before any request can spawn the
     # section worker threads that would otherwise race on the first import (see core/warmup.py).
     warm_geo_stack()
+    # Then load the lru_cache'd grid files here too, so concurrent section threads on a fresh process
+    # all hit a warm cache instead of racing to be the first to parse a given grid (core/warmup.py).
+    warm_grids()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):

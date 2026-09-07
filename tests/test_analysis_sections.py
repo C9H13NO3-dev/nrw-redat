@@ -437,6 +437,14 @@ def test_planning_nrw_not_ok_raises(monkeypatch):
         S._fetch_planning_nrw(CTX)
 
 
+def test_planning_nrw_outside_nrw_is_empty_without_http(monkeypatch):
+    from redat.sources import planning_nrw
+    amsterdam = S.Ctx(lat=52.37, lon=4.90, plot_size_m2=None, destinations=())
+    monkeypatch.setattr(planning_nrw, "get_planning_nrw", lambda lat, lon: (_ for _ in ()).throw(AssertionError("must not be called")))
+    with pytest.raises(Empty, match="außerhalb Nordrhein-Westfalens"):
+        S._fetch_planning_nrw(amsterdam)
+
+
 # ---------------------------------------------------------------- risk cards (2026-09-04)
 
 def test_starkregen_merges_gelaende(monkeypatch):

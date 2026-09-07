@@ -1,7 +1,8 @@
 # NRW-REDAT
 
 **Real Estate Data Aggregation Tool** — a standalone Standortanalyse ("location analysis") service for
-Essen/Bochum, built from public NRW/Bund geodata (Bodenrichtwert, Hochwasser, Lärm, Denkmalschutz, ÖPNV,
+North Rhine-Westphalia (with Essen/Bochum-specific extras: Baulasten, kf-Werte, municipal Bauleitplanung,
+Ruhige Gebiete, Grundschulbezirke), built from public NRW/Bund geodata (Bodenrichtwert, Hochwasser, Lärm, Denkmalschutz, ÖPNV,
 Luftqualität, Bundestagswahl and more — 28 cards in total). It runs the same analysis engine that used
 to live inside the House Hunter project, extracted into its own FastAPI service so it can be used for
 any address, not just scraped listings. Given an address it geocodes it, runs every applicable data
@@ -115,8 +116,11 @@ Gzipped JSON and NumPy `.npz` extracts that ship with the code (no download at d
 
 The build scripts' module docstrings carry the download URLs and the exact commands.
 
-Coverage: all grids are statewide (NRW bbox `redat/core/nrw.py`); the three large ones are NumPy arrays
-(Zensus 70 MB resident, EGMS 15 MB, Unfallatlas 17 MB).
+Coverage: all seven grids are statewide (NRW bbox `redat/core/nrw.py`). Measured resident size once
+loaded: Zensus 75 MB, Unfallatlas 14 MB, EGMS 14 MB, Ladesäulen 11 MB, EEA-Luftqualität 11 MB, and
+Bergbauberechtigungen ~5 MB (tracemalloc, post-fix — was ~33 MB before `bergrechte._geoms()` released
+the raw GeoJSON it parses from; see Important 1 in the Tier-3 review) — roughly 130 MB total across
+all seven grids resident at once.
 
 ## API overview (`/api/v1`)
 

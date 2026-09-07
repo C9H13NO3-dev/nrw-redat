@@ -34,3 +34,23 @@ def test_failure_is_none_with_german_error(monkeypatch):
     monkeypatch.setattr(rm, "_get_png", boom)
     out = rm.render_regionalplan_map(50.716, 7.075)
     assert out["image"] is None and "Regionalplan" in out["error"] and "WMS down" in out["error"]
+
+
+def test_non_image_response_does_not_leak_raw_body_into_the_report(monkeypatch):
+    """Minor 5: the WMS response body must never reach the German error string in the PDF."""
+    class R:
+        status_code = 200
+        headers = {"content-type": "text/xml"}
+        text = "<ServiceExceptionReport><ServiceException>secret internal detail</ServiceException>"
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(rm.httpx, "get", lambda url, params, timeout, headers: R())
+    warnings = []
+    monkeypatch.setattr(rm.logger, "warning", lambda *a, **k: warnings.append((a, k)))
+    out = rm.render_regionalplan_map(50.716, 7.075)
+    assert out["image"] is None
+    assert "secret internal detail" not in out["error"]
+    assert out["error"] == "Regionalplan-Ausschnitt nicht verfügbar (WMS lieferte kein Bild)"
+    assert any("secret internal detail" in repr(a) for a, k in warnings)

@@ -4,10 +4,11 @@ run_section never raises for a known key: gating, fetch exceptions, timeouts,
 None and Empty all become a status. `data` is passed through sanitize() so an
 inf/nan/numpy scalar can never 500 a JSON response. Fetch runs on a daemon
 thread with a timeout; abandoned workers die with the process. A few fetches
-(`_fetch_starkregen`, `_fetch_noise` in `redat/core/sections.py`, and
-`noise_extra.get_noise_extra`) fan out onto their own `ThreadPoolExecutor` for
-a couple of concurrent HTTP round-trips; those pool threads are non-daemon and
-are joined at interpreter exit, bounded by their HTTP timeouts (≤ 20 s each).
+(`_fetch_starkregen`, `_fetch_noise` in `redat/core/sections.py`,
+`noise_extra.get_noise_extra`, and `denkmal_nrw.get_denkmal_nrw` — eight WFS
+typenames) fan out onto their own `ThreadPoolExecutor` for a couple of
+concurrent HTTP round-trips; those pool threads are non-daemon and are joined
+at interpreter exit, bounded by their HTTP timeouts (≤ 20 s each).
 """
 from __future__ import annotations
 

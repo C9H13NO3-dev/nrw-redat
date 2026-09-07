@@ -42,7 +42,7 @@ def _items(bbox: tuple[float, float, float, float]) -> list[dict]:
 
 
 def _http(v) -> Optional[str]:
-    v = (v or "").strip()
+    v = str(v or "").strip()
     return v if v.startswith("http") else None
 
 
@@ -89,7 +89,7 @@ def get_planning_nrw(lat: float, lon: float) -> dict:
     pt = Point(lon, lat)
     items = []
     for f in feats:
-        if not f.get("geometry"):
+        if not isinstance(f, dict) or not f.get("geometry"):
             continue
         try:
             geom = shape(f["geometry"])

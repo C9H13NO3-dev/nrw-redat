@@ -1,3 +1,6 @@
+import gzip
+import json
+
 import pytest
 
 from redat.sources import bergrechte
@@ -88,3 +91,23 @@ def test_tree_only_checks_candidates(monkeypatch):
     tree = bergrechte._tree()
     assert tree is not None and len(bergrechte._geoms()) == len(GRID["features"])
     assert bergrechte.lookup(51.4818, 7.2162) is not None
+
+
+def test_geoms_releases_the_raw_load_cache(tmp_path, monkeypatch):
+    """Important 1: once _geoms() has parsed the raw GeoJSON, _load()'s cache must be empty —
+    the raw dict is never read again and costs ~5x the geometries' resident size."""
+    path = tmp_path / "g.geojson.gz"
+    with gzip.open(path, "wt", encoding="utf-8") as fh:
+        json.dump(GRID, fh)
+    monkeypatch.setattr(bergrechte, "GRID_PATH", path)
+    bergrechte._load.cache_clear()
+    bergrechte._geoms.cache_clear()
+    bergrechte._tree.cache_clear()
+    try:
+        items = bergrechte.lookup(51.4300, 7.0050)
+        assert items
+        assert bergrechte._load.cache_info().currsize == 0
+    finally:
+        bergrechte._load.cache_clear()
+        bergrechte._geoms.cache_clear()
+        bergrechte._tree.cache_clear()

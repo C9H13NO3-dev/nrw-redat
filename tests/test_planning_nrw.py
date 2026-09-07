@@ -60,9 +60,16 @@ def test_null_or_unrecognized_geometry_is_skipped_not_fatal(monkeypatch):
     null_geom["geometry"] = None
     bad_type = feature("Unbekannter Geometrietyp")
     bad_type["geometry"] = {"type": "Blob", "coordinates": []}
-    monkeypatch.setattr(pn, "_items", lambda bbox: [null_geom, bad_type, feature("Gültig")])
+    monkeypatch.setattr(pn, "_items", lambda bbox: [null_geom, bad_type, None, "not-a-feature", feature("Gültig")])
     p = pn.get_planning_nrw(LAT, LON)
     assert p["ok"] and [i["name"] for i in p["items"]] == ["Gültig (in Kraft, ab 25.06.1999)"]
+
+
+def test_non_string_link_field_does_not_crash(monkeypatch):
+    """Important 2: _http() must not raise AttributeError on a dict/int field value."""
+    monkeypatch.setattr(pn, "_items", lambda bbox: [feature("D", doc={"href": "x"}, text=123)])
+    p = pn.get_planning_nrw(LAT, LON)
+    assert p["ok"] and p["items"][0]["link"] is None
 
 
 def test_no_features_is_not_found(monkeypatch):
