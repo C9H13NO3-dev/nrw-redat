@@ -60,6 +60,16 @@ def test_nodata_and_missing_feature_are_none(monkeypatch):
     assert d["rating"] == "unbekannt" and d["rating_color"] == "gray" and d["errors"] == {}
 
 
+def test_value_returns_none_for_a_non_numeric_string():
+    assert sk._value({"Classify.Pixel Value": "n/a"}) is None
+
+
+def test_klimatop_coerces_a_non_string_value_without_raising(monkeypatch):
+    stub(monkeypatch, {**BONN, "59": {"Klimatoptyp": 5}})
+    d = sk.get_stadtklima(LAT, LON)
+    assert d["klimatop"] == "5"
+
+
 def test_rating_falls_back_to_extreme_day(monkeypatch):
     stub(monkeypatch, {**BONN, "54": {"Classify.Pixel Value": "NoData"}})
     d = sk.get_stadtklima(LAT, LON)

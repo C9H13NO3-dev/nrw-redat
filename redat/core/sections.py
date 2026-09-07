@@ -298,11 +298,13 @@ def _fetch_zensus(ctx: Ctx) -> dict:
 
 
 def _fetch_stadtklima(ctx: Ctx) -> dict:
-    from redat.sources.stadtklima import get_stadtklima
+    from redat.sources.stadtklima import LAYERS, get_stadtklima
 
     d = get_stadtklima(ctx.lat, ctx.lon)
     if d is None:
         raise Empty("Keine Klimaanalyse-Daten für diesen Ort (außerhalb Nordrhein-Westfalens)")
+    if d["errors"] and len(d["errors"]) == len(LAYERS):
+        raise RuntimeError("Klimaanalyse-WMS nicht erreichbar: " + next(iter(d["errors"].values())))
     if d["klimatop"] is None and d["pet_typisch"] is None and d["pet_extrem"] is None and not d["errors"]:
         raise Empty("Keine Klimaanalyse-Daten für diesen Ort (keine Modellzelle, z. B. Gewässer)")
     return d

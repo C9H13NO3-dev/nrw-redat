@@ -62,5 +62,5 @@
     </div>
   {% endfor %}
 </div>
-<p class="footnote">Ausschnitt ca. 2 × 1,5 km, Punkt im Zentrum. {% if climate_maps.variant == "nrw" %}Viel Baumkronen im Umfeld dämpfen Sommerhitze; die PET-Karte zeigt die gefühlte Temperatur an einem typischen Sommertag (Modell, 100-m-Raster) — Klassen wie auf der Stadtklima-Karte.{% else %}Viel Baumkronen im Umfeld dämpfen Sommerhitze; die Oberflächentemperatur zeigt Hitzeinseln (1-km-Raster, kein Messwert am Haus).{% endif %} {{ climate_maps.attribution }}{% if climate_maps.error %} · Hinweis: {{ climate_maps.error }}{% endif %}</p>
+<p class="footnote">Ausschnitt ca. 2 × 1,5 km, Punkt im Zentrum. {% if climate_maps.variant == "nrw" %}Viel Baumkronen im Umfeld dämpfen Sommerhitze; die PET-Karte zeigt die gefühlte Temperatur an einem typischen Sommertag (Modellraster, kein Messwert am Haus) — Klassen siehe Karte „Stadtklima" (sofern verfügbar).{% else %}Viel Baumkronen im Umfeld dämpfen Sommerhitze; die Oberflächentemperatur zeigt Hitzeinseln (1-km-Raster, kein Messwert am Haus).{% endif %} {{ climate_maps.attribution }}{% if climate_maps.error %} · Hinweis: {{ climate_maps.error }}{% endif %}</p>
 {% endif %}

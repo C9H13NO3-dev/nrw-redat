@@ -16,4 +16,4 @@
       <td>{% if d.get("nacht_extrem") is not none %}{{ d.nacht_extrem|fmt_num(1) }} °C{% else %}—{% endif %}</td></tr>
   </tbody>
 </table>
-<p class="footnote">{{ d.get("hinweis") or "" }} PET-Klassen (VDI 3787): ≤ 23 °C kein thermischer Stress · ≤ 29 leicht · ≤ 35 moderat · ≤ 41 stark · &gt; 41 extrem. Quelle: LANUV Klimaanalyse NRW 2026.{% if d.get("errors") %} Teile der Klimaanalyse waren nicht abrufbar.{% endif %}</p>
+<p class="footnote">{{ d.get("hinweis") or "" }} PET-Klassen (VDI 3787): ≤ 18 °C leichter Kältestress · ≤ 23 kein thermischer Stress · ≤ 29 leicht · ≤ 35 moderat · ≤ 41 stark · &gt; 41 extrem. Quelle: LANUV Klimaanalyse NRW 2026.{% if d.get("errors") %} Teile der Klimaanalyse waren nicht abrufbar.{% endif %}</p>

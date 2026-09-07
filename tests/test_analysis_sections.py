@@ -571,6 +571,16 @@ def test_stadtklima_none_and_all_empty_are_empty(monkeypatch):
     assert S._fetch_stadtklima(CTX)["errors"] == {"pet_typisch": "503"}      # an outage is an error state, not "no data"
 
 
+def test_stadtklima_total_outage_raises_instead_of_caching_a_blank_card(monkeypatch):
+    from redat.sources import stadtklima
+    all_failed = {"klimatop": None, "pet_typisch": None, "pet_extrem": None, "nacht_typisch": None, "nacht_extrem": None,
+                  "klasse_typisch": None, "klasse_extrem": None, "rating": "unbekannt", "rating_color": "gray",
+                  "errors": {k: "503 Service Unavailable" for k in stadtklima.LAYERS}, "hinweis": "x"}
+    monkeypatch.setattr(stadtklima, "get_stadtklima", lambda lat, lon: all_failed)
+    with pytest.raises(RuntimeError, match="nicht erreichbar"):
+        S._fetch_stadtklima(CTX)
+
+
 def test_energie_passes_through_and_is_parcel(monkeypatch):
     from redat.core import tiers
     from redat.sources import energie

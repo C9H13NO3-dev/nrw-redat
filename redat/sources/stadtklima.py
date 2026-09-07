@@ -10,6 +10,7 @@ five layers are fetched concurrently with per-layer error isolation.
 """
 from __future__ import annotations
 
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
@@ -18,6 +19,8 @@ from pyproj import Transformer
 
 from redat.core.nrw import in_bbox
 from redat.http import headers
+
+logger = logging.getLogger(__name__)
 
 WMS_URL = "https://www.wms.nrw.de/umwelt/klimaanpassung_klimaanalyse"
 LAYERS = {"klimatop": "59", "pet_typisch": "54", "pet_extrem": "52", "nacht_typisch": "38", "nacht_extrem": "29"}
@@ -88,7 +91,9 @@ def get_stadtklima(lat: float, lon: float) -> Optional[dict]:
             except Exception as exc:  # noqa: BLE001 — one layer failing must not blank the card
                 props[k] = {}
                 errors[k] = str(exc)
-    klimatop = (props["klimatop"].get("Klimatoptyp") or "").strip() or None
+                logger.warning("stadtklima layer %s (%s): %s", k, LAYERS[k], exc)
+    raw_klimatop = props["klimatop"].get("Klimatoptyp")
+    klimatop = str(raw_klimatop).strip() or None if raw_klimatop is not None else None
     pet_t, pet_e = _value(props["pet_typisch"]), _value(props["pet_extrem"])
     basis = pet_t if pet_t is not None else pet_e
     rating, colour = pet_class(basis) if basis is not None else ("unbekannt", "gray")
