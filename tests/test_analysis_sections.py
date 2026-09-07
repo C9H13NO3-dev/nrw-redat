@@ -5,6 +5,8 @@ from redat.core import sections as S
 from redat.core.sections import Ctx, Empty
 
 CTX = Ctx(lat=51.4568, lon=7.0110, plot_size_m2=500)
+BOCHUM_CTX = Ctx(lat=51.4818, lon=7.2162, plot_size_m2=500)   # Bochum Innenstadt
+BONN = S.Ctx(lat=50.7160, lon=7.0748, plot_size_m2=None, destinations=())
 
 # ---------------------------------------------------------------- registry
 
@@ -372,7 +374,7 @@ def test_planning_bochum_same_shape(monkeypatch):
         "ok": True, "found": True, "source": "x",
         "items": [{"official_name": "Nr. 800 Ehrenfeld", "plan_id": "800", "commune": "Bochum", "plan_type": "BPlan",
                    "legal_status": "rechtsverbindlich", "plan_link": None, "metadata_link": "https://rvr/meta"}]})
-    d = S._fetch_planning_bochum(CTX)
+    d = S._fetch_planning_bochum(BOCHUM_CTX)
     assert d == {"found": True, "errors": {}, "items": [
         {"category": "BPlan", "name": "Nr. 800 Ehrenfeld (rechtsverbindlich)", "link": "https://rvr/meta"}]}
 
@@ -382,18 +384,39 @@ def test_planning_bochum_layer_errors_reach_the_card(monkeypatch):
     from redat.sources import planning_bochum
     monkeypatch.setattr(planning_bochum, "get_bochum_bplan_outline", lambda lat, lon: {
         "ok": True, "found": False, "items": [], "errors": {16: "HTTP 503"}, "source": "x"})
-    assert S._fetch_planning_bochum(CTX)["errors"] == {"16": "HTTP 503"}
+    assert S._fetch_planning_bochum(BOCHUM_CTX)["errors"] == {"16": "HTTP 503"}
 
 
 def test_planning_bochum_not_ok_raises(monkeypatch):
     from redat.sources import planning_bochum
     monkeypatch.setattr(planning_bochum, "get_bochum_bplan_outline", lambda lat, lon: {"ok": False, "error": "WMS down"})
     with pytest.raises(RuntimeError, match="WMS down"):
-        S._fetch_planning_bochum(CTX)
+        S._fetch_planning_bochum(BOCHUM_CTX)
 
 
 def test_planning_bochum_cache_version_bumped():
     assert S.SECTIONS["planning_bochum"].cache_version == 2
+
+
+def test_planning_essen_outside_essen_is_empty_without_http(monkeypatch):
+    from redat.sources import planning_essen
+    monkeypatch.setattr(planning_essen, "get_planning_signals", lambda lat, lon: (_ for _ in ()).throw(AssertionError("must not be called")))
+    with pytest.raises(Empty, match="nur für Adressen in Essen"):
+        S._fetch_planning_essen(BONN)
+
+
+def test_planning_bochum_outside_bochum_is_empty_without_http(monkeypatch):
+    from redat.sources import planning_bochum
+    monkeypatch.setattr(planning_bochum, "get_bochum_bplan_outline", lambda lat, lon: (_ for _ in ()).throw(AssertionError("must not be called")))
+    with pytest.raises(Empty, match="nur für Adressen in Bochum"):
+        S._fetch_planning_bochum(BONN)
+
+
+def test_city_bboxes_are_shared():
+    from redat.core import nrw
+    from redat.sources import baugrund, baulasten_essen, noise_extra, schulen
+    assert baugrund.ESSEN_BBOX == baulasten_essen.ESSEN_BBOX == noise_extra.ESSEN_BBOX == nrw.ESSEN_BBOX_WGS84
+    assert schulen.BOCHUM_BBOX == noise_extra.BOCHUM_BBOX == nrw.BOCHUM_BBOX_WGS84
 
 
 def test_planning_nrw_same_shape_and_hinweis(monkeypatch):

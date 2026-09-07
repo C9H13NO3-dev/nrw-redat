@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 BK50_WMS_URL = "https://www.wms.nrw.de/gd/bk050"
 BK50_LAYER = "Versickerungseignung"
 KF_URL = "https://geo.essen.de/arcgis/rest/services/essen/Umwelt/MapServer/0/query"
-ESSEN_BBOX = (6.89, 51.35, 7.14, 51.53)
+from redat.core.nrw import ESSEN_BBOX_WGS84 as ESSEN_BBOX
 KF_RADIUS_M = 300
 _TIMEOUT_S = 20
 _LABELS = ("Bodentyp", "Grundwasserstufe", "Staunässegrad", "Bodenartengruppe des Oberbodens", "Hauptbodenart",

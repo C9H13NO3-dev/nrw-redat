@@ -50,8 +50,8 @@ ESSEN_FLUG_DUS_NIGHT = "https://geo.essen.de/arcgis/rest/services/essen/Laermkar
 ESSEN_FLUG_EMH_DAY = "https://geo.essen.de/arcgis/rest/services/essen/Laermkarte_aktuell/MapServer/4/query"
 ESSEN_RUHIG = "https://geo.essen.de/arcgis/rest/services/essen/Ruhige_Gebiete/MapServer/26/query"
 BOCHUM_RUHIG = "https://geoservicekkm.bochum.de/arcgis/rest/services/maponline/Laermkartierung_Stufe4/MapServer/20/query"
-ESSEN_BBOX = (6.89, 51.35, 7.14, 51.53)
-BOCHUM_BBOX = (7.10, 51.40, 7.35, 51.53)
+from redat.core.nrw import ESSEN_BBOX_WGS84 as ESSEN_BBOX
+from redat.core.nrw import BOCHUM_BBOX_WGS84 as BOCHUM_BBOX
 _TIMEOUT_S = 8
 
 # url -> (outFields, error key)

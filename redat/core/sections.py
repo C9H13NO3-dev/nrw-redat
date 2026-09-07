@@ -434,8 +434,11 @@ _ESSEN_LISTS = (
 
 
 def _fetch_planning_essen(ctx: Ctx) -> dict:
+    from redat.core.nrw import ESSEN_BBOX_WGS84, in_bbox
     from redat.sources.planning_essen import get_planning_signals
 
+    if not in_bbox(ctx.lat, ctx.lon, ESSEN_BBOX_WGS84):
+        raise Empty("Bauleitplanung Essen: nur für Adressen in Essen verfügbar")
     p = get_planning_signals(ctx.lat, ctx.lon)
     if not p.get("ok"):
         raise RuntimeError(p.get("error") or "Planungsabfrage Essen fehlgeschlagen")
@@ -449,8 +452,11 @@ def _fetch_planning_essen(ctx: Ctx) -> dict:
 
 
 def _fetch_planning_bochum(ctx: Ctx) -> dict:
+    from redat.core.nrw import BOCHUM_BBOX_WGS84, in_bbox
     from redat.sources.planning_bochum import get_bochum_bplan_outline
 
+    if not in_bbox(ctx.lat, ctx.lon, BOCHUM_BBOX_WGS84):
+        raise Empty("Bauleitplanung Bochum: nur für Adressen in Bochum verfügbar")
     p = get_bochum_bplan_outline(ctx.lat, ctx.lon)
     if not p.get("ok"):
         raise RuntimeError(p.get("error") or "Planungsabfrage Bochum fehlgeschlagen")

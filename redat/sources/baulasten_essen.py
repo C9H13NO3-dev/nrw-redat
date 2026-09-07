@@ -22,7 +22,8 @@ import httpx
 from redat.http import headers
 
 BL_URL = "https://geo.essen.de/arcgis/rest/services/essen/Baulasteninformation/MapServer"
-ESSEN_BBOX = (6.89, 51.35, 7.14, 51.53)   # lon_min, lat_min, lon_max, lat_max — Essen city, coarse
+# lon_min, lat_min, lon_max, lat_max — Essen city, coarse
+from redat.core.nrw import ESSEN_BBOX_WGS84 as ESSEN_BBOX
 RADIUS_M = 50
 _LAYERS = ((0, "vorhanden"), (1, "moeglich"))
 _FSK_LEN = 14                              # Essen FSK: Gemarkung 6 + Flur 3 + Zähler 5, no Nenner

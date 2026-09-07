@@ -30,7 +30,8 @@ SEK_FORMS = ("Gymnasium", "Gesamtschule", "Realschule", "Hauptschule", "Sekundar
 FOERDER_KEYWORD = "Förderschule"
 _MAX_GRUNDSCHULEN = 3
 _MAX_FOERDER = 2
-BOCHUM_BBOX = (7.10, 51.40, 7.35, 51.53)   # lon_min, lat_min, lon_max, lat_max
+# lon_min, lat_min, lon_max, lat_max
+from redat.core.nrw import BOCHUM_BBOX_WGS84 as BOCHUM_BBOX
 BOCHUM_GSB_URL = "https://geoservicekkm.bochum.de/arcgis/rest/services/maponline/Grundschulen/MapServer/3/query"
 _TIMEOUT_S = 15
 
