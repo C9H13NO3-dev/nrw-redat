@@ -4,7 +4,7 @@
 
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
 (`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`). LAN-open by default (`REDAT_API_KEY`
-unset). 28 cards, 704 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
+unset). 29 cards, 730 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
 and refuses to produce an image on a red run.
 
 ## Deploy runbook
@@ -268,6 +268,32 @@ overwritten by `docker compose build`, so there is no separate image rollback �
     WFS (Task 5) returns nothing for Köln (the city doesn't deliver into it), and Köln publishes its own
     Denkmalliste separately; wiring that up as a fourth source (after RVR, statewide INSPIRE, and the
     existing city sources) is future work, not done here.
+
+- **Tier 4 — Stadtklima** (2026-09-07, plan `.superpowers/sdd/2026-09-07-stadtklima/`, commits `59c9f15`,
+  `c2c140e`) — a Klimatop/Wärmebelastung card and a statewide "Grün und Hitze" PDF figure, both against the
+  LANUV Klimaanalyse NRW 2026 WMS.
+  - **Task 1** — new card `stadtklima` ("Stadtklima (Klimaanalyse NRW)", area tier, after `zensus`) from
+    `redat/sources/stadtklima.py`. **Verified service facts:** WMS
+    `https://www.wms.nrw.de/umwelt/klimaanpassung_klimaanalyse` layers are numbered, not named (`59`
+    Klimatope, `54`/`52` PET typisch/extrem, `38`/`29` Lufttemperatur nachts typisch/extrem);
+    GetFeatureInfo with `INFO_FORMAT=application/geo+json` returns one feature whose properties carry
+    `Classify.Pixel Value` — a float-as-string for a raster hit, or the literal string `"NoData"` for a
+    miss, not a JSON null. The five layers are fetched concurrently with per-layer error isolation so one
+    layer failing doesn't blank the card. The card reports PET (typical and extreme summer day) and night
+    air temperature, the Klimatoptyp, and a rating (`unbekannt` … `extrem starke Wärmebelastung`) from the
+    layer-54 PET legend.
+  - **Task 2** — `redat/report/climate_maps.py`'s `render_climate_maps()` now branches on whether the
+    point falls in the RVR bbox: inside, the existing RVR canopy/surface-temperature panel pair is
+    unchanged; everywhere else in NRW it swaps in a Copernicus HRL Tree Cover Density 2018 canopy panel
+    (10 m, no legend — the service's GetLegendGraphic is a 236×2040 px ramp that doesn't fit the print
+    layout) and the LANUV Klimaanalyse PET class map with legend. **Verified service fact:** the
+    Copernicus HRL WMS serves only EPSG:3857/4326 — a 3035/25832 GetMap request comes back a blank
+    transparent tile — so that panel's window goes out via the new `bbox_2km_3857()` helper in Web
+    Mercator, whose metres shrink by cos(lat) at this latitude. The result dict gained `"variant"`
+    (`"rvr"`/`"nrw"`) and the zensus report footnote explains whichever pair rendered. The RVR panels stay
+    in the Ruhr; nothing about them changed.
+  - Cards: 29 (was 28). Suite: 730 tests (was 704). `stadtklima` is new at the default `cache_version` 1;
+    no existing card's `cache_version` needed a bump (a new card plus a PDF-only figure change).
 
 ## Open items
 

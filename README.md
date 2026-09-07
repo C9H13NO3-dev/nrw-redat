@@ -1,7 +1,7 @@
 # NRW-REDAT
 
 **Real Estate Data Aggregation Tool** — a standalone Standortanalyse ("location analysis") service for
-North Rhine-Westphalia. Given any NRW address it geocodes it, runs 28 data cards concurrently against
+North Rhine-Westphalia. Given any NRW address it geocodes it, runs 29 data cards concurrently against
 public open geodata (Land NRW, Bund, EU, RVR and the cities of Essen and Bochum), and renders the result as
 a website page, a JSON payload, or a formatted A4 PDF — each run gets a permanent, shareable permalink. It
 started as the analysis engine inside the House Hunter project and was extracted into its own FastAPI
@@ -51,6 +51,7 @@ district. Every card fetches live except where a committed grid is named (see "S
 | ÖPNV-Erreichbarkeit (`oepnv`, area) | Stops, lines, headways and trips to the Hauptbahnhöfe | VRR EFA |
 | Fahrzeiten (`commute`, area) | Car travel times to configured destinations | Geoapify Routing |
 | Nachbarschaft (`zensus`, area) | Population, age, ownership, vacancy, rent, building age/heating/energy mix for the 100 m cell and its 5×5 surroundings | Destatis Zensus 2022 (grid, statewide) |
+| Stadtklima (`stadtklima`, area) | Klimatop, gefühlte Temperatur (PET) and night air temperature for a typical and an extreme summer day, LANUV model | LANUV Klimaanalyse NRW 2026 (WMS GetFeatureInfo) |
 | E-Ladepunkte (`ladesaeulen`, area) | Public chargers within 1 km, nearest five, rating | BNetzA Ladesäulenregister (grid, statewide) |
 | Breitband & Mobilfunk (`breitband`, area) | Fixed-line bandwidth classes and 5G coverage for the 100 m cell | BNetzA Breitbandatlas |
 | Bundestagswahl (`btw`, area) | Zweitstimmen profile of the Wahlkreis | Die Bundeswahlleiterin (local shapes + live CSV) |
@@ -58,13 +59,14 @@ district. Every card fetches live except where a committed grid is named (see "S
 Coverage: every card with a statewide source answers for any NRW address. The city-only extras (Baulasten
 and kf-Werte in Essen, the two municipal planning cards, Ruhige Gebiete and Essen Fluglärm detail,
 Bochum Grundschulbezirke, Wärmeplanung) either render nothing or say "nur für Adressen in Essen/Bochum
-verfügbar" elsewhere; the GFNP applies to the six Ruhr core cities and the RVR climate panels to the
-Ruhr. `redat/core/nrw.py` holds the NRW/RVR/Essen/Bochum bounding boxes every statewide source and gate
-uses.
+verfügbar" elsewhere; the GFNP applies to the six Ruhr core cities. `redat/core/nrw.py` holds the
+NRW/RVR/Essen/Bochum bounding boxes every statewide source and gate uses.
 
 The PDF adds figures the website does not have: Lärm maps (day/night), "Der Ort im Wandel" (historic maps
-1840s/1900s/1950s/today on the Flurstück page), "Grün und Hitze" (RVR canopy and surface-temperature panels
-on the Nachbarschaft page), the Regionalplan panel on the GFNP page, and the Bodenrichtwert trend chart.
+1840s/1900s/1950s/today on the Flurstück page), "Grün und Hitze" on the Nachbarschaft page (RVR canopy and
+surface-temperature panels in the Ruhr; a Copernicus HRL Tree Cover Density canopy panel and a Klimaanalyse
+NRW PET class map with legend elsewhere in NRW), the Regionalplan panel on the GFNP page, and the
+Bodenrichtwert trend chart.
 
 Surfaces: a website (`/`, permalinks at `/a/{id}`, a source index at `/quellen`), a versioned JSON+PDF
 API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring/container health.
@@ -75,7 +77,7 @@ API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring
 git clone <this repo> nrw-redat && cd nrw-redat
 cp .env.example .env            # fill in GEOAPIFY_API_KEY (see below)
 docker compose up -d --build    # builds on :8200 — the build stage runs pytest; a red suite aborts the build
-curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":28,"cache":{"entries":…,"bytes":…,"expired":…}}
+curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":29,"cache":{"entries":…,"bytes":…,"expired":…}}
 ```
 
 `.env` (git-ignored, copy from `.env.example`):
@@ -148,7 +150,7 @@ EEA-Luftqualität 11 MB, Bergbauberechtigungen ~5 MB, Schulen ~1 MB — roughly 
 
 | Method & path | What it does |
 |---|---|
-| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 28 entries. |
+| `GET /api/v1/sections` | The card manifest (key, title, icon, tier, timeout, source) — 29 entries. |
 | `GET /api/v1/geocode?address=` | Geocode an address → `{address, formatted_address, latitude, longitude, precision}`, 422 if unresolvable. |
 | `GET /api/v1/autocomplete?text=&limit=` | Address autocomplete suggestions. |
 | `GET /api/v1/section/{key}?lat&lon&precision&plot_size_m2&force&destinations` | Run one card in isolation; 404 for an unknown key. |

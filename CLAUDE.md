@@ -9,7 +9,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/python -m pytest -q                     # 704 tests, hermetic, ~10s
+.venv/bin/python -m pytest -q                     # 730 tests, hermetic, ~10s
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
 docker compose up -d --build                      # build gate: the test stage runs `pytest -q` and aborts the image on a red suite
 npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/redat.css --minify
@@ -20,7 +20,7 @@ npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/re
 Package `redat`. Config precedence (`redat/settings.py`): env > `config/settings.yaml` > code defaults;
 `Destination`/`get_settings()` live here. `redat/sources/` wraps each external geodata source (BORIS,
 flood, Lärm, Zensus, Denkmal, ÖPNV, …), one module per source. `redat/core/sections.py` declares the
-28-card `SECTIONS` registry (`Section(key, title, icon, tier, timeout_s, source, fetch)`); `core/envelope.py`'s
+29-card `SECTIONS` registry (`Section(key, title, icon, tier, timeout_s, source, fetch)`); `core/envelope.py`'s
 `run_section()` runs one card under its timeout and returns the fixed `{key, tier, status, data, message,
 source, took_ms}` envelope, gating parcel-tier cards unless precision is house-number/coordinates/`force`;
 `core/analyze.py` orchestrates geocode + all cards concurrently and the payload shapes shared by the API
@@ -48,3 +48,4 @@ detail has drifted).
 - WFS/WMS quirks that cost a day each: the ALKIS WFS proxy accepts only `TYPENAMES` + `BBOX` in EPSG:25832 and returns GML (no JSON/CQL/SRSNAME); LINFOS wants an EPSG:25832 bbox; the BfS WFS wants `bbox` in lon,lat; wms.nrw.de GetFeatureInfo uses lat,lon (WMS 1.3.0) — reuse `redat/sources/esri_wms.py`.
 - WCS `wcs_nw_dgm` returns float32 GeoTIFF (row 0 = north); the RVR umon WMS answers GetFeatureInfo without values — use GetMap images.
 - Statewide grids: `redat/core/nrw.py` holds the NRW/RVR/Essen/Bochum boxes — never hard-code a window in a build script; the INSPIRE Denkmal WFS only filters with an EPSG:25832 BBOX; `ogc-api.nrw.de` needs the `/v1/` path and `follow_redirects`.
+- Klimaanalyse NRW WMS: layers are numbers, GetFeatureInfo `application/geo+json`, rasters answer `Classify.Pixel Value` (`"NoData"` string); the Copernicus HRL WMS only serves EPSG:3857/4326 — request the 2 km window via `climate_maps.bbox_2km_3857`.
