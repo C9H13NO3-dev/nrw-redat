@@ -15,8 +15,10 @@ expiry is wall-clock. Eviction order when over a bound: expired rows first, then
 carrying any truthy top-level key ending in `_error` (a secondary-source failure merged onto an
 otherwise-successful card, e.g. `gelaende_error`, `berechtigungen_error`) is not stored either - that
 failure is not the card's `status`, so the plain ok/empty check above would otherwise cache a
-transient network hiccup for the section's full TTL. `empty` envelopes are unaffected (their `data`
-is always None).
+transient network hiccup for the section's full TTL. The same applies to a non-empty top-level
+`errors` dict (per-layer/per-source failures collected by a card, e.g. `stadtklima`'s five WMS
+layers) - a *permanent* failure must never be recorded there, or it would never be cacheable again
+either. `empty` envelopes are unaffected (their `data` is always None).
 """
 from __future__ import annotations
 
@@ -108,6 +110,8 @@ class SectionCache:
             return
         data = envelope.get("data")
         if isinstance(data, dict) and any(v for key, v in data.items() if key.endswith("_error")):
+            return
+        if isinstance(data, dict) and isinstance(data.get("errors"), dict) and data["errors"]:
             return
         ttl = self.ttl_for(k[0])
         if ttl <= 0:

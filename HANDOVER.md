@@ -294,6 +294,11 @@ overwritten by `docker compose build`, so there is no separate image rollback â€
     in the Ruhr; nothing about them changed.
   - Cards: 29 (was 28). Suite: 730 tests (was 704). `stadtklima` is new at the default `cache_version` 1;
     no existing card's `cache_version` needed a bump (a new card plus a PDF-only figure change).
+  - **Fix wave** (2026-09-07): a total outage of the five Klimaanalyse WMS layers now raises instead of
+    being cached as a blank "unbekannt" card, and `SectionCache.put`'s never-cache-a-transient-failure rule
+    (README "Cache semantics") now also covers a non-empty top-level `errors` dict, not just `*_error`
+    siblings â€” the Klimaanalyse PET raster's rendered pitch was measured at 25 m during this work; the
+    service does not document a native resolution.
 
 ## Open items
 

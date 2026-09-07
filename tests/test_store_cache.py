@@ -49,6 +49,15 @@ def test_put_skips_ok_envelope_with_a_truthy_top_level_error_sibling():
     assert c.get(k)["status"] == "ok"
 
 
+def test_put_skips_ok_envelope_with_a_non_empty_errors_dict():
+    c = SectionCache(60)
+    k = c.key("stadtklima", 51.3878, 7.0011, None, False)
+    c.put(k, {"key": "stadtklima", "status": "ok", "data": {"errors": {"pet_typisch": "503"}}})
+    assert c.get(k) is None
+    c.put(k, {"key": "stadtklima", "status": "ok", "data": {"errors": {}}})
+    assert c.get(k)["status"] == "ok"
+
+
 def test_get_returns_copy_marked_cached_with_timestamp(clock):
     c = SectionCache(60)
     k = c.key("noise", 1, 2, None, False)
