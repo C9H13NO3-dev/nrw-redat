@@ -190,8 +190,10 @@ docker compose exec redat python scripts/users.py enable --username anna
 docker compose exec redat python scripts/users.py prune-events --days 180
 ```
 
-`create-admin`/`reset` read the new password from `--password-env VAR` (for scripting) or prompt twice
-interactively; the script exits 1 with a message on stderr for an unknown user (`reset`/`disable`/
+`reset` also logs out every one of the user's existing sessions (same as a password reset through the
+admin page) — resetting your own password this way ends your current browser session too. `create-admin`/
+`reset` read the new password from `--password-env VAR` (for scripting) or prompt twice interactively;
+the script exits 1 with a message on stderr for an unknown user (`reset`/`disable`/
 `enable`), an invalid/taken username (`create-admin`), or a password-policy violation.
 
 ## API overview (`/api/v1`)
