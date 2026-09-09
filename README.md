@@ -89,7 +89,7 @@ curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":tr
 | `REDAT_DATA_DIR` | Where `redat.db` and `source/{boris,flood,elections}` live. `/data` inside the container (bind-mounted from `./data` by `docker-compose.yml`). |
 | `REDAT_CACHE_TTL_S` | Default cache TTL in seconds for cards without their own (default 2592000 = 30 d, `config/settings.yaml`). Per-card TTLs: `cache_ttls` in settings.yaml. |
 | `REDAT_CACHE_MAX_ENTRIES` / `REDAT_CACHE_MAX_BYTES` | Cache bounds (defaults 100 000 entries / 256 MiB). Expired rows are evicted first, then least recently used. |
-| `REDAT_PUBLIC_URL` | Base URL used to build permalinks (e.g. `http://192.168.188.64:8200`). |
+| `REDAT_PUBLIC_URL` | Base URL used to build permalinks **and invite links**, and it decides whether the session/CSRF cookies carry `Secure` (`Settings.cookie_secure` is true iff this starts with `https://`). Set it to the public HTTPS URL in production (e.g. `https://redat.example.com`) — an `http://` value here means every "Neuer Einladungslink" is unreachable off the LAN and the session cookie loses `Secure` on the public origin. |
 | `REDAT_LOG_LEVEL` | Python logging level. |
 | `REDAT_BOOTSTRAP_ADMIN_PASSWORD` | First start only: when the `users` table is empty, creates the user `admin` with this password. Change it after the first login. See "Zugang & Benutzer" below. |
 | `REDAT_SESSION_DAYS` | Session lifetime in days (sliding expiry). Default 30. |

@@ -3,8 +3,13 @@
 ## Status
 
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
-(`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`), and publicly at
-`https://redat.ares-hud.com` behind Traefik. LAN-open by default (`REDAT_API_KEY` unset). Access is
+(`/srv/nrw-redat`), publicly at `https://redat.ares-hud.com` behind Traefik. `REDAT_PUBLIC_URL` on this
+host is `https://redat.ares-hud.com` — it is the host of both permalinks and invite links, and it
+switches the session/CSRF cookies to `Secure`. That means the LAN address `http://192.168.188.64:8200`
+is no longer a live login entry point by design: the login POST still sets `Secure` cookies, a
+plaintext origin drops them, and the browser bounces back to `/login` forever. LAN access is out of
+scope for this feature — anyone who wants the app goes through `https://redat.ares-hud.com`, LAN
+included. `REDAT_API_KEY` unset. Access is
 app-native login as of the user-management feature (Work log below): accounts, server-side sessions,
 invite links and an admin dashboard live in the app itself, so the host's Traefik `redat-auth` BasicAuth
 middleware (the single shared `test` user) has been removed from the router — Traefik still terminates
