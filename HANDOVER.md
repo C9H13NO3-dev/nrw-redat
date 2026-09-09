@@ -351,7 +351,7 @@ docker compose exec redat python scripts/users.py reset --username admin
   - **Task 4** (`bf3f60e`) — `redat/web/admin_pages.py` and `admin.html`: KPI tiles, a 30-day analyses
     chart, the users table (with disable/enable/delete/password-reset-link actions; an admin cannot
     disable or delete themselves), invites table, recent-activity table, "Neuer Einladungslink" form.
-  - **Task 5** (this entry's commit) — `scripts/users.py` (CLI over `UserStore`/`EventStore` for
+  - **Task 5** (`124fede`, `0af5d53`) — `scripts/users.py` (CLI over `UserStore`/`EventStore` for
     lockout recovery: `list`, `create-admin`, `reset`, `disable`, `enable`, `prune-events`; no
     `GEOAPIFY_API_KEY` needed), README "Zugang & Benutzer" and `.env` table, this Status/runbook/Known-
     limitations update, `CLAUDE.md` access-rules/testing rules, and the Tailwind rebuild for the four new
