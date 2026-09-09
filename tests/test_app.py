@@ -100,3 +100,15 @@ def test_bootstrap_admin_only_when_no_users(monkeypatch, tmp_path):
     # the guard is "users table non-empty", not "password unset": the env var is still set here
     assert s.get_settings().bootstrap_admin_password == "test123!"
     assert appmod.bootstrap_admin(app.state.users, s.get_settings()) is False
+
+
+def test_bootstrap_admin_password_too_short_does_not_crash_the_app(monkeypatch, caplog):
+    import logging
+    from redat import settings as s
+    monkeypatch.setenv("REDAT_BOOTSTRAP_ADMIN_PASSWORD", "kurz")
+    s.reset_settings()
+    from redat.app import create_app
+    with caplog.at_level(logging.ERROR, logger="redat"):
+        app = create_app()
+    assert app.state.users.count() == 0
+    assert any("bootstrap admin not created" in r.message for r in caplog.records)

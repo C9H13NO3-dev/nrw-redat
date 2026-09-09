@@ -191,6 +191,15 @@ docker compose exec redat python scripts/users.py enable --username anna
 docker compose exec redat python scripts/users.py prune-events --days 180
 ```
 
+If the container will not stay up (a too-short/long `REDAT_BOOTSTRAP_ADMIN_PASSWORD` now logs an error
+and starts the app with no users instead of crash-looping, but that also means nobody got created),
+`exec` has no running container to attach to; use `run --rm` instead, which starts a throwaway
+container from the image regardless of the `redat` service's own state:
+
+```bash
+docker compose run --rm redat python scripts/users.py create-admin --username admin
+```
+
 `reset` also logs out every one of the user's existing sessions (same as a password reset through the
 admin page) — resetting your own password this way ends your current browser session too. `create-admin`/
 `reset` read the new password from `--password-env VAR` (for scripting) or prompt twice interactively;

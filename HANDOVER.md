@@ -68,6 +68,15 @@ docker compose exec redat python scripts/users.py create-admin --username admin
 docker compose exec redat python scripts/users.py reset --username admin
 ```
 
+If the container will not stay up (e.g. a bad `REDAT_BOOTSTRAP_ADMIN_PASSWORD` — the app now logs the
+error and starts with no users rather than crash-looping, but nobody got created either), `exec` has
+nothing to attach to; use `run --rm` instead, which starts a throwaway container from the same image
+without going through the (already-failed) `redat` service:
+
+```bash
+docker compose run --rm redat python scripts/users.py create-admin --username admin
+```
+
 ## Non-git deploy assets
 
 - **`data/source/`** (~11 GB) — not tracked in git, not part of the Docker build context. Everything in it

@@ -46,10 +46,20 @@ def sources_loaded() -> int:
 
 
 def bootstrap_admin(users, settings) -> bool:
-    """First start: create `admin` from REDAT_BOOTSTRAP_ADMIN_PASSWORD when the users table is empty."""
+    """First start: create `admin` from REDAT_BOOTSTRAP_ADMIN_PASSWORD when the users table is empty.
+
+    A bad value (too short/long password, an invalid username — none possible here since the
+    username is the literal "admin", but `users.create` can still raise for other reasons) must not
+    crash-loop the container: log it and leave the app running with no users, exactly as if the
+    variable were unset. `ValueError` covers PasswordPolicyError, InvalidUsernameError and
+    UsernameTakenError, all of which subclass it."""
     if users.count() > 0 or not settings.bootstrap_admin_password:
         return False
-    users.create("admin", settings.bootstrap_admin_password, role="admin")
+    try:
+        users.create("admin", settings.bootstrap_admin_password, role="admin")
+    except ValueError as exc:
+        log.error("bootstrap admin not created: %s", exc)
+        return False
     log.warning("bootstrap: user 'admin' created from REDAT_BOOTSTRAP_ADMIN_PASSWORD — change the password after the first login")
     return True
 
