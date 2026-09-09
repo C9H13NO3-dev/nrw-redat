@@ -16,7 +16,7 @@ app-native login as of the user-management feature (Work log below): accounts, s
 invite links and an admin dashboard live in the app itself, so the host's Traefik `redat-auth` BasicAuth
 middleware (the single shared `test` user) has been removed from the router — Traefik still terminates
 TLS, does the HTTP→HTTPS redirect and adds the security headers (`sec-headers@docker`), nothing else. 29
-cards, 794 tests pass hermetically; the Docker build's `test` stage re-runs the full suite and refuses to
+cards, 805 tests pass hermetically; the Docker build's `test` stage re-runs the full suite and refuses to
 produce an image on a red run.
 
 ## Deploy runbook

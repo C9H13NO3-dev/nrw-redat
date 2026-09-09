@@ -9,7 +9,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/python -m pytest -q                     # 794 tests, hermetic, ~10s
+.venv/bin/python -m pytest -q                     # 805 tests, hermetic, ~10s
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
 docker compose up -d --build                      # build gate: the test stage runs `pytest -q` and aborts the image on a red suite
 npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/redat.css --minify

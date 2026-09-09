@@ -275,7 +275,7 @@ so it can be bookmarked or shared as a direct "run this address" link.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
-.venv/bin/python -m pytest -q       # 794 tests, hermetic, ~10s
+.venv/bin/python -m pytest -q       # 805 tests, hermetic, ~10s
 
 # manual, non-hermetic: drives a real browser against a running instance (Playwright + live
 # external services). Not collected by pytest. Point it at any running REDAT with --base-url.
