@@ -83,6 +83,13 @@ def test_logout_deletes_the_session(client):
     assert client.get("/api/v1/sections").status_code == 401
 
 
+def test_invalid_invite_renders_its_own_page_not_the_generic_404(client):
+    r = client.get("/invite/deadbeef")
+    assert r.status_code == 404
+    assert "Einladung ungültig" in r.text and "Analyse nicht gefunden" not in r.text
+    assert "Neue Analyse" not in r.text
+
+
 def test_invite_flow_creates_user_and_logs_in(client):
     admin = _admin(client)
     tok = client.app.state.users.create_invite(admin["id"], note="Anna", role="user")

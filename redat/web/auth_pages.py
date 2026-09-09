@@ -93,7 +93,7 @@ def _invite_ctx(request: Request, token: str, inv: dict, error: Optional[str], u
 def invite_form(request: Request, token: str):
     inv = request.app.state.users.get_invite(token)
     if inv is None:
-        return _render(request, "404.html", {"message": INVALID_INVITE}, status_code=404, no_store=True)
+        return _render(request, "invite_invalid.html", {"message": INVALID_INVITE}, status_code=404, no_store=True)
     return _render(request, "invite.html", _invite_ctx(request, token, inv, None), no_store=True)
 
 
@@ -103,7 +103,7 @@ def invite_submit(request: Request, token: str, username: str = Form(""), passwo
     users, events = request.app.state.users, request.app.state.events
     inv = users.get_invite(token)
     if inv is None:
-        return _render(request, "404.html", {"message": INVALID_INVITE}, status_code=404, no_store=True)
+        return _render(request, "invite_invalid.html", {"message": INVALID_INVITE}, status_code=404, no_store=True)
 
     def fail(msg: str):
         return _render(request, "invite.html", _invite_ctx(request, token, inv, msg, username), status_code=400, no_store=True)
@@ -116,7 +116,7 @@ def invite_submit(request: Request, token: str, username: str = Form(""), passwo
     if inv.get("reset_user_id"):
         user = users.get(inv["reset_user_id"])
         if user is None:
-            return _render(request, "404.html", {"message": INVALID_INVITE}, status_code=404, no_store=True)
+            return _render(request, "invite_invalid.html", {"message": INVALID_INVITE}, status_code=404, no_store=True)
         if user["disabled_at"] is not None:
             # Do not set the password, mint a session or consume the invite: the link stays usable
             # once the account is re-enabled, and no half-applied reset happens in the meantime.
