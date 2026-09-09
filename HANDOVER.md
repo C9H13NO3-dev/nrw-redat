@@ -3,9 +3,14 @@
 ## Status
 
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
-(`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`). LAN-open by default (`REDAT_API_KEY`
-unset). 29 cards, 730 tests pass hermetically; the Docker build's `test` stage re-runs the full suite
-and refuses to produce an image on a red run.
+(`/srv/nrw-redat`, LAN address `http://192.168.188.64:8200`), and publicly at
+`https://redat.ares-hud.com` behind Traefik. LAN-open by default (`REDAT_API_KEY` unset). Access is
+app-native login as of the user-management feature (Work log below): accounts, server-side sessions,
+invite links and an admin dashboard live in the app itself, so the host's Traefik `redat-auth` BasicAuth
+middleware (the single shared `test` user) has been removed from the router — Traefik still terminates
+TLS, does the HTTP→HTTPS redirect and adds the security headers (`sec-headers@docker`), nothing else. 29
+cards, 794 tests pass hermetically; the Docker build's `test` stage re-runs the full suite and refuses to
+produce an image on a red run.
 
 ## Deploy runbook
 
@@ -13,13 +18,31 @@ and refuses to produce an image on a red run.
 
 ```bash
 cd /srv/nrw-redat
-cp .env.example .env    # GEOAPIFY_API_KEY, REDAT_PUBLIC_URL
+cp .env.example .env    # GEOAPIFY_API_KEY, REDAT_PUBLIC_URL, REDAT_BOOTSTRAP_ADMIN_PASSWORD
 docker compose build    # the geodata script runs its GeoPackage builds inside this image
 scripts/fetch_geodata.sh   # downloads BORIS/HWRM/BTW25 (~3.3 GB) into ./data/source and builds brw.gpkg + the flood .gpkg files (~10 min); idempotent
 docker compose up -d
 curl -s localhost:8200/healthz
 .venv/bin/python scripts/smoke_analyze.py --base-url http://localhost:8200   # manual live check: full browser flow, not run by pytest
 ```
+
+With `REDAT_BOOTSTRAP_ADMIN_PASSWORD` set, this first `docker compose up -d` also creates the user
+`admin` with that password (only while the `users` table is empty — a warning is logged, and the
+password should be changed via `/konto` right after the first login).
+
+**Enabling app-native login on a host that still has the Traefik BasicAuth override** (this host, done
+once on 2026-09-10): edit the host-only `docker-compose.override.yml` — remove the two `redat-auth`
+middleware labels (the `traefik.http.middlewares.redat-auth.basicauth.*` label and the one wiring it into
+the router) and change the router's `traefik.http.routers.redat.middlewares` label to `sec-headers@docker`
+only — then `docker compose up -d` again to pick up the label change. Traefik keeps TLS, the
+HTTP→HTTPS redirect and the security headers; the app's own session cookie is now the only gate.
+
+**Verification checklist** (design spec §9, also the one this task ran locally against a scratch
+instance — see "Task 5" in the Work log below for the actual transcript): over HTTPS, `GET /` → `303` to
+`/login?next=%2F`; login as `admin` → `303` to `/`, `GET /` → `200` with the username in the nav;
+`GET /api/v1/sections` without a cookie → `401`; `GET /a/<id>` and its `report.pdf` → public, no cookie
+needed; `GET /admin` loads for the admin session; an invite link created from `/admin` round-trips to a
+new account in a private/second browser session, and that user shows up in the admin users table.
 
 **Update:**
 
@@ -29,6 +52,14 @@ cd /srv/nrw-redat && git pull && docker compose up -d --build
 
 **Rollback:** `git checkout <previous-sha> && docker compose up -d --build` (the previous image tag is
 overwritten by `docker compose build`, so there is no separate image rollback — rebuild from source).
+
+**Locked out / no admin account:**
+
+```bash
+docker compose exec redat python scripts/users.py list
+docker compose exec redat python scripts/users.py create-admin --username admin
+docker compose exec redat python scripts/users.py reset --username admin
+```
 
 ## Non-git deploy assets
 
@@ -43,8 +74,9 @@ overwritten by `docker compose build`, so there is no separate image rollback �
   optional for correctness but are what makes `boris`/`boris_trend`/`flood` fast (R-tree bbox reads in ms
   instead of scanning a 200-400 MB shapefile). After a new BORIS year: extend `AVAILABLE_YEARS` +
   the script's `YEARS`, re-run the script, `scripts/cache_admin.py purge --section boris`.
-- **`.env`** — holds `GEOAPIFY_API_KEY` (required) and the optional `REDAT_API_KEY`. Git-ignored; never
-  commit it.
+- **`.env`** — holds `GEOAPIFY_API_KEY` (required), the optional `REDAT_API_KEY`, and the user-management
+  keys `REDAT_BOOTSTRAP_ADMIN_PASSWORD` (bootstrap-only, see "Deploy runbook" above) and
+  `REDAT_SESSION_DAYS` (session lifetime, default 30). Git-ignored; never commit it.
 - `redat/data/{eea_aq_grid_2023_nrw.json.gz, zensus_2022_nrw.npz, schulen_nrw.json.gz,
   unfallatlas_2020_2025_nrw.npz, bergbauberechtigungen_nrw.geojson.gz, ladesaeulen_nrw.json.gz,
   egms_vertical_velocity_nrw.npz, certs/lencr_ye_chain.pem}` are, by contrast, committed package files and
@@ -54,14 +86,12 @@ overwritten by `docker compose build`, so there is no separate image rollback �
 
 ## Known limitations
 
-- **API key vs. website:** with `REDAT_API_KEY` set, the website's own browser-side fetches to
-  `/api/v1/*` (from `redat.js`/`analysis.js`) get 401 — neither script sends `X-Api-Key`, and baking the
-  key into the served page would leak it to anyone with LAN access. Verified live: with the key set,
-  `/` and `/healthz` still return 200, but `/api/v1/analyze` (what the analyzer page calls) 401s, so the
-  page loads with no way to run an analysis. The key is meant to protect the API for machine/API clients
-  only; the website is designed around the agreed LAN-open default (key unset). Follow-up (not yet
-  built): a same-origin session cookie issued by the page, or an auth-terminating reverse proxy in front
-  of `/api/v1` only.
+- **Login throttle is per process:** `redat/auth/throttle.py`'s `LoginThrottle` (5 failed logins per
+  `(client IP, username)` within 10 minutes → 60 s lock) is an in-memory dict on the running process, not
+  a shared store. It resets on every restart/redeploy and, if the app ever ran with more than one worker
+  process, each worker would count failures independently — fine at the current single-worker scale (see
+  "Single-worker assumption" in "Open items" below, which already applies to the cache for the same
+  reason), worth revisiting together if that ever changes.
 - **Störfallbetriebe (Seveso III):** the `infrastruktur` card cannot show a Seveso overlay — NRW
   publishes no such geodata (checked open.nrw, GDI-DE, RVR CSW, wms.nrw.de, both cities' ArcGIS servers;
   the EEA Industrial Emissions Portal's `seveso` field is empty for NRW rows). The card states this
@@ -300,12 +330,40 @@ overwritten by `docker compose build`, so there is no separate image rollback �
     siblings — the Klimaanalyse PET raster's rendered pitch was measured at 25 m during this work; the
     service does not document a native resolution.
 
+- **User management** (2026-09-09/10, plan `.superpowers/sdd/2026-09-09-user-management/`, spec
+  `docs/superpowers/specs/2026-09-09-user-management-design.md`) — app-native login, sessions, invite
+  links and an admin dashboard, replacing the host's single-user Traefik BasicAuth (see "Status" above).
+  No new Python dependency: passwords via `hashlib.scrypt`, session/invite tokens via `secrets`, CSRF via
+  a double-submit cookie.
+  - **Task 1** (`112b0ea`) — `redat/store/users.py` (`UserStore`: users, sessions with a sliding expiry,
+    invites) and `redat/store/events.py` (`EventStore`: append-only usage events, `stats()` for the
+    dashboard, `prune()`), both in `redat.db`; `redat/auth/passwords.py` (`hash_password`, `check_policy`,
+    `PasswordPolicyError`) and `redat/auth/tokens.py` (opaque tokens, stored only as sha256).
+  - **Task 2** (`6a6264b`) — `redat/auth/principal.py`: `current_principal`/`require_principal`/
+    `require_admin` for the API, `page_principal`/`page_admin` for the website (redirect instead of a bare
+    401/403), `safe_next` (open-redirect guard), the session/CSRF cookie contracts; bootstrap admin
+    creation wired into `redat/app.py::create_app`.
+  - **Task 3** (`b4d9064`, fix round `756c3b2`) — `redat/web/auth_pages.py` and the `login.html`/
+    `invite.html`/`konto.html` templates: login/logout, invite acceptance (new user or password reset),
+    change-password and device-session management, all CSRF-protected; `756c3b2` closed a login timing
+    oracle (a disabled account no longer short-circuits before the password hash) and a `safe_next`
+    backslash bypass.
+  - **Task 4** (`bf3f60e`) — `redat/web/admin_pages.py` and `admin.html`: KPI tiles, a 30-day analyses
+    chart, the users table (with disable/enable/delete/password-reset-link actions; an admin cannot
+    disable or delete themselves), invites table, recent-activity table, "Neuer Einladungslink" form.
+  - **Task 5** (this entry's commit) — `scripts/users.py` (CLI over `UserStore`/`EventStore` for
+    lockout recovery: `list`, `create-admin`, `reset`, `disable`, `enable`, `prune-events`; no
+    `GEOAPIFY_API_KEY` needed), README "Zugang & Benutzer" and `.env` table, this Status/runbook/Known-
+    limitations update, `CLAUDE.md` access-rules/testing rules, and the Tailwind rebuild for the four new
+    templates. Verified locally end-to-end against a scratch instance (login → nav → API 401 without a
+    cookie → admin page → invite round-trip in a second cookie jar → logout); see the task report for the
+    full status-line transcript.
+  - Suite: 794 tests (783 at the start of Task 5; +11 for `scripts/users.py` in `tests/test_users_cli.py`).
+
 ## Open items
 
 - **Hunter cutover** (spec §11) is explicitly out of scope for this plan — a separate, later plan covers
   pointing House Hunter's `/analyze` page at this service instead of its own embedded analysis code.
-- The API-key-vs-website gap above (same-origin cookie or proxy auth) is unresolved; low priority while
-  the service stays LAN-open.
 - **`_pdf()` builds the report context twice** (`redat/api/v1.py`) — once in `build_report_context()` for
   validation, again inside `render_pdf()`. Cosmetic (~ms), but also means the "generated_at" timestamp
   used for validation is discarded and recomputed. Fix: let `render_pdf` accept a pre-built `ctx`, or

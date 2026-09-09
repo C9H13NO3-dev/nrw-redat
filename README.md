@@ -85,12 +85,14 @@ curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":tr
 | Key | Meaning |
 |---|---|
 | `GEOAPIFY_API_KEY` | Required — geocoding, autocomplete, amenities, commute. Same key as House Hunter's `.env`. |
-| `REDAT_API_KEY` | Optional. When set, every `/api/*` route requires an `X-Api-Key` header. Leave empty for LAN-open (the agreed default) — see "Known limitations" in `HANDOVER.md` for why the website's own cards stop loading if you set this. |
+| `REDAT_API_KEY` | Optional. When set, `/api/v1/*` also accepts an `X-Api-Key` header as an alternative to a session cookie, for machine clients. Works alongside sessions — the website logs in with its own session cookie regardless of whether this is set. |
 | `REDAT_DATA_DIR` | Where `redat.db` and `source/{boris,flood,elections}` live. `/data` inside the container (bind-mounted from `./data` by `docker-compose.yml`). |
 | `REDAT_CACHE_TTL_S` | Default cache TTL in seconds for cards without their own (default 2592000 = 30 d, `config/settings.yaml`). Per-card TTLs: `cache_ttls` in settings.yaml. |
 | `REDAT_CACHE_MAX_ENTRIES` / `REDAT_CACHE_MAX_BYTES` | Cache bounds (defaults 100 000 entries / 256 MiB). Expired rows are evicted first, then least recently used. |
 | `REDAT_PUBLIC_URL` | Base URL used to build permalinks (e.g. `http://192.168.188.64:8200`). |
 | `REDAT_LOG_LEVEL` | Python logging level. |
+| `REDAT_BOOTSTRAP_ADMIN_PASSWORD` | First start only: when the `users` table is empty, creates the user `admin` with this password. Change it after the first login. See "Zugang & Benutzer" below. |
+| `REDAT_SESSION_DAYS` | Session lifetime in days (sliding expiry). Default 30. |
 
 ### Geodata (not in git)
 
@@ -145,6 +147,52 @@ The build scripts' module docstrings carry the download URLs and the exact comma
 Coverage: all seven grids are statewide (NRW bbox `redat/core/nrw.py`). They are loaded once at start-up
 (`redat/core/warmup.py`) and stay resident: Zensus 75 MB, Unfallatlas 14 MB, EGMS 14 MB, Ladesäulen 11 MB,
 EEA-Luftqualität 11 MB, Bergbauberechtigungen ~5 MB, Schulen ~1 MB — roughly 130 MB in total.
+
+## Zugang & Benutzer
+
+The website is app-native login, not a separate reverse-proxy auth layer. There is no public sign-up:
+an admin creates an invite link from `/admin` ("Neuer Einladungslink"), the link is shown once and lets
+its recipient set a username and password at `/invite/{token}`. Two roles: `user` (the analyzer, and the
+permalinks it creates) and `admin` (also sees `/admin`).
+
+Sessions are server-side (a row in `redat.db`, not a JWT), 30 days by default (`REDAT_SESSION_DAYS`,
+sliding — every request bumps the expiry, at most once an hour) and end via the "Abmelden" button, "alle
+anderen Geräte abmelden" on `/konto`, or by disabling the user.
+
+`/admin` shows KPI tiles (active/total users, analyses 7 d/30 d/total, PDF exports, permalink views over
+30 d), a 30-day bar chart, a per-user table (role, status, analyses, PDFs, last active, with
+deaktivieren/aktivieren/Passwort-Link/löschen actions — an admin cannot disable or delete themselves) and
+the most recent 50 usage events (who did what, when, with the address for an analysis). The login page
+says so in one sentence: analyses, addresses and PDF exports are recorded per account and are visible to
+the administrator. No e-mail addresses are collected and there is no self-service password reset — an
+admin issues a reset link from `/admin`.
+
+`X-Api-Key` stays as the credential for machine clients against `/api/v1/*` and now works **alongside**
+sessions rather than instead of them: the website authenticates with its own session cookie regardless of
+whether `REDAT_API_KEY` is set, so turning the key on no longer breaks the website's own fetches.
+
+**Permalinks stay public.** Anyone holding an `/a/{run_id}` link (or its `report.pdf`) can open it without
+logging in — that's the point of sharing a result — as is `/quellen` (the sources index, which carries no
+data). Every other page and every other `/api/v1/*` route needs a session or an API key; a website route
+without one redirects to `/login?next=…`, an API route answers `401`.
+
+**Bootstrap.** On first start, while the `users` table is still empty, setting
+`REDAT_BOOTSTRAP_ADMIN_PASSWORD` in `.env` creates the user `admin` with that password — change it on
+`/konto` after the first login. Leave it unset and nobody is created automatically; use the CLI instead
+(also the way back in if you get locked out):
+
+```bash
+docker compose exec redat python scripts/users.py list
+docker compose exec redat python scripts/users.py create-admin --username admin
+docker compose exec redat python scripts/users.py reset --username admin
+docker compose exec redat python scripts/users.py disable --username anna
+docker compose exec redat python scripts/users.py enable --username anna
+docker compose exec redat python scripts/users.py prune-events --days 180
+```
+
+`create-admin`/`reset` read the new password from `--password-env VAR` (for scripting) or prompt twice
+interactively; the script exits 1 with a message on stderr for an unknown user (`reset`/`disable`/
+`enable`), an invalid/taken username (`create-admin`), or a password-policy violation.
 
 ## API overview (`/api/v1`)
 
@@ -215,7 +263,7 @@ so it can be bookmarked or shared as a direct "run this address" link.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
-.venv/bin/python -m pytest -q       # 712 tests, hermetic, ~10s
+.venv/bin/python -m pytest -q       # 794 tests, hermetic, ~10s
 
 # manual, non-hermetic: drives a real browser against a running instance (Playwright + live
 # external services). Not collected by pytest. Point it at any running REDAT with --base-url.

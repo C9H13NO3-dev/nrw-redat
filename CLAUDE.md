@@ -9,7 +9,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/python -m pytest -q                     # 730 tests, hermetic, ~10s
+.venv/bin/python -m pytest -q                     # 794 tests, hermetic, ~10s
 GEOAPIFY_API_KEY=… .venv/bin/uvicorn redat.app:app --port 8200 --reload
 docker compose up -d --build                      # build gate: the test stage runs `pytest -q` and aborts the image on a red suite
 npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/redat.css --minify
@@ -42,6 +42,10 @@ detail has drifted).
 - Never `verify=False`; a host needing a non-standard chain ships its cert under `redat/data/certs/` (see `backend/breitband_service` pattern carried over from house-hunter).
 - All UI copy (website + PDF report) is German.
 - Website partials (`redat/templates/analysis/_*.html`) keep the store name `app` — an intentional carry-over from the house-hunter partials' Alpine store contract; do not rename it.
+- Access rules (spec §3): public = `/login`, `/logout`, `/invite/*`, `/healthz`, `/static/*`, `GET /a/{id}`, `GET /api/v1/run/{id}`, `GET /api/v1/run/{id}/report.pdf`, `GET /quellen`; everything else needs a principal (session cookie or `X-Api-Key`); `/admin*` needs an admin session.
+- Gated tests log in with `tests/helpers_auth.login` (creates the user + session directly, no HTTP round-trip through `/login`).
+- Every HTML form needs the CSRF double-submit (`redat/auth/csrf.py`'s `ensure_csrf`/`check_csrf`, cookie `redat_csrf`); JSON API mutations carry no token and instead rely on `SameSite=Lax` plus the `Content-Type: application/json` requirement (a cross-site form can't send either).
+- `page_principal` (and `page_admin`) gate website pages — redirect to `/login?next=…` (303); `require_principal` (and `require_admin`) gate the API — `401`/`403` JSON.
 - `data_dir()` (in each `sources/*.py` module) is always a function, never a module-level constant — it must re-read `REDAT_DATA_DIR` per call so tests can monkeypatch it.
 - New static data lives in `redat/data/` and is committed: seven statewide grids in total (three of them NumPy `.npz`) — `zensus_2022_nrw.npz`, `eea_aq_grid_2023_nrw.json.gz`, `schulen_nrw.json.gz`, `unfallatlas_2020_2025_nrw.npz`, `bergbauberechtigungen_nrw.geojson.gz`, `ladesaeulen_nrw.json.gz`, `egms_vertical_velocity_nrw.npz` — see README "Static grids in the repo" for the build script and refresh cadence per file.
 - Cache contract (README "Cache semantics"): `ok`/`empty` envelopes only, key `(key, lat₄, lon₄, plot, force, cache_version)`, TTL per card (`cache_ttls` yaml › `Section.cache_ttl_s` › `cache_ttl_s` 30 d), `error`/`gated` never cached, `destinations` suppresses caching for `commute`/`oepnv` only, `?fresh=1` is the cache bypass (`force` is the parcel-gate override, not a cache flag). Bump `Section.cache_version` when a card's `data` shape or meaning changes. An `ok` envelope whose `data` carries a truthy top-level `*_error` value is never cached either, so a permanent gate/hint must not use the `_error` suffix (see `bodenbewegung_hinweis`, not `bodenbewegung_error`).
