@@ -82,3 +82,12 @@ def test_session_and_bootstrap_settings(tmp_path):
     assert s.session_days == 7 and s.bootstrap_admin_password == "test123!" and s.cookie_secure is True
     s2 = load_settings({"GEOAPIFY_API_KEY": "k", "REDAT_PUBLIC_URL": "http://192.168.1.2:8200"}, yaml_path=None)
     assert s2.session_days == 30 and s2.bootstrap_admin_password is None and s2.cookie_secure is False
+
+
+def test_trusted_proxies_default_and_env_override():
+    cfg = s.load_settings(env={"GEOAPIFY_API_KEY": "k"}, yaml_path=None)
+    assert cfg.trusted_proxies == ("127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+    cfg2 = s.load_settings(env={"GEOAPIFY_API_KEY": "k", "REDAT_TRUSTED_PROXIES": "203.0.113.0/24, 198.51.100.7"}, yaml_path=None)
+    assert cfg2.trusted_proxies == ("203.0.113.0/24", "198.51.100.7")
+    cfg3 = s.load_settings(env={"GEOAPIFY_API_KEY": "k", "REDAT_TRUSTED_PROXIES": ""}, yaml_path=None)
+    assert cfg3.trusted_proxies == cfg.trusted_proxies          # empty env means unset, same convention as REDAT_API_KEY

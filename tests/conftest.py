@@ -19,6 +19,7 @@ def _redat_env(monkeypatch, tmp_path):
     monkeypatch.delenv("REDAT_PUBLIC_URL", raising=False)
     monkeypatch.delenv("REDAT_BOOTSTRAP_ADMIN_PASSWORD", raising=False)
     monkeypatch.delenv("REDAT_SESSION_DAYS", raising=False)
+    monkeypatch.delenv("REDAT_TRUSTED_PROXIES", raising=False)
     s.reset_settings()
     yield
     s.reset_settings()

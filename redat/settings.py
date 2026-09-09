@@ -27,6 +27,8 @@ _DEFAULTS = {
         ["Essen Hbf", "de:05113:9289"], ["Bochum Hbf", "de:05911:5194"], ["Düsseldorf Hbf", "de:05111:18235"],
     ],
     "section_timeouts": {},
+    # Peers whose X-Forwarded-For header we trust (Docker networks + RFC1918): a public peer never is.
+    "trusted_proxies": ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
 }
 
 
@@ -59,6 +61,7 @@ class Settings:
     section_timeouts: dict = field(default_factory=dict)
     session_days: int = 30
     bootstrap_admin_password: Optional[str] = None
+    trusted_proxies: tuple[str, ...] = ()
 
     @property
     def source_dir(self) -> Path:
@@ -123,6 +126,8 @@ def load_settings(env: Optional[Mapping[str, str]] = None, yaml_path: Optional[P
         section_timeouts=timeouts,
         session_days=_int(env, "REDAT_SESSION_DAYS", 30),
         bootstrap_admin_password=(env.get("REDAT_BOOTSTRAP_ADMIN_PASSWORD") or "").strip() or None,
+        trusted_proxies=tuple(p.strip() for p in (env.get("REDAT_TRUSTED_PROXIES") or "").split(",") if p.strip())
+                        or tuple(str(p) for p in y["trusted_proxies"]),
     )
 
 

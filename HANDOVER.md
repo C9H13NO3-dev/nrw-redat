@@ -5,11 +5,13 @@
 Live on `:8200` since 2026-09-05, running via `docker compose` on the same host as House Hunter
 (`/srv/nrw-redat`), publicly at `https://redat.ares-hud.com` behind Traefik. `REDAT_PUBLIC_URL` on this
 host is `https://redat.ares-hud.com` — it is the host of both permalinks and invite links, and it
-switches the session/CSRF cookies to `Secure`. That means the LAN address `http://192.168.188.64:8200`
-is no longer a live login entry point by design: the login POST still sets `Secure` cookies, a
-plaintext origin drops them, and the browser bounces back to `/login` forever. LAN access is out of
-scope for this feature — anyone who wants the app goes through `https://redat.ares-hud.com`, LAN
-included. `REDAT_API_KEY` unset. Access is
+switches the session/CSRF cookies to `Secure`. `docker-compose.yml` publishes the port as
+`127.0.0.1:8200:8200` (Traefik reaches the container over the Docker network, not the published port),
+so the LAN address `http://192.168.188.64:8200` is dead both at the TCP level and, had it still
+answered, at login: `Secure` cookies are dropped on a plaintext origin. LAN access is out of scope for
+this feature — anyone who wants the app goes through `https://redat.ares-hud.com`, LAN included;
+`curl -s localhost:8200/healthz` and the runbook's `smoke_analyze.py --base-url http://localhost:8200`
+still work because they run on the host itself. `REDAT_API_KEY` unset. Access is
 app-native login as of the user-management feature (Work log below): accounts, server-side sessions,
 invite links and an admin dashboard live in the app itself, so the host's Traefik `redat-auth` BasicAuth
 middleware (the single shared `test` user) has been removed from the router — Traefik still terminates
@@ -91,6 +93,13 @@ docker compose exec redat python scripts/users.py reset --username admin
 
 ## Known limitations
 
+- **The throttle, audit-log `ip` column and Secure-cookie reasoning assume the app is reached only
+  through Traefik.** `client_ip()` (`redat/auth/principal.py`) honours `X-Forwarded-For` only from a
+  peer inside `REDAT_TRUSTED_PROXIES` (default: Docker networks + RFC1918) — otherwise a public client
+  could spoof the header and rotate it to defeat the login throttle (keyed on `(client_ip, username)`)
+  and pollute `events.ip`. `docker-compose.yml` now binds the published port to `127.0.0.1:8200:8200`
+  so the container is reachable only via the Docker network Traefik sits on; narrow
+  `REDAT_TRUSTED_PROXIES` further (or firewall the host) if that path ever changes.
 - **Login throttle is per process:** `redat/auth/throttle.py`'s `LoginThrottle` (5 failed logins per
   `(client IP, username)` within 10 minutes → 60 s lock) is an in-memory dict on the running process, not
   a shared store. It resets on every restart/redeploy and, if the app ever ran with more than one worker

@@ -7,8 +7,10 @@ relative paths and never the login page itself.
 """
 from __future__ import annotations
 
+import ipaddress
 import secrets
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Optional
 from urllib.parse import quote
 
@@ -40,11 +42,38 @@ class Principal:
         return self.via == "session" and self.role == "admin"
 
 
+@lru_cache(maxsize=8)
+def _trusted_networks(proxies: tuple[str, ...]) -> tuple:
+    """Pre-parsed once per distinct `trusted_proxies` tuple (cheap: at most a handful of settings)."""
+    nets = []
+    for p in proxies:
+        try:
+            nets.append(ipaddress.ip_network(p, strict=False))
+        except ValueError:
+            continue
+    return tuple(nets)
+
+
+def _is_trusted_proxy(peer: str, proxies: tuple[str, ...]) -> bool:
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    return any(addr in net for net in _trusted_networks(proxies))
+
+
 def client_ip(request: Request) -> str:
+    """`X-Forwarded-For`'s first entry, but only when the direct peer is a trusted proxy (spec §5) —
+    otherwise the header is attacker-controlled and would let a spoofed value bypass the login
+    throttle and poison the audit log's `ip` column (see REDAT_TRUSTED_PROXIES in settings.py)."""
+    peer = request.client.host if request.client else ""
+    app = request.scope.get("app")
+    settings = getattr(app.state, "settings", None) if app is not None else None
+    settings = settings or get_settings()
     fwd = request.headers.get("x-forwarded-for")
-    if fwd:
+    if fwd and _is_trusted_proxy(peer, settings.trusted_proxies):
         return fwd.split(",")[0].strip()
-    return request.client.host if request.client else ""
+    return peer
 
 
 def _api_key_ok(request: Request) -> bool:

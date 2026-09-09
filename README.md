@@ -93,6 +93,7 @@ curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":tr
 | `REDAT_LOG_LEVEL` | Python logging level. |
 | `REDAT_BOOTSTRAP_ADMIN_PASSWORD` | First start only: when the `users` table is empty, creates the user `admin` with this password. Change it after the first login. See "Zugang & Benutzer" below. |
 | `REDAT_SESSION_DAYS` | Session lifetime in days (sliding expiry). Default 30. |
+| `REDAT_TRUSTED_PROXIES` | Comma-separated CIDRs/IPs whose `X-Forwarded-For` is trusted for `client_ip()` (login throttle key, audit-log `ip` column). Empty/unset uses the built-in default (Docker networks + RFC1918); a public peer is never trusted regardless. Only matters if the app is reachable other than through Traefik. |
 
 ### Geodata (not in git)
 
