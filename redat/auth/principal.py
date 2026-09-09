@@ -96,7 +96,7 @@ def require_admin(request: Request) -> Principal:
 
 def safe_next(value) -> str:
     v = str(value or "")
-    if not v.startswith("/") or v.startswith("//") or v.startswith("/login"):
+    if not v.startswith("/") or v.startswith("//") or "\\" in v or v.startswith("/login"):
         return "/"
     return v
 

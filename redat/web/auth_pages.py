@@ -18,6 +18,9 @@ from redat.web.pages import _render
 
 router = APIRouter(include_in_schema=False)
 INVALID_INVITE = "Dieser Einladungslink ist ungültig, abgelaufen oder wurde bereits verwendet."
+# Never a real password hash — only verified against to burn the same scrypt cost as a real check,
+# so an unknown username, a wrong password and a disabled account all take the same time.
+_DUMMY_HASH = "scrypt$32768$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 
 def _login_response(request: Request, user: dict, target: str, *, record_login: bool = True) -> RedirectResponse:
@@ -53,10 +56,12 @@ def login_submit(request: Request, username: str = Form(""), password: str = For
         return _render(request, "login.html", {"next": safe_next(next), "username": name,
                        "error": f"Zu viele Fehlversuche – bitte in {locked} Sekunden erneut versuchen."}, status_code=429, no_store=True)
     row = users.get_by_username(name)
-    ok = bool(row) and row["disabled_at"] is None and verify_password(password, row["password_hash"])
+    # Always run exactly one verify_password, win or lose, so a disabled account (which would
+    # otherwise short-circuit before hashing) doesn't return faster than a wrong password or an
+    # unknown username — that timing gap is itself a "this username exists and is disabled" oracle.
+    verified = verify_password(password, row["password_hash"]) if row else verify_password(password, _DUMMY_HASH)
+    ok = bool(row) and verified and row["disabled_at"] is None
     if not ok:
-        if not row:
-            verify_password(password, "scrypt$32768$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")  # equalise timing
         login_throttle.failure(key)
         events.record("login_failed", extra={"username": name}, ip=client_ip(request))
         return _render(request, "login.html", {"next": safe_next(next), "username": name,

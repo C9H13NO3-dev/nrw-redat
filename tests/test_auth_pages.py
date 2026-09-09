@@ -59,7 +59,9 @@ def test_disabled_user_cannot_log_in(client):
     u = _admin(client)
     client.app.state.users.set_disabled(u["id"], True)
     r = client.post("/login", data={"username": "admin", "password": "test123!", "csrf": csrf(client)})
-    assert r.status_code == 401
+    # Correct password, disabled account: same 401 and the same message as a wrong password — no
+    # separate wording that would let an attacker distinguish "wrong password" from "disabled".
+    assert r.status_code == 401 and "Benutzername oder Passwort falsch" in r.text
 
 
 def test_five_failures_lock_the_account_for_a_minute(client):

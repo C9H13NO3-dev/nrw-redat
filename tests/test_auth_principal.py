@@ -70,5 +70,5 @@ def test_admin_routes_need_the_admin_role(client):
 
 def test_safe_next():
     assert safe_next("/a/xyz?x=1") == "/a/xyz?x=1"
-    for bad in ("", None, "https://evil.example", "//evil.example", "javascript:alert(1)", "/login"):
+    for bad in ("", None, "https://evil.example", "//evil.example", "javascript:alert(1)", "/login", "/\\evil.example"):
         assert safe_next(bad) == "/"
