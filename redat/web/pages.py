@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from redat import __version__
-from redat.auth.principal import Principal, page_principal
+from redat.auth.csrf import ensure_csrf
+from redat.auth.principal import CSRF_COOKIE, Principal, csrf_cookie_kwargs, optional_principal, page_principal
 from redat.core import analyze as A
 from redat.core.sections import manifest
 from redat.core.sources_meta import SOURCES
@@ -14,9 +15,16 @@ from redat.templating import templates
 router = APIRouter(include_in_schema=False)
 
 
-def _render(request: Request, name: str, ctx: dict, status_code: int = 200) -> HTMLResponse:
-    return templates.TemplateResponse(request, name, {"request": request, "version": __version__, **ctx},
+def _render(request: Request, name: str, ctx: dict, status_code: int = 200, no_store: bool = False) -> HTMLResponse:
+    token = ensure_csrf(request)
+    resp = templates.TemplateResponse(request, name, {"request": request, "version": __version__,
+                                                      "principal": optional_principal(request), "csrf_token": token, **ctx},
                                       status_code=status_code)
+    if getattr(request.state, "csrf_new", None):
+        resp.set_cookie(CSRF_COOKIE, token, **csrf_cookie_kwargs())
+    if no_store:
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 def _page_config(address: str = "", plot_size_m2=None, living_space_m2=None, auto_run: bool = False, run=None) -> dict:
@@ -33,7 +41,7 @@ def index(request: Request, address: str = "", plot_size_m2: Optional[float] = N
 
 
 @router.get("/a/{run_id}", response_class=HTMLResponse)
-def stored_run(request: Request, run_id: str):
+def stored_run(request: Request, run_id: str, principal: Optional[Principal] = Depends(optional_principal)):
     run = request.app.state.runs.get(run_id)
     if run is None:
         return _render(request, "404.html", {"message": f"Es gibt keine gespeicherte Analyse mit der Kennung {run_id}."},
@@ -46,6 +54,6 @@ def stored_run(request: Request, run_id: str):
 
 
 @router.get("/quellen", response_class=HTMLResponse)
-def quellen(request: Request):
+def quellen(request: Request, principal: Optional[Principal] = Depends(optional_principal)):
     titles = {s["key"]: f'{s["icon"]} {s["title"]}' for s in manifest()}
     return _render(request, "quellen.html", {"active": "quellen", "sources": SOURCES, "titles": titles})

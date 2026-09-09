@@ -8,6 +8,7 @@ _FILTERS = {
     "fmt_int": builder.fmt_int,
     "fmt_num": builder.fmt_num,
     "fmt_date": builder.fmt_date,
+    "fmt_datetime": builder.fmt_datetime,
     "fmt_m": builder.fmt_m,
     "pct": lambda v, digits=0: builder.fmt_num(float(v) * 100, digits) + " %",  # 0.469 → "47 %"
 }

@@ -31,6 +31,7 @@ def test_index_renders_manifest(client):
     assert cfg["run"] is None and cfg["auto_run"] is False and [s["key"] for s in cfg["sections"]] == list(A.SECTIONS)
     assert 'id="card-noise"' in r.text and "Quellen" in r.text \
         and 'id="card-flurstueck"' in r.text and "Als Grundstücksgröße übernehmen" in r.text
+    assert "tester" in r.text and "Abmelden" in r.text and 'href="/konto"' in r.text  # nav reflects the logged-in session
 
 
 def test_index_prefill_and_auto(client):

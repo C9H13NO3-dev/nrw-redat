@@ -21,7 +21,14 @@
             <nav class="flex items-center gap-4 text-sm">
                 <a href="/" class="hover:text-teal-700 {{ 'font-semibold text-teal-700' if active == 'analyse' else 'text-gray-600' }}">Analyse</a>
                 <a href="/quellen" class="hover:text-teal-700 {{ 'font-semibold text-teal-700' if active == 'quellen' else 'text-gray-600' }}">Quellen</a>
+                {% if principal and principal.via == "session" %}
                 <a href="/docs" class="text-gray-600 hover:text-teal-700">API</a>
+                {% if principal.is_admin %}<a href="/admin" class="hover:text-teal-700 {{ 'font-semibold text-teal-700' if active == 'admin' else 'text-gray-600' }}">Admin</a>{% endif %}
+                <a href="/konto" class="hover:text-teal-700 {{ 'font-semibold text-teal-700' if active == 'konto' else 'text-gray-600' }}">👤 {{ principal.username }}</a>
+                <form method="post" action="/logout" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button type="submit" class="text-gray-600 hover:text-teal-700">Abmelden</button></form>
+                {% else %}
+                <a href="/login" class="text-gray-600 hover:text-teal-700">Anmelden</a>
+                {% endif %}
             </nav>
         </div>
     </header>
@@ -29,7 +36,7 @@
         {% block content %}{% endblock %}
     </main>
     <footer class="max-w-6xl mx-auto px-4 py-6 text-xs text-gray-400 no-print">
-        NRW-REDAT {{ version }} · Essen &amp; Bochum · Daten: siehe <a href="/quellen" class="underline">Quellen</a>
+        NRW-REDAT {{ version }} · Nordrhein-Westfalen · Daten: siehe <a href="/quellen" class="underline">Quellen</a>
     </footer>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>

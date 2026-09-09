@@ -55,7 +55,7 @@ def test_public_routes_need_no_login(client):
     assert client.get("/a/nope").status_code == 404
     assert client.get("/api/v1/run/nope").status_code == 404           # public: 404, not 401
     assert client.get("/api/v1/run/nope/report.pdf").status_code == 404
-    assert client.get("/login").status_code in (200, 404)
+    assert client.get("/login").status_code == 200
 
 
 def test_admin_routes_need_the_admin_role(client):

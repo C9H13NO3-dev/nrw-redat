@@ -59,6 +59,16 @@ def fmt_date(iso: Any) -> str:
         return str(iso)
 
 
+def fmt_datetime(iso: Any) -> str:
+    """'2025-01-01T12:34:56Z' → '01.01.2025 12:34'; '—' for None or anything unparsable."""
+    if not iso:
+        return "—"
+    try:
+        return datetime.strptime(str(iso)[:16], "%Y-%m-%dT%H:%M").strftime("%d.%m.%Y %H:%M")
+    except ValueError:
+        return "—"
+
+
 def fmt_m(v: Any) -> str:
     v = float(v)
     return f"{fmt_num(v / 1000, 1)} km" if v >= 1000 else f"{int(round(v))} m"
