@@ -1,4 +1,8 @@
-"""Server-rendered pages: analyzer, stored-run permalink, sources. Never behind the API key."""
+"""Server-rendered pages: analyzer, stored-run permalink, sources.
+
+`/` requires a session (`page_principal`; no session → 303 to `/login?next=…`). `/a/{id}` and
+`/quellen` are public (`optional_principal`: shown to anyone, nav reflects the login state if there
+is one). None of the three accept the API key — `X-Api-Key` only ever authenticates `/api/v1/*`."""
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
