@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 
 from redat import __version__
 from redat.auth.csrf import ensure_csrf
-from redat.auth.principal import CSRF_COOKIE, Principal, csrf_cookie_kwargs, optional_principal, page_principal
+from redat.auth.principal import CSRF_COOKIE, Principal, client_ip, csrf_cookie_kwargs, optional_principal, page_principal
 from redat.core import analyze as A
 from redat.core.sections import manifest
 from redat.core.sources_meta import SOURCES
@@ -46,6 +46,9 @@ def stored_run(request: Request, run_id: str, principal: Optional[Principal] = D
     if run is None:
         return _render(request, "404.html", {"message": f"Es gibt keine gespeicherte Analyse mit der Kennung {run_id}."},
                        status_code=404)
+    request.app.state.events.record("permalink_view", user_id=principal.user_id if principal else None,
+                                     via=principal.via if principal else None, address=run["address"],
+                                     lat=run["latitude"], lon=run["longitude"], run_id=run_id, ip=client_ip(request))
     p = A.run_to_payload(run)
     stored = {"run_id": run_id, "created_at": run["created_at"],
               "geocode": {"address": run["address"], **p["geocode"]}, "sections": p["sections"]}

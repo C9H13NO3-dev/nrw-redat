@@ -59,13 +59,11 @@ def test_public_routes_need_no_login(client):
 
 
 def test_admin_routes_need_the_admin_role(client):
-    # /admin is not routed until Task 4 (see admin_pages.py there), so every call 404s in this task —
-    # loosened here per the brief's note and tightened to 303/403/200 in Task 4.
-    assert client.get("/admin").status_code != 200
+    assert client.get("/admin").status_code == 303
     login(client, username="bob")
-    assert client.get("/admin").status_code != 200
+    assert client.get("/admin").status_code == 403
     login(client, username="root", role="admin")
-    assert client.get("/admin").status_code != 403
+    assert client.get("/admin").status_code == 200
 
 
 def test_safe_next():

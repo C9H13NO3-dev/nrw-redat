@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Verwaltung — NRW-REDAT{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+    <h1 class="text-xl font-bold text-gray-900">🛠️ Verwaltung</h1>
+
+    {% if error %}<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">⚠️ {{ error }}</div>{% endif %}
+
+    {% if new_invite_url %}
+    <div class="p-4 bg-teal-50 border border-teal-200 rounded-lg" x-data="{ copied: false }">
+        <p class="text-sm font-semibold text-teal-900 mb-2">Einladungslink (wird nur einmal angezeigt):</p>
+        <div class="flex gap-2">
+            <input id="new-invite-url" type="text" readonly value="{{ new_invite_url }}"
+                   class="flex-1 rounded-md border-teal-300 bg-white text-sm text-gray-700" onclick="this.select()">
+            <button type="button" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition text-sm"
+                    @click="const el = document.getElementById('new-invite-url'); el.select(); navigator.clipboard && navigator.clipboard.writeText(el.value); copied = true; setTimeout(() => copied = false, 2000)">
+                <span x-show="!copied">Kopieren</span><span x-show="copied" x-cloak>✅ Kopiert</span>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="bg-white rounded-lg shadow p-4">
+            <p class="text-2xl font-bold text-teal-700">{{ stats.users_total }}</p>
+            <p class="text-xs text-gray-500">Benutzer</p>
+            <p class="text-xs text-gray-400">aktiv 30 d: {{ stats.users_active_30d }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <p class="text-2xl font-bold text-teal-700">{{ stats.analyses["7d"] }}</p>
+            <p class="text-xs text-gray-500">Analysen 7 d</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <p class="text-2xl font-bold text-teal-700">{{ stats.analyses["30d"] }}</p>
+            <p class="text-xs text-gray-500">Analysen 30 d</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <p class="text-2xl font-bold text-teal-700">{{ stats.analyses.total }}</p>
+            <p class="text-xs text-gray-500">Analysen gesamt</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <p class="text-2xl font-bold text-teal-700">{{ stats.pdf_30d }}</p>
+            <p class="text-xs text-gray-500">PDF-Exporte 30 d</p>
+            <p class="text-xs text-gray-400">Permalink-Aufrufe 30 d: {{ stats.views_30d }}</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="font-semibold text-gray-900 mb-2">Analysen pro Tag (letzte 30 Tage)</h2>
+        <script type="application/json" id="usage-per-day">{{ stats.per_day|tojson }}</script>
+        <div style="height: 180px"><canvas id="usage-chart" aria-label="Analysen pro Tag" role="img"></canvas></div>
+        <details class="mt-2 text-xs text-gray-500"><summary>Als Tabelle</summary>
+            <table class="mt-1"><tbody>{% for d in stats.per_day if d.analyses %}<tr><td class="pr-3">{{ d.date }}</td><td>{{ d.analyses }}</td></tr>{% endfor %}</tbody></table>
+        </details>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 overflow-x-auto">
+        <h2 class="font-semibold text-gray-900 mb-2">Benutzer</h2>
+        <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-gray-500">
+                <th class="py-1 pr-3">Benutzer</th><th class="py-1 pr-3">Rolle</th><th class="py-1 pr-3">Status</th>
+                <th class="py-1 pr-3">Analysen gesamt / 30 d</th><th class="py-1 pr-3">PDFs</th>
+                <th class="py-1 pr-3">Zuletzt aktiv</th><th class="py-1">Aktionen</th>
+            </tr></thead>
+            <tbody>
+            {% for u in users %}
+            <tr class="border-t border-gray-100">
+                <td class="py-1 pr-3">{{ u.username }}{% if u.id == me %} <span class="text-xs text-teal-700">(Sie)</span>{% endif %}</td>
+                <td class="py-1 pr-3">{{ "Administrator" if u.role == "admin" else "Benutzer" }}</td>
+                <td class="py-1 pr-3">{% if u.disabled_at %}<span class="text-red-600">deaktiviert</span>{% else %}<span class="text-teal-700">aktiv</span>{% endif %}</td>
+                <td class="py-1 pr-3">{{ u.analyses_total | default(0) }} / {{ u.analyses_30d | default(0) }}</td>
+                <td class="py-1 pr-3">{{ u.pdf_total | default(0) }}</td>
+                <td class="py-1 pr-3">{{ u.last_active|fmt_datetime }}</td>
+                <td class="py-1">
+                    <div class="flex flex-wrap gap-1">
+                        {% if u.id != me %}
+                        {% if u.disabled_at %}
+                        <form method="post" action="/admin/users/{{ u.id }}/enable" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+                            <button type="submit" class="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50">Aktivieren</button></form>
+                        {% else %}
+                        <form method="post" action="/admin/users/{{ u.id }}/disable" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+                            <button type="submit" class="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50">Deaktivieren</button></form>
+                        {% endif %}
+                        {% endif %}
+                        <form method="post" action="/admin/users/{{ u.id }}/reset" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+                            <button type="submit" class="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50">Passwort-Link</button></form>
+                        {% if u.id != me %}
+                        <form method="post" action="/admin/users/{{ u.id }}/delete" class="inline">
+                            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                            <button type="submit" onclick="return confirm('Benutzer wirklich löschen?')" class="px-2 py-1 text-xs border border-red-200 text-red-600 rounded-md hover:bg-red-50">Löschen</button></form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="font-semibold text-gray-900 mb-2">Neue Einladung</h2>
+        <form method="post" action="/admin/invites" class="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <label class="text-sm"><span class="block text-gray-700 mb-1">Notiz</span>
+                <input name="note" maxlength="80" placeholder="z. B. Name der eingeladenen Person" class="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></label>
+            <label class="text-sm"><span class="block text-gray-700 mb-1">Rolle</span>
+                <select name="role" class="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                    <option value="user">Benutzer</option><option value="admin">Administrator</option>
+                </select></label>
+            <button type="submit" class="px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition">Einladungslink erstellen</button>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 overflow-x-auto">
+        <h2 class="font-semibold text-gray-900 mb-2">Einladungen</h2>
+        <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-gray-500">
+                <th class="py-1 pr-3">Notiz</th><th class="py-1 pr-3">Rolle</th><th class="py-1 pr-3">Erstellt von</th>
+                <th class="py-1 pr-3">Gültig bis</th><th class="py-1 pr-3">Status</th><th class="py-1 pr-3">Verwendet von</th><th class="py-1">Aktion</th>
+            </tr></thead>
+            <tbody>
+            {% for i in invites %}
+            <tr class="border-t border-gray-100">
+                <td class="py-1 pr-3">{{ i.note or "—" }}</td>
+                <td class="py-1 pr-3">{{ "Administrator" if i.role == "admin" else "Benutzer" }}</td>
+                <td class="py-1 pr-3">{{ i.created_by_username or "—" }}</td>
+                <td class="py-1 pr-3">{{ i.expires_at|fmt_datetime }}</td>
+                <td class="py-1 pr-3">{{ i.status }}</td>
+                <td class="py-1 pr-3">{{ i.used_by_username or "—" }}</td>
+                <td class="py-1">
+                    {% if i.status == "offen" %}
+                    <form method="post" action="/admin/invites/{{ i.token_hash }}/revoke" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+                        <button type="submit" class="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50">Widerrufen</button></form>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 overflow-x-auto">
+        <h2 class="font-semibold text-gray-900 mb-2">Letzte Aktivität</h2>
+        <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-gray-500">
+                <th class="py-1 pr-3">Zeit</th><th class="py-1 pr-3">Benutzer</th><th class="py-1 pr-3">Ereignis</th><th class="py-1">Details</th>
+            </tr></thead>
+            <tbody>
+            {% for e in recent %}
+            <tr class="border-t border-gray-100">
+                <td class="py-1 pr-3">{{ e.ts|fmt_datetime }}</td>
+                <td class="py-1 pr-3">{{ e.username or "—" }}</td>
+                <td class="py-1 pr-3">{{ kind_labels.get(e.kind, e.kind) }}</td>
+                <td class="py-1">
+                    {% if e.address %}{% if e.run_id %}<a href="/a/{{ e.run_id }}" class="text-teal-700 hover:underline">{{ e.address }}</a>{% else %}{{ e.address }}{% endif %}
+                    {% elif e.kind == "login_failed" and e.extra and e.extra.username %}{{ e.extra.username }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+    const data = JSON.parse(document.getElementById('usage-per-day').textContent);
+    const ctx = document.getElementById('usage-chart');
+    if (!ctx || !window.Chart) return;
+    new Chart(ctx, {
+        type: 'bar',
+        data: { labels: data.map(d => d.date.slice(5)), datasets: [{ data: data.map(d => d.analyses), backgroundColor: '#0d9488', borderRadius: 4, maxBarThickness: 18 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                   scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }, y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#e5e7eb' } } } }
+    });
+})();
+</script>
+{% endblock %}

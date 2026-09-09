@@ -138,11 +138,13 @@ def create_app() -> FastAPI:
         return get_swagger_ui_html(openapi_url="/openapi.json", title="NRW-REDAT API")
 
     from redat.api.v1 import public_router, router as api_router
+    from redat.web.admin_pages import router as admin_router
     from redat.web.auth_pages import router as auth_router
     from redat.web.pages import router as web_router
     app.include_router(api_router)
     app.include_router(public_router)
     app.include_router(auth_router)
+    app.include_router(admin_router)
     app.include_router(web_router)
     return app
 
