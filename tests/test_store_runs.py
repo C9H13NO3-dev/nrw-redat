@@ -69,3 +69,19 @@ def test_connections_are_closed_after_use(tmp_path, monkeypatch):
     for con in tracked_connections:
         with pytest.raises(sqlite3.ProgrammingError):
             con.execute("SELECT 1")
+
+
+def test_save_records_user_id_and_init_adds_the_column_to_old_databases(tmp_path):
+    import sqlite3
+    db = tmp_path / "redat.db"
+    con = sqlite3.connect(db)
+    con.executescript("""CREATE TABLE runs (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, address TEXT NOT NULL,
+        formatted_address TEXT, latitude REAL NOT NULL, longitude REAL NOT NULL, precision TEXT, plot_size_m2 REAL,
+        living_space_m2 REAL, sections_json TEXT NOT NULL);""")
+    con.commit(); con.close()
+    s = RunStore(db)
+    s.init()                                                     # adds user_id to the pre-existing table
+    rid = s.save({"address": "A", "latitude": 51.0, "longitude": 7.0, "sections": {}}, user_id=7)
+    assert s.get(rid)["user_id"] == 7
+    rid2 = s.save({"address": "B", "latitude": 51.0, "longitude": 7.0, "sections": {}})
+    assert s.get(rid2)["user_id"] is None

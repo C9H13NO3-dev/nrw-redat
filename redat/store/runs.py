@@ -48,23 +48,26 @@ class RunStore:
         with self._connect() as con:
             con.execute("PRAGMA journal_mode=WAL")
             con.executescript(_DDL)
+            cols = {r[1] for r in con.execute("PRAGMA table_info(runs)").fetchall()}
+            if "user_id" not in cols:
+                con.execute("ALTER TABLE runs ADD COLUMN user_id INTEGER")
 
     @staticmethod
     def new_run_id() -> str:
         return base64.b32encode(secrets.token_bytes(6)).decode().rstrip("=").lower()
 
-    def save(self, payload: dict) -> str:
+    def save(self, payload: dict, user_id: Optional[int] = None) -> str:
         if payload.get("latitude") is None or payload.get("longitude") is None:
             raise ValueError("latitude/longitude required")
         if not payload.get("address"):
             raise ValueError("address required")
         rid = self.new_run_id()
         created = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        row = [rid, created] + [payload.get(c) for c in _COLS] + [json.dumps(payload.get("sections") or {}, ensure_ascii=False)]
+        row = [rid, created] + [payload.get(c) for c in _COLS] + [json.dumps(payload.get("sections") or {}, ensure_ascii=False), user_id]
         with self._connect() as con:
             con.execute(
-                f"INSERT INTO runs (id, created_at, {', '.join(_COLS)}, sections_json) "
-                f"VALUES ({', '.join('?' * (len(_COLS) + 3))})", row)
+                f"INSERT INTO runs (id, created_at, {', '.join(_COLS)}, sections_json, user_id) "
+                f"VALUES ({', '.join('?' * (len(_COLS) + 4))})", row)
         return rid
 
     def get(self, run_id: str) -> Optional[dict]:
