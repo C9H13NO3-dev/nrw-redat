@@ -10,8 +10,11 @@ switches the session/CSRF cookies to `Secure`. `docker-compose.yml` publishes th
 so the LAN address `http://192.168.188.64:8200` is dead both at the TCP level and, had it still
 answered, at login: `Secure` cookies are dropped on a plaintext origin. LAN access is out of scope for
 this feature — anyone who wants the app goes through `https://redat.ares-hud.com`, LAN included;
-`curl -s localhost:8200/healthz` and the runbook's `smoke_analyze.py --base-url http://localhost:8200`
-still work because they run on the host itself. `REDAT_API_KEY` unset. Access is
+On this host the untracked override goes further and
+publishes no port at all (`ports: !reset []`, container on Traefik's `proxy` network), so host-side checks
+address the container directly: `IP=$(docker inspect nrw-redat --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')`
+then `curl -s http://$IP:8200/healthz` (or `smoke_analyze.py --base-url http://$IP:8200`). `REDAT_API_KEY` set
+for machine clients (works alongside sessions). Access is
 app-native login as of the user-management feature (Work log below): accounts, server-side sessions,
 invite links and an admin dashboard live in the app itself, so the host's Traefik `redat-auth` BasicAuth
 middleware (the single shared `test` user) has been removed from the router — Traefik still terminates
@@ -29,7 +32,7 @@ cp .env.example .env    # GEOAPIFY_API_KEY, REDAT_PUBLIC_URL, REDAT_BOOTSTRAP_AD
 docker compose build    # the geodata script runs its GeoPackage builds inside this image
 scripts/fetch_geodata.sh   # downloads BORIS/HWRM/BTW25 (~3.3 GB) into ./data/source and builds brw.gpkg + the flood .gpkg files (~10 min); idempotent
 docker compose up -d
-curl -s localhost:8200/healthz
+curl -s localhost:8200/healthz    # on this host the override unpublishes the port: use the container IP instead (Status above)
 .venv/bin/python scripts/smoke_analyze.py --base-url http://localhost:8200   # manual live check: full browser flow, not run by pytest
 ```
 
@@ -382,6 +385,13 @@ docker compose run --rm redat python scripts/users.py create-admin --username ad
     cookie → admin page → invite round-trip in a second cookie jar → logout); see the task report for the
     full status-line transcript.
   - Suite: 794 tests (783 at the start of Task 5; +11 for `scripts/users.py` in `tests/test_users_cli.py`).
+  - **Final review fix wave** (`2a24e3d`..`b041661`, re-reviewed clean) — `REDAT_PUBLIC_URL` documented as the
+    host of invite links and the `Secure`-cookie switch; `client_ip()` trusts `X-Forwarded-For` only from
+    `REDAT_TRUSTED_PROXIES` (default Docker + RFC1918) and `docker-compose.yml` binds the published port to
+    `127.0.0.1`; a bad `REDAT_BOOTSTRAP_ADMIN_PASSWORD` is logged instead of crash-looping the container
+    (`docker compose run --rm redat …` documented for that case); `invite_submit` catches every `ValueError`
+    and refuses a reset link for a disabled account; invalid invite links get `invite_invalid.html`; the
+    `pages.py` docstring states the real gate. Suite: 805 tests.
 
 ## Open items
 

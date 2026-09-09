@@ -77,7 +77,7 @@ API under `/api/v1` (OpenAPI docs at `/docs`), and `GET /healthz` for monitoring
 git clone <this repo> nrw-redat && cd nrw-redat
 cp .env.example .env            # fill in GEOAPIFY_API_KEY (see below)
 docker compose up -d --build    # builds on :8200 — the build stage runs pytest; a red suite aborts the build
-curl -s localhost:8200/healthz  # {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":29,"cache":{"entries":…,"bytes":…,"expired":…}}
+curl -s localhost:8200/healthz  # (bound to 127.0.0.1; behind a Traefik override that unpublishes the port, curl the container IP instead) {"status":"ok","version":"1.0.0","chromium":true,"sources_loaded":29,"cache":{"entries":…,"bytes":…,"expired":…}}
 ```
 
 `.env` (git-ignored, copy from `.env.example`):
