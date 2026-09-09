@@ -13,11 +13,11 @@ from redat.auth.principal import (SESSION_COOKIE, Principal, client_ip, current_
 from redat.auth.throttle import login_throttle
 from redat.auth.tokens import token_hash
 from redat.settings import get_settings
-from redat.store.users import InvalidUsernameError, UsernameTakenError
 from redat.web.pages import _render
 
 router = APIRouter(include_in_schema=False)
 INVALID_INVITE = "Dieser Einladungslink ist ungültig, abgelaufen oder wurde bereits verwendet."
+DISABLED_RESET_TARGET = "Dieses Konto ist deaktiviert. Bitte wende dich an die Person, die dich eingeladen hat."
 # Never a real password hash — only verified against to burn the same scrypt cost as a real check,
 # so an unknown username, a wrong password and a disabled account all take the same time.
 _DUMMY_HASH = "scrypt$32768$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -117,6 +117,11 @@ def invite_submit(request: Request, token: str, username: str = Form(""), passwo
         user = users.get(inv["reset_user_id"])
         if user is None:
             return _render(request, "404.html", {"message": INVALID_INVITE}, status_code=404, no_store=True)
+        if user["disabled_at"] is not None:
+            # Do not set the password, mint a session or consume the invite: the link stays usable
+            # once the account is re-enabled, and no half-applied reset happens in the meantime.
+            return _render(request, "invite.html", _invite_ctx(request, token, inv, DISABLED_RESET_TARGET),
+                           status_code=403, no_store=True)
         users.set_password(user["id"], password)
         users.delete_user_sessions(user["id"])
         users.use_invite(token, user["id"])
@@ -124,7 +129,7 @@ def invite_submit(request: Request, token: str, username: str = Form(""), passwo
     else:
         try:
             user = users.create(username, password, role=inv["role"], invited_by=inv["created_by"])
-        except (InvalidUsernameError, UsernameTakenError) as exc:
+        except ValueError as exc:
             return fail(str(exc))
         users.use_invite(token, user["id"])
         events.record("invite_accepted", user_id=user["id"], via="session", extra={"note": inv.get("note") or ""}, ip=client_ip(request))

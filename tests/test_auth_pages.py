@@ -109,6 +109,30 @@ def test_invite_validation_errors_stay_on_the_form(client):
     assert client.app.state.users.get_invite(tok) is not None          # still usable
 
 
+def test_invite_submit_surfaces_any_value_error_from_create_instead_of_500(client):
+    admin = _admin(client)
+    # create() raises a bare ValueError for an unknown role — unreachable through the admin form
+    # (which validates role) but not through a hand-built invite row; invite_submit must catch it.
+    tok = client.app.state.users.create_invite(admin["id"], role="bogus")
+    r = client.post(f"/invite/{tok}", data={"username": "anna", "password": "test123!", "password2": "test123!", "csrf": csrf(client)})
+    assert r.status_code == 400 and "role" in r.text
+    assert client.app.state.users.get_by_username("anna") is None
+    assert client.app.state.users.get_invite(tok) is not None          # not consumed
+
+
+def test_reset_invite_for_a_disabled_user_is_refused(client):
+    admin = _admin(client)
+    bob = client.app.state.users.create("bob", "test123!")
+    client.app.state.users.set_disabled(bob["id"], True)
+    old_hash = client.app.state.users.get_by_username("bob")["password_hash"]
+    tok = client.app.state.users.create_invite(admin["id"], note="Reset bob", reset_user_id=bob["id"])
+    r = client.post(f"/invite/{tok}", data={"password": "neuesPasswort9", "password2": "neuesPasswort9", "csrf": csrf(client)})
+    assert r.status_code == 403 and "deaktiviert" in r.text
+    assert SESSION_COOKIE not in r.headers.get("set-cookie", "")
+    assert client.app.state.users.get_by_username("bob")["password_hash"] == old_hash
+    assert client.app.state.users.get_invite(tok) is not None          # still usable
+
+
 def test_reset_invite_sets_password_and_ends_other_sessions(client):
     admin = _admin(client)
     bob = client.app.state.users.create("bob", "test123!")
