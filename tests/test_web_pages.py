@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import redat.core.analyze as A
 from redat.core.geocoding import GeocodeResult
 from redat.settings import reset_settings
+from tests.helpers_auth import login
 
 OK = GeocodeResult(formatted_address="Brückstraße 1, 45239 Essen", latitude=51.3878, longitude=7.0011, precision="building")
 
@@ -14,6 +15,7 @@ OK = GeocodeResult(formatted_address="Brückstraße 1, 45239 Essen", latitude=51
 def client():
     from redat.app import create_app
     with TestClient(create_app()) as c:
+        login(c)
         yield c
 
 
@@ -61,10 +63,13 @@ def test_quellen(client):
 
 
 def test_pages_never_need_api_key(monkeypatch):
+    """The API key never gates pages: /quellen stays public, and / only needs a session (not the key)."""
     monkeypatch.setenv("REDAT_API_KEY", "k"); reset_settings()
     from redat.app import create_app
     with TestClient(create_app()) as c:
-        assert c.get("/").status_code == 200 and c.get("/quellen").status_code == 200
+        assert c.get("/quellen").status_code == 200
+        login(c)
+        assert c.get("/").status_code == 200
 
 
 def test_index_offers_a_cache_bypassing_reload_per_card(client):

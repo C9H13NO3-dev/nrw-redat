@@ -8,10 +8,11 @@ from functools import lru_cache
 from pathlib import Path
 
 import anyio
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
 from redat import __version__
+from redat.auth.principal import page_principal
 from redat.core.warmup import warm_geo_stack, warm_grids
 from redat.settings import get_settings
 
@@ -42,6 +43,15 @@ def chromium_available() -> bool:
 def sources_loaded() -> int:
     from redat.core.sections import SECTIONS
     return len(SECTIONS)
+
+
+def bootstrap_admin(users, settings) -> bool:
+    """First start: create `admin` from REDAT_BOOTSTRAP_ADMIN_PASSWORD when the users table is empty."""
+    if users.count() > 0 or not settings.bootstrap_admin_password:
+        return False
+    users.create("admin", settings.bootstrap_admin_password, role="admin")
+    log.warning("bootstrap: user 'admin' created from REDAT_BOOTSTRAP_ADMIN_PASSWORD — change the password after the first login")
+    return True
 
 
 CACHE_SWEEP_INTERVAL_S = 3600
@@ -91,11 +101,21 @@ def create_app() -> FastAPI:
         sweeper.cancel()
         _app.state.cache.close()
 
-    app = FastAPI(title="NRW-REDAT", version=__version__, description=DESCRIPTION, lifespan=lifespan)
+    app = FastAPI(title="NRW-REDAT", version=__version__, description=DESCRIPTION, lifespan=lifespan,
+                  docs_url=None, redoc_url=None, openapi_url=None)
     # Built here, not in lifespan: every route (and /healthz) needs it, and it must exist for callers that
     # construct the app without running the lifespan (tests). The sweeper task is lifespan-bound.
     from redat.core.analyze import build_cache
     app.state.cache = build_cache(settings)
+
+    from redat.store.events import EventStore
+    from redat.store.users import UserStore
+    app.state.users = UserStore(settings.db_path)
+    app.state.users.init()
+    app.state.events = EventStore(settings.db_path)
+    app.state.events.init()
+    bootstrap_admin(app.state.users, settings)
+
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     @app.get("/healthz", include_in_schema=False)
@@ -105,9 +125,22 @@ def create_app() -> FastAPI:
                 "sources_loaded": sources_loaded(),
                 "cache": {"entries": st["entries"], "bytes": st["bytes"], "expired": st["expired"]}}
 
-    from redat.api.v1 import router as api_router
+    # OpenAPI docs are gated: behind page_principal instead of the default unauthenticated /docs, /openapi.json.
+    from fastapi.openapi.docs import get_swagger_ui_html
+    from fastapi.responses import JSONResponse
+
+    @app.get("/openapi.json", include_in_schema=False, dependencies=[Depends(page_principal)])
+    def openapi_json():
+        return JSONResponse(app.openapi())
+
+    @app.get("/docs", include_in_schema=False, dependencies=[Depends(page_principal)])
+    def docs():
+        return get_swagger_ui_html(openapi_url="/openapi.json", title="NRW-REDAT API")
+
+    from redat.api.v1 import public_router, router as api_router
     from redat.web.pages import router as web_router
     app.include_router(api_router)
+    app.include_router(public_router)
     app.include_router(web_router)
     return app
 

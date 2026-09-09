@@ -1,10 +1,11 @@
 """Server-rendered pages: analyzer, stored-run permalink, sources. Never behind the API key."""
 from typing import Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from redat import __version__
+from redat.auth.principal import Principal, page_principal
 from redat.core import analyze as A
 from redat.core.sections import manifest
 from redat.core.sources_meta import SOURCES
@@ -25,7 +26,8 @@ def _page_config(address: str = "", plot_size_m2=None, living_space_m2=None, aut
 
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, address: str = "", plot_size_m2: Optional[float] = None,
-          living_space_m2: Optional[float] = None, auto: bool = False):
+          living_space_m2: Optional[float] = None, auto: bool = False,
+          principal: Principal = Depends(page_principal)):
     cfg = _page_config(address, plot_size_m2, living_space_m2, auto_run=bool(auto and address))
     return _render(request, "index.html", {"active": "analyse", "page_config": cfg, "sections": cfg["sections"]})
 

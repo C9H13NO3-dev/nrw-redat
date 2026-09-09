@@ -6,6 +6,7 @@ import redat.core.analyze as A
 from redat.core.geocoding import GeocodeResult
 from redat.report.builder import ReportPayloadError
 from redat.report.pdf import RendererUnavailable
+from tests.helpers_auth import login
 
 OK = GeocodeResult(formatted_address="Brückstraße 1, 45239 Essen", latitude=51.3878, longitude=7.0011, precision="house")
 
@@ -24,6 +25,7 @@ def client(monkeypatch):
         "generated_date": "2026-09-05"}))
     from redat.app import create_app
     with TestClient(create_app()) as c:
+        login(c)
         yield c
 
 

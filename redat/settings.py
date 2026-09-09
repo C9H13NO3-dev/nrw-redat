@@ -57,6 +57,8 @@ class Settings:
     destinations: tuple[Destination, ...] = ()
     oepnv_stops: tuple[tuple[str, str], ...] = ()
     section_timeouts: dict = field(default_factory=dict)
+    session_days: int = 30
+    bootstrap_admin_password: Optional[str] = None
 
     @property
     def source_dir(self) -> Path:
@@ -65,6 +67,10 @@ class Settings:
     @property
     def db_path(self) -> Path:
         return self.data_dir / "redat.db"
+
+    @property
+    def cookie_secure(self) -> bool:
+        return self.public_url.lower().startswith("https://")
 
 
 def _read_yaml(path: Optional[Path]) -> dict:
@@ -115,6 +121,8 @@ def load_settings(env: Optional[Mapping[str, str]] = None, yaml_path: Optional[P
         destinations=dests,
         oepnv_stops=stops,
         section_timeouts=timeouts,
+        session_days=_int(env, "REDAT_SESSION_DAYS", 30),
+        bootstrap_admin_password=(env.get("REDAT_BOOTSTRAP_ADMIN_PASSWORD") or "").strip() or None,
     )
 
 

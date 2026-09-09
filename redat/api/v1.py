@@ -1,11 +1,13 @@
-"""REDAT public API (spec §5). Everything under /api/v1, all behind the optional API key."""
+"""REDAT public API (spec §5). Everything under /api/v1 needs a session cookie or X-Api-Key, except
+`GET /run/{run_id}` and `GET /run/{run_id}/report.pdf`: those back the `/a/{run_id}` permalink page, which
+is itself public (a saved analysis is meant to be shareable), so the JSON/PDF behind it stays public too."""
 import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
-from redat.api.auth import require_api_key
+from redat.auth.principal import require_principal
 from redat.core import analyze as A
 from redat.core.sections import SECTIONS, Ctx, manifest
 from redat.report.builder import ReportPayloadError, build_report_context
@@ -15,7 +17,8 @@ from redat.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/api/v1", dependencies=[Depends(require_principal)])
+public_router = APIRouter(prefix="/api/v1")
 
 
 def _destinations(raw: Optional[str]):
@@ -97,7 +100,7 @@ def _get_run_or_404(request: Request, run_id: str) -> dict:
     return run
 
 
-@router.get("/run/{run_id}")
+@public_router.get("/run/{run_id}")
 def api_get_run(request: Request, run_id: str):
     run = _get_run_or_404(request, run_id)
     p = A.run_to_payload(run)
@@ -138,7 +141,7 @@ async def api_report_get(request: Request, address: str, plot_size_m2: Optional[
                        "living_space_m2": living_space_m2, "sections": out["sections"]})
 
 
-@router.get("/run/{run_id}/report.pdf")
+@public_router.get("/run/{run_id}/report.pdf")
 async def api_run_report(request: Request, run_id: str):
     run = _get_run_or_404(request, run_id)
     return await _pdf(A.run_to_payload(run))

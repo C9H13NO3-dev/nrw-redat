@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from redat.settings import reset_settings
+from tests.helpers_auth import login
 
 
 def _client():
@@ -7,9 +8,12 @@ def _client():
     return TestClient(create_app())
 
 
-def test_api_open_when_no_key():
-    r = _client().get("/api/v1/sections")
-    assert r.status_code == 200
+def test_api_requires_a_credential_when_no_key_is_configured():
+    """Old semantics ("no key configured -> open") are inverted: a session or the API key is always required."""
+    c = _client()
+    assert c.get("/api/v1/sections").status_code == 401
+    login(c)
+    assert c.get("/api/v1/sections").status_code == 200
 
 
 def test_api_requires_key_when_set(monkeypatch):
@@ -19,7 +23,6 @@ def test_api_requires_key_when_set(monkeypatch):
     assert c.get("/api/v1/sections", headers={"X-Api-Key": "wrong"}).status_code == 401
     assert c.get("/api/v1/sections", headers={"X-Api-Key": "s3cret"}).status_code == 200
     assert c.get("/healthz").status_code == 200  # never gated
-    assert c.get("/docs").status_code == 200
 
 
 def test_non_ascii_key_is_a_clean_401_not_a_500(monkeypatch):

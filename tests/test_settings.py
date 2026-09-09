@@ -73,3 +73,12 @@ def test_cache_bounds_and_per_section_ttls_from_yaml_and_env(tmp_path):
 def test_bad_cache_bounds_fail_loudly():
     with pytest.raises(s.SettingsError, match="REDAT_CACHE_MAX_BYTES"):
         s.load_settings(env={"GEOAPIFY_API_KEY": "k", "REDAT_CACHE_MAX_BYTES": "lots"}, yaml_path=None)
+
+
+def test_session_and_bootstrap_settings(tmp_path):
+    from redat.settings import load_settings
+    s = load_settings({"GEOAPIFY_API_KEY": "k", "REDAT_SESSION_DAYS": "7", "REDAT_BOOTSTRAP_ADMIN_PASSWORD": "test123!",
+                       "REDAT_PUBLIC_URL": "https://redat.example"}, yaml_path=None)
+    assert s.session_days == 7 and s.bootstrap_admin_password == "test123!" and s.cookie_secure is True
+    s2 = load_settings({"GEOAPIFY_API_KEY": "k", "REDAT_PUBLIC_URL": "http://192.168.1.2:8200"}, yaml_path=None)
+    assert s2.session_days == 30 and s2.bootstrap_admin_password is None and s2.cookie_secure is False

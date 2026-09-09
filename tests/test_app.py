@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 import redat
 from redat import app as appmod
+from tests.helpers_auth import login
 
 
 def test_healthz_is_open_and_reports_version(monkeypatch):
@@ -44,9 +45,10 @@ def test_lifespan_warms_chromium_probe_off_the_event_loop(monkeypatch):
 
 
 def test_docs_served():
-    client = TestClient(appmod.create_app())
-    assert client.get("/docs").status_code == 200
-    assert client.get("/openapi.json").json()["info"]["version"] == redat.__version__
+    with TestClient(appmod.create_app()) as client:
+        login(client)
+        assert client.get("/docs").status_code == 200
+        assert client.get("/openapi.json").json()["info"]["version"] == redat.__version__
 
 
 def test_healthz_reports_cache_stats(monkeypatch):
@@ -75,6 +77,26 @@ def test_cache_survives_an_app_restart(monkeypatch):
     env = {"key": "noise", "tier": "area", "status": "ok", "data": {}, "message": None, "source": "x", "took_ms": 1}
     monkeypatch.setattr(A, "run_section", lambda key, ctx, precision=None, force=False: env)
     with TestClient(appmod.create_app()) as c1:
+        login(c1)
         assert "cached" not in c1.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0}).json()
     with TestClient(appmod.create_app()) as c2:          # same REDAT_DATA_DIR, new process state
+        login(c2)
         assert c2.get("/api/v1/section/noise", params={"lat": 51.38, "lon": 7.0}).json()["cached"] is True
+
+
+def test_bootstrap_admin_only_when_no_users(monkeypatch, tmp_path):
+    from redat import settings as s
+    monkeypatch.setenv("REDAT_BOOTSTRAP_ADMIN_PASSWORD", "test123!")
+    s.reset_settings()
+    from redat.app import create_app
+    app = create_app()
+    u = app.state.users.get_by_username("admin")
+    assert u and u["role"] == "admin"
+    app.state.users.set_password(u["id"], "geaendert99")
+    create_app()                                          # second start: no reset, no duplicate
+    from redat.auth.passwords import verify_password
+    assert verify_password("geaendert99", app.state.users.get_by_username("admin")["password_hash"])
+    assert app.state.users.count() == 1
+    # the guard is "users table non-empty", not "password unset": the env var is still set here
+    assert s.get_settings().bootstrap_admin_password == "test123!"
+    assert appmod.bootstrap_admin(app.state.users, s.get_settings()) is False
