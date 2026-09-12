@@ -295,4 +295,5 @@ npx tailwindcss@3 -c tailwind.config.js -i tailwind.input.css -o redat/static/re
 - Design: [`docs/DESIGN.md`](docs/DESIGN.md)
 - Plan: [`docs/2026-09-05-nrw-redat-plan.md`](docs/2026-09-05-nrw-redat-plan.md)
 - Source tiers: [`docs/superpowers/specs/`](docs/superpowers/specs/) (Tier 1 sources, Tier 2 sources, Tier 3 NRW-weit) with their implementation plans in [`docs/superpowers/plans/`](docs/superpowers/plans/)
+- Research notes: [`docs/2026-09-11-kriminalitaet-research.md`](docs/2026-09-11-kriminalitaet-research.md) — crime statistics: what exists (BKA PKS district table), what paid providers offer, why no card was built
 - Status, deploy runbook, known limitations, work log: [`HANDOVER.md`](HANDOVER.md)

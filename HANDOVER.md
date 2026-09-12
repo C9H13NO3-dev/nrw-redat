@@ -395,6 +395,11 @@ docker compose run --rm redat python scripts/users.py create-admin --username ad
 
 ## Open items
 
+- **Kriminalität card (not built).** Research 2026-09-11 in `docs/2026-09-11-kriminalitaet-research.md`:
+  the finest usable public source is the BKA PKS Kreis table (district level, 42 offence groups, annual
+  xlsx, dl-de/by-2.0); no paid product has real data below district level (Nexiga/microm/infas360 model it,
+  PriceHubble has no safety score). Decision: if built, use the free BKA table with a district polygon
+  lookup and an explicit resolution caveat; do not buy data.
 - **Hunter cutover** (spec §11) is explicitly out of scope for this plan — a separate, later plan covers
   pointing House Hunter's `/analyze` page at this service instead of its own embedded analysis code.
 - **`_pdf()` builds the report context twice** (`redat/api/v1.py`) — once in `build_report_context()` for
